@@ -52,13 +52,13 @@
                     </div>
                     <div class="field field-slider">
                         <label title="Como o orçamento será dividido entre as duas loterias">Distribuição de Orçamento (%)</label>
-                        <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
-                            <div class="input-row" style="width:90px;" title="Porcentagem para Lotofácil">
+                        <div class="split-controls">
+                            <div class="input-row split-input-wrapper" title="Porcentagem para Lotofácil">
                                 <span class="prefix">LF</span>
                                 <input type="number" id="split-input-lf" value="60" min="0" max="100">
                             </div>
-                            <input type="range" id="split" min="0" max="100" value="60" style="flex:1;margin-top:0;">
-                            <div class="input-row" style="width:90px;" title="Porcentagem para Quina">
+                            <input type="range" id="split" min="0" max="100" value="60" class="split-range">
+                            <div class="input-row split-input-wrapper" title="Porcentagem para Quina">
                                 <span class="prefix">QN</span>
                                 <input type="number" id="split-input-qn" value="40" min="0" max="100">
                             </div>

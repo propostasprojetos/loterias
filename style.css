@@ -116,6 +116,25 @@ main{padding:32px 24px 80px;max-width:1000px;margin:0 auto}
     outline:none;width:100%;
 }
 
+/* Ocultar as setas de incremento dos inputs numéricos */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; margin: 0; 
+}
+input[type=number] { -moz-appearance: textfield; }
+
+/* Controles de Distribuição */
+.split-controls {
+    display: flex; align-items: center; gap: 14px; margin-top: 8px;
+}
+.split-input-wrapper {
+    width: 90px; flex-shrink: 0;
+}
+.split-input-wrapper input {
+    text-align: center; padding-left: 2px; padding-right: 12px;
+}
+.split-range { flex: 1; }
+
 /* Range slider */
 input[type=range]{
     width:100%;-webkit-appearance:none;height:4px;border-radius:3px;outline:none;cursor:pointer;
@@ -341,4 +360,8 @@ footer p{font-size:.76rem;color:var(--text-3)}
     .config-grid{grid-template-columns:1fr}
     .summary-bar{grid-template-columns:1fr}
     .summary-item{flex-direction:row;justify-content:space-between;align-items:center}
+    
+    .split-controls { flex-wrap: wrap; gap: 10px; }
+    .split-range { order: -1; flex-basis: 100%; margin-bottom: 4px; }
+    .split-input-wrapper { flex: 1; width: auto; }
 }
