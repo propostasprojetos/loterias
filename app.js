@@ -1,502 +1,492 @@
-// ===== LotoSmart — Gerador Estatístico de Loterias =====
+// ===== LotoSmart v2 =====
 
-// ===== UTILITY FUNCTIONS =====
-function randomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+// ===== UTILS =====
+const $ = id => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
 
+function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function shuffle(arr) {
     const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-        const j = randomInt(0, i);
-        [a[i], a[j]] = [a[j], a[i]];
-    }
+    for (let i = a.length - 1; i > 0; i--) { const j = randomInt(0, i);[a[i], a[j]] = [a[j], a[i]]; }
     return a;
 }
-
-function countEven(nums) { return nums.filter(n => n % 2 === 0).length; }
-function countOdd(nums) { return nums.filter(n => n % 2 !== 0).length; }
-
-function maxConsecutive(nums) {
-    const sorted = [...nums].sort((a, b) => a - b);
-    let max = 1, current = 1;
-    for (let i = 1; i < sorted.length; i++) {
-        if (sorted[i] === sorted[i - 1] + 1) { current++; max = Math.max(max, current); }
-        else { current = 1; }
-    }
-    return max;
+function countEven(n) { return n.filter(x => x % 2 === 0).length; }
+function maxConsec(nums) {
+    const s = [...nums].sort((a, b) => a - b);
+    let mx = 1, c = 1;
+    for (let i = 1; i < s.length; i++) { if (s[i] === s[i - 1] + 1) { c++; mx = Math.max(mx, c); } else c = 1; }
+    return mx;
 }
+function intersect(a, b) { return a.filter(n => b.includes(n)); }
+function fmt(v) { return 'R$ ' + v.toFixed(2).replace('.', ','); }
+function pad(n) { return String(n).padStart(2, '0'); }
 
-function intersection(a, b) { return a.filter(n => b.includes(n)); }
+// ===== LOTOFÁCIL =====
+function lfRow(n) { return Math.ceil(n / 5); }
+function lfCol(n) { return ((n - 1) % 5) + 1; }
 
-function formatCurrency(value) {
-    return 'R$ ' + value.toFixed(2).replace('.', ',');
-}
-
-// ===== LOTOFÁCIL GENERATOR =====
-// Volante: 5 rows x 5 cols
-// Row 1: 01-05, Row 2: 06-10, Row 3: 11-15, Row 4: 16-20, Row 5: 21-25
-function getLotofacilRow(n) {
-    return Math.ceil(n / 5);
-}
-
-function getLotofacilCol(n) {
-    return ((n - 1) % 5) + 1;
-}
-
-function validateLotofacil(game) {
-    const evens = countEven(game);
-    // Rule 1: 7-8 evens (rest are odds)
-    if (evens < 7 || evens > 8) return false;
-
-    // Rule 2: Balance low (1-13) and high (14-25)
-    const lows = game.filter(n => n <= 13).length;
-    if (lows < 6 || lows > 9) return false;
-
-    // Rule 3: Max 2 consecutive
-    if (maxConsecutive(game) > 2) return false;
-
-    // Rule 4: Distribute among 5 rows (at least 2 per row)
+function validateLF(g) {
+    const ev = countEven(g);
+    if (ev < 7 || ev > 8) return false;
+    const lo = g.filter(n => n <= 13).length;
+    if (lo < 6 || lo > 9) return false;
+    if (maxConsec(g) > 2) return false;
     const rows = [0, 0, 0, 0, 0];
-    game.forEach(n => rows[getLotofacilRow(n) - 1]++);
+    g.forEach(n => rows[lfRow(n) - 1]++);
     if (rows.some(r => r < 2 || r > 4)) return false;
-
-    // Rule 5: No complete column (all 5 in a column)
     const cols = [0, 0, 0, 0, 0];
-    game.forEach(n => cols[getLotofacilCol(n) - 1]++);
+    g.forEach(n => cols[lfCol(n) - 1]++);
     if (cols.some(c => c >= 5)) return false;
-
-    // Rule 6: Avoid popular triples (01,02,03 all together)
-    const popularTriples = [[1, 2, 3], [1, 2, 4], [23, 24, 25]];
-    for (const triple of popularTriples) {
-        if (triple.every(n => game.includes(n))) return false;
-    }
-
+    const triples = [[1, 2, 3], [1, 2, 4], [23, 24, 25]];
+    for (const t of triples) if (t.every(n => g.includes(n))) return false;
     return true;
 }
 
-function generateSingleLotofacil() {
-    const allNumbers = Array.from({ length: 25 }, (_, i) => i + 1);
-    let attempts = 0;
-    while (attempts < 5000) {
-        const shuffled = shuffle(allNumbers);
-        const game = shuffled.slice(0, 15).sort((a, b) => a - b);
-        if (validateLotofacil(game)) return game;
-        attempts++;
+function genOneLF() {
+    const all = Array.from({ length: 25 }, (_, i) => i + 1);
+    for (let i = 0; i < 5000; i++) {
+        const g = shuffle(all).slice(0, 15).sort((a, b) => a - b);
+        if (validateLF(g)) return g;
     }
-    // Fallback: construct a valid game
-    return constructLotofacil();
+    const ev = shuffle([2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]);
+    const od = shuffle([1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25]);
+    const ne = randomInt(7, 8);
+    return [...ev.slice(0, ne), ...od.slice(0, 15 - ne)].sort((a, b) => a - b);
 }
 
-function constructLotofacil() {
-    // Build a game that meets all criteria deterministically
-    const evens = shuffle([2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]);
-    const odds = shuffle([1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25]);
-    const numEvens = randomInt(7, 8);
-    const numOdds = 15 - numEvens;
-    const game = [...evens.slice(0, numEvens), ...odds.slice(0, numOdds)].sort((a, b) => a - b);
-    return game;
-}
-
-function generateLotofacilGames(count) {
+function genLFGames(count) {
     const games = [];
-    let totalAttempts = 0;
-
-    while (games.length < count && totalAttempts < count * 200) {
-        const game = generateSingleLotofacil();
-        totalAttempts++;
-
-        // Rule 7: Diversity check — max 10 shared numbers with any existing game
-        const tooSimilar = games.some(existing => intersection(game, existing).length > 10);
-        if (tooSimilar) continue;
-
-        games.push(game);
+    let att = 0;
+    while (games.length < count && att < count * 200) {
+        const g = genOneLF(); att++;
+        if (games.some(e => intersect(g, e).length > 10)) continue;
+        games.push(g);
     }
-
     return games;
 }
 
-// ===== QUINA GENERATOR =====
-function validateQuina(game) {
-    const evens = countEven(game);
-    // Balance pares/ímpares: 2-3 each
-    if (evens < 2 || evens > 3) return false;
-
-    // Distribution among ranges
-    const ranges = [0, 0, 0, 0]; // 1-20, 21-40, 41-60, 61-80
-    game.forEach(n => {
-        if (n <= 20) ranges[0]++;
-        else if (n <= 40) ranges[1]++;
-        else if (n <= 60) ranges[2]++;
-        else ranges[3]++;
-    });
-
-    // At least 1 number in at least 3 ranges, no range with more than 2
-    const activeRanges = ranges.filter(r => r > 0).length;
-    if (activeRanges < 3) return false;
-    if (ranges.some(r => r > 2)) return false;
-
-    // No consecutive sequences
-    if (maxConsecutive(game) > 2) return false;
-
-    // Dispersion: min gap between sorted numbers should average > 8
-    const sorted = [...game].sort((a, b) => a - b);
-    const minGap = Math.min(...sorted.slice(1).map((n, i) => n - sorted[i]));
-    if (minGap < 3) return false;
-
-    return true;
-}
-
-function generateSingleQuina() {
-    const allNumbers = Array.from({ length: 80 }, (_, i) => i + 1);
-    let attempts = 0;
-    while (attempts < 5000) {
-        const shuffled = shuffle(allNumbers);
-        const game = shuffled.slice(0, 5).sort((a, b) => a - b);
-        if (validateQuina(game)) return game;
-        attempts++;
-    }
-    // Fallback
-    return constructQuina();
-}
-
-function constructQuina() {
-    const ranges = [
-        shuffle(Array.from({ length: 20 }, (_, i) => i + 1)),
-        shuffle(Array.from({ length: 20 }, (_, i) => i + 21)),
-        shuffle(Array.from({ length: 20 }, (_, i) => i + 41)),
-        shuffle(Array.from({ length: 20 }, (_, i) => i + 61))
-    ];
-    // Pick from at least 3 ranges
-    const rangeOrder = shuffle([0, 1, 2, 3]);
-    const game = [
-        ranges[rangeOrder[0]][0],
-        ranges[rangeOrder[1]][0],
-        ranges[rangeOrder[2]][0],
-        ranges[rangeOrder[3]][0],
-        ranges[rangeOrder[randomInt(0, 3)]][1]
-    ].sort((a, b) => a - b);
-    return game;
-}
-
-function generateQuinaGames(count) {
-    const games = [];
-    let totalAttempts = 0;
-
-    while (games.length < count && totalAttempts < count * 200) {
-        const game = generateSingleQuina();
-        totalAttempts++;
-
-        // Diversity: max 2 shared numbers with any existing game
-        const tooSimilar = games.some(existing => intersection(game, existing).length > 2);
-        if (tooSimilar) continue;
-
-        games.push(game);
-    }
-
-    return games;
-}
-
-// ===== ANALYSIS FUNCTIONS =====
-function analyzeLotofacilGame(game) {
-    const evens = countEven(game);
-    const odds = countOdd(game);
-    const lows = game.filter(n => n <= 13).length;
-    const highs = 15 - lows;
-    const maxSeq = maxConsecutive(game);
-    const rows = [0, 0, 0, 0, 0];
-    game.forEach(n => rows[getLotofacilRow(n) - 1]++);
-
-    return { evens, odds, lows, highs, maxSeq, rows };
-}
-
-function analyzeQuinaGame(game) {
-    const evens = countEven(game);
-    const odds = countOdd(game);
+// ===== QUINA =====
+function validateQN(g) {
+    const ev = countEven(g);
+    if (ev < 2 || ev > 3) return false;
     const ranges = [0, 0, 0, 0];
-    game.forEach(n => {
-        if (n <= 20) ranges[0]++;
-        else if (n <= 40) ranges[1]++;
-        else if (n <= 60) ranges[2]++;
-        else ranges[3]++;
-    });
-    const sorted = [...game].sort((a, b) => a - b);
-    const gaps = sorted.slice(1).map((n, i) => n - sorted[i]);
-    const avgGap = (gaps.reduce((a, b) => a + b, 0) / gaps.length).toFixed(1);
-
-    return { evens, odds, ranges, avgGap };
+    g.forEach(n => { if (n <= 20) ranges[0]++; else if (n <= 40) ranges[1]++; else if (n <= 60) ranges[2]++; else ranges[3]++; });
+    if (ranges.filter(r => r > 0).length < 3) return false;
+    if (ranges.some(r => r > 2)) return false;
+    if (maxConsec(g) > 2) return false;
+    const s = [...g].sort((a, b) => a - b);
+    if (Math.min(...s.slice(1).map((n, i) => n - s[i])) < 3) return false;
+    return true;
 }
 
-function generateFullAnalysis(lfGames, qnGames) {
-    let html = '';
+function genOneQN() {
+    const all = Array.from({ length: 80 }, (_, i) => i + 1);
+    for (let i = 0; i < 5000; i++) {
+        const g = shuffle(all).slice(0, 5).sort((a, b) => a - b);
+        if (validateQN(g)) return g;
+    }
+    const R = [0, 1, 2, 3].map(i => shuffle(Array.from({ length: 20 }, (_, j) => j + 1 + i * 20)));
+    const o = shuffle([0, 1, 2, 3]);
+    return [R[o[0]][0], R[o[1]][0], R[o[2]][0], R[o[3]][0], R[o[randomInt(0, 3)]][1]].sort((a, b) => a - b);
+}
 
-    if (lfGames.length > 0) {
-        html += `<div class="analysis-section">
-            <h4>Lotofácil — Análise</h4>
-            <ul>`;
+function genQNGames(count) {
+    const games = [];
+    let att = 0;
+    while (games.length < count && att < count * 200) {
+        const g = genOneQN(); att++;
+        if (games.some(e => intersect(g, e).length > 2)) continue;
+        games.push(g);
+    }
+    return games;
+}
 
-        // Frequency of each number across all LF games
+// ===== SVG ICONS =====
+const ICON = {
+    copy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`,
+    check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+    pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M5 12h14M7 7l2-4h6l2 4v5H7V7z"/></svg>`,
+};
+
+// ===== STATE =====
+let currentLF = [];
+let currentQN = [];
+let selectedLF = new Set();
+let selectedQN = new Set();
+
+// ===== RENDER =====
+function renderBall(n, type) {
+    const cls = (n % 2 === 0 ? 'even' : 'odd') + (type === 'qn' ? ' qn' : '');
+    return `<span class="ball ${cls}">${pad(n)}</span>`;
+}
+
+function renderLFCard(game, idx) {
+    const ev = countEven(game), od = 15 - ev;
+    const lo = game.filter(n => n <= 13).length, hi = 15 - lo;
+    const rows = [0, 0, 0, 0, 0];
+    game.forEach(n => rows[lfRow(n) - 1]++);
+    const sel = selectedLF.has(idx);
+    return `<div class="game-card ${sel ? 'selected' : ''}" data-type="lf" data-idx="${idx}">
+        <div class="game-top">
+            <span class="game-label">Jogo ${pad(idx + 1)}</span>
+            <div class="game-actions">
+                <div class="game-meta">
+                    <span class="meta-tag meta-par">${ev}P</span>
+                    <span class="meta-tag meta-impar">${od}I</span>
+                    <span class="meta-tag meta-low">${lo}↓</span>
+                    <span class="meta-tag meta-high">${hi}↑</span>
+                </div>
+                <button class="btn-icon btn-copy-one" title="Copiar jogo" data-type="lf" data-idx="${idx}">${ICON.copy}</button>
+                <button class="btn-icon btn-select ${sel ? 'checked' : ''}" title="Manter jogo" data-type="lf" data-idx="${idx}">${sel ? ICON.check : ICON.pin}</button>
+            </div>
+        </div>
+        <div class="game-numbers">${game.map(n => renderBall(n, 'lf')).join('')}</div>
+        <div class="game-bottom">
+            <span class="game-stat">Linhas: ${rows.join('-')}</span>
+            <span class="game-stat">Seq: ${maxConsec(game)}</span>
+        </div>
+    </div>`;
+}
+
+function renderQNCard(game, idx) {
+    const ev = countEven(game), od = 5 - ev;
+    const rl = ['1–20', '21–40', '41–60', '61–80'];
+    const ranges = [0, 0, 0, 0];
+    game.forEach(n => { if (n <= 20) ranges[0]++; else if (n <= 40) ranges[1]++; else if (n <= 60) ranges[2]++; else ranges[3]++; });
+    const rStr = ranges.map((r, i) => r > 0 ? rl[i] + ':' + r : null).filter(Boolean).join(' ');
+    const s = [...game].sort((a, b) => a - b);
+    const gaps = s.slice(1).map((n, i) => n - s[i]);
+    const avgG = (gaps.reduce((a, b) => a + b, 0) / gaps.length).toFixed(1);
+    const sel = selectedQN.has(idx);
+    return `<div class="game-card ${sel ? 'selected' : ''}" data-type="qn" data-idx="${idx}">
+        <div class="game-top">
+            <span class="game-label">Jogo ${pad(idx + 1)}</span>
+            <div class="game-actions">
+                <div class="game-meta">
+                    <span class="meta-tag meta-par">${ev}P</span>
+                    <span class="meta-tag meta-impar">${od}I</span>
+                </div>
+                <button class="btn-icon btn-copy-one" title="Copiar jogo" data-type="qn" data-idx="${idx}">${ICON.copy}</button>
+                <button class="btn-icon btn-select ${sel ? 'checked' : ''}" title="Manter jogo" data-type="qn" data-idx="${idx}">${sel ? ICON.check : ICON.pin}</button>
+            </div>
+        </div>
+        <div class="game-numbers">${game.map(n => renderBall(n, 'qn')).join('')}</div>
+        <div class="game-bottom">
+            <span class="game-stat">Faixas: ${rStr}</span>
+            <span class="game-stat">Gap: ${avgG}</span>
+        </div>
+    </div>`;
+}
+
+function renderGames() {
+    $('lf-games').innerHTML = currentLF.map((g, i) => renderLFCard(g, i)).join('');
+    $('qn-games').innerHTML = currentQN.map((g, i) => renderQNCard(g, i)).join('');
+    $('lf-info').textContent = `${currentLF.length} jogos · 15 dezenas · 01 a 25`;
+    $('qn-info').textContent = `${currentQN.length} jogos · 5 dezenas · 01 a 80`;
+    bindCardButtons();
+}
+
+function renderAnalysis() {
+    let h = '';
+    if (currentLF.length) {
         const freq = {};
         for (let i = 1; i <= 25; i++) freq[i] = 0;
-        lfGames.forEach(g => g.forEach(n => freq[n]++));
+        currentLF.forEach(g => g.forEach(n => freq[n]++));
         const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
-        const most = sorted.slice(0, 5).map(([n, f]) => `${String(n).padStart(2, '0')} (${f}x)`).join(', ');
-        const least = sorted.slice(-5).map(([n, f]) => `${String(n).padStart(2, '0')} (${f}x)`).join(', ');
-
-        html += `<li>Dezenas mais presentes: ${most}</li>`;
-        html += `<li>Dezenas menos presentes: ${least}</li>`;
-
-        const avgEvens = (lfGames.reduce((s, g) => s + countEven(g), 0) / lfGames.length).toFixed(1);
-        html += `<li>Média de pares por jogo: ${avgEvens}</li>`;
-
-        const avgMaxSeq = (lfGames.reduce((s, g) => s + maxConsecutive(g), 0) / lfGames.length).toFixed(1);
-        html += `<li>Média de máx. consecutivos: ${avgMaxSeq}</li>`;
-
-        // Diversity check
-        let minDiversity = 15, maxDiversity = 0;
-        for (let i = 0; i < lfGames.length; i++) {
-            for (let j = i + 1; j < lfGames.length; j++) {
-                const shared = intersection(lfGames[i], lfGames[j]).length;
-                minDiversity = Math.min(minDiversity, 15 - shared);
-                maxDiversity = Math.max(maxDiversity, 15 - shared);
-            }
-        }
-        if (lfGames.length > 1) {
-            html += `<li>Diversidade entre jogos: ${minDiversity} a ${maxDiversity} dezenas diferentes</li>`;
-        }
-
-        html += `</ul></div>`;
+        const top5 = sorted.slice(0, 5).map(([n, f]) => `${pad(n)} (${f}x)`).join(', ');
+        const bot5 = sorted.slice(-5).map(([n, f]) => `${pad(n)} (${f}x)`).join(', ');
+        const avgEv = (currentLF.reduce((s, g) => s + countEven(g), 0) / currentLF.length).toFixed(1);
+        h += `<div class="analysis-section"><h4>Lotofácil</h4><ul>
+            <li>Mais frequentes: ${top5}</li><li>Menos frequentes: ${bot5}</li>
+            <li>Média pares/jogo: ${avgEv}</li></ul></div>`;
     }
-
-    if (qnGames.length > 0) {
-        html += `<div class="analysis-section">
-            <h4>Quina — Análise</h4>
-            <ul>`;
-
+    if (currentQN.length) {
         const freq = {};
         for (let i = 1; i <= 80; i++) freq[i] = 0;
-        qnGames.forEach(g => g.forEach(n => freq[n]++));
-        const coverageCount = Object.values(freq).filter(f => f > 0).length;
-        html += `<li>Cobertura numérica: ${coverageCount} de 80 dezenas (${((coverageCount / 80) * 100).toFixed(0)}%)</li>`;
-
-        const avgEvens = (qnGames.reduce((s, g) => s + countEven(g), 0) / qnGames.length).toFixed(1);
-        html += `<li>Média de pares por jogo: ${avgEvens}</li>`;
-
-        const rangeNames = ['1–20', '21–40', '41–60', '61–80'];
-        const rangeTotals = [0, 0, 0, 0];
-        qnGames.forEach(g => {
-            g.forEach(n => {
-                if (n <= 20) rangeTotals[0]++;
-                else if (n <= 40) rangeTotals[1]++;
-                else if (n <= 60) rangeTotals[2]++;
-                else rangeTotals[3]++;
-            });
-        });
-        const rangeStr = rangeNames.map((name, i) => `${name}: ${rangeTotals[i]}`).join(' | ');
-        html += `<li>Distribuição por faixa: ${rangeStr}</li>`;
-
-        html += `</ul></div>`;
+        currentQN.forEach(g => g.forEach(n => freq[n]++));
+        const cov = Object.values(freq).filter(f => f > 0).length;
+        h += `<div class="analysis-section"><h4>Quina</h4><ul>
+            <li>Cobertura: ${cov}/80 dezenas (${((cov / 80) * 100).toFixed(0)}%)</li></ul></div>`;
     }
-
-    html += `<div class="analysis-section">
-        <h4>Estratégia Resumida</h4>
-        <p>Todos os jogos foram gerados com critérios de equilíbrio par/ímpar, distribuição por faixas, controle de sequências consecutivas, dispersão no volante e diversidade inter-jogos. O foco está em maximizar a cobertura para premiações intermediárias (13–14 pontos na Lotofácil, 3–4 acertos na Quina), que possuem a melhor relação entre probabilidade e retorno. <strong>Lembre-se: isto é uma otimização estatística relativa, não uma garantia de prêmio.</strong></p>
-    </div>`;
-
-    return html;
+    h += `<div class="analysis-section"><p style="font-size:.78rem;color:var(--text-3);margin-top:8px">⚠️ Otimização estatística relativa — não garante premiação.</p></div>`;
+    $('analysis-body').innerHTML = h;
 }
 
-// ===== UI RENDERING =====
-function renderNumber(n, type) {
-    const isEven = n % 2 === 0;
-    const padded = String(n).padStart(2, '0');
-    const extraClass = type === 'quina' ? ' quina-ball' : '';
-    return `<span class="number-ball ${isEven ? 'even' : 'odd'}${extraClass}">${padded}</span>`;
-}
-
-function renderLotofacilGame(game, index) {
-    const analysis = analyzeLotofacilGame(game);
-    const numbersHtml = game.map(n => renderNumber(n, 'lotofacil')).join('');
-
-    return `<div class="game-card" style="animation-delay: ${index * 0.06}s" data-game="${game.join(',')}">
-        <div class="game-card-header">
-            <span class="game-number">Jogo ${String(index + 1).padStart(2, '0')}</span>
-            <div class="game-tags">
-                <span class="game-tag tag-par">${analysis.evens}P</span>
-                <span class="game-tag tag-impar">${analysis.odds}I</span>
-                <span class="game-tag tag-baixo">${analysis.lows}↓</span>
-                <span class="game-tag tag-alto">${analysis.highs}↑</span>
-            </div>
-        </div>
-        <div class="game-numbers">${numbersHtml}</div>
-        <div class="game-footer">
-            <span class="game-metric">Linhas: ${analysis.rows.join('-')}</span>
-            <span class="game-metric">Máx Seq: ${analysis.maxSeq}</span>
-        </div>
-    </div>`;
-}
-
-function renderQuinaGame(game, index) {
-    const analysis = analyzeQuinaGame(game);
-    const numbersHtml = game.map(n => renderNumber(n, 'quina')).join('');
-    const rangeLabels = ['1–20', '21–40', '41–60', '61–80'];
-    const rangeStr = analysis.ranges.map((r, i) => r > 0 ? rangeLabels[i] + ':' + r : null).filter(Boolean).join(' ');
-
-    return `<div class="game-card" style="animation-delay: ${index * 0.06}s" data-game="${game.join(',')}">
-        <div class="game-card-header">
-            <span class="game-number">Jogo ${String(index + 1).padStart(2, '0')}</span>
-            <div class="game-tags">
-                <span class="game-tag tag-par">${analysis.evens}P</span>
-                <span class="game-tag tag-impar">${analysis.odds}I</span>
-            </div>
-        </div>
-        <div class="game-numbers">${numbersHtml}</div>
-        <div class="game-footer">
-            <span class="game-metric">Faixas: ${rangeStr}</span>
-            <span class="game-metric">Gap médio: ${analysis.avgGap}</span>
-        </div>
-    </div>`;
-}
-
-// ===== BUDGET CALCULATIONS =====
+// ===== BUDGET =====
 function updateSummary() {
-    const budget = parseFloat(document.getElementById('budget-input').value) || 0;
-    const lfPrice = parseFloat(document.getElementById('lotofacil-price').value) || 3;
-    const qnPrice = parseFloat(document.getElementById('quina-price').value) || 2.5;
-    const splitPct = parseInt(document.getElementById('split-slider').value) || 60;
+    const budget = parseFloat($('budget').value) || 0;
+    const lfP = parseFloat($('lf-price').value) || 3;
+    const qnP = parseFloat($('qn-price').value) || 2.5;
+    const pct = parseInt($('split').value) || 60;
 
-    const lfBudget = budget * (splitPct / 100);
-    const qnBudget = budget * ((100 - splitPct) / 100);
+    const lfQ = Math.floor((budget * pct / 100) / lfP);
+    const qnQ = Math.floor((budget * (100 - pct) / 100) / qnP);
+    const total = lfQ * lfP + qnQ * qnP;
 
-    const lfCount = Math.floor(lfBudget / lfPrice);
-    const qnCount = Math.floor(qnBudget / qnPrice);
+    $('s-lf-qty').textContent = lfQ + ' jogos';
+    $('s-qn-qty').textContent = qnQ + ' jogos';
+    $('s-total').textContent = fmt(total);
+    $('s-change').textContent = fmt(budget - total);
+    $('lf-pct-label').textContent = pct + '%';
+    $('qn-pct-label').textContent = (100 - pct) + '%';
 
-    const lfCost = lfCount * lfPrice;
-    const qnCost = qnCount * qnPrice;
-    const totalCost = lfCost + qnCost;
-    const remaining = budget - totalCost;
+    const slider = $('split');
+    slider.style.background = `linear-gradient(to right,var(--purple) ${pct}%,var(--surface-2) ${pct}%)`;
 
-    document.getElementById('lotofacil-count').textContent = lfCount;
-    document.getElementById('quina-count').textContent = qnCount;
-    document.getElementById('lotofacil-cost').textContent = formatCurrency(lfCost);
-    document.getElementById('quina-cost').textContent = formatCurrency(qnCost);
-    document.getElementById('total-cost').textContent = formatCurrency(totalCost);
-    document.getElementById('remaining-budget').textContent = formatCurrency(remaining);
-    document.getElementById('lotofacil-pct').textContent = splitPct + '%';
-    document.getElementById('quina-pct').textContent = (100 - splitPct) + '%';
-
-    // Update slider background
-    const slider = document.getElementById('split-slider');
-    slider.style.background = `linear-gradient(to right, var(--accent-purple) 0%, var(--accent-purple) ${splitPct}%, var(--accent-cyan) ${splitPct}%, var(--accent-cyan) 100%)`;
-
-    return { lfCount, qnCount };
+    return { lfQ, qnQ };
 }
 
-// ===== COPY TO CLIPBOARD =====
-function copyGames(games, type) {
-    const label = type === 'lotofacil' ? 'Lotofácil' : 'Quina';
-    let text = `=== ${label} — LotoSmart ===\n\n`;
-    games.forEach((game, i) => {
-        const nums = game.map(n => String(n).padStart(2, '0')).join(' - ');
-        text += `Jogo ${String(i + 1).padStart(2, '0')}: ${nums}\n`;
-    });
-    text += `\nGerado em: ${new Date().toLocaleString('pt-BR')}\n`;
-
-    navigator.clipboard.writeText(text).then(() => {
-        showToast(`${games.length} jogos da ${label} copiados!`);
-    }).catch(() => {
-        showToast('Erro ao copiar. Tente novamente.');
-    });
+// ===== COPY =====
+function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => toast('Copiado!')).catch(() => toast('Erro ao copiar'));
+}
+function copyOneGame(type, idx) {
+    const game = type === 'lf' ? currentLF[idx] : currentQN[idx];
+    const label = type === 'lf' ? 'Lotofácil' : 'Quina';
+    copyText(`${label} Jogo ${pad(idx + 1)}: ${game.map(pad).join(' - ')}`);
+}
+function copyAllGames(type) {
+    const games = type === 'lf' ? currentLF : currentQN;
+    const label = type === 'lf' ? 'Lotofácil' : 'Quina';
+    const txt = games.map((g, i) => `Jogo ${pad(i + 1)}: ${g.map(pad).join(' - ')}`).join('\n');
+    copyText(`=== ${label} ===\n${txt}\n\nGerado: ${new Date().toLocaleString('pt-BR')}`);
 }
 
-function showToast(message) {
-    const toast = document.getElementById('toast');
-    const toastText = document.getElementById('toast-text');
-    toastText.textContent = message;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 3000);
+// ===== SELECT / DESELECT =====
+function toggleSelect(type, idx) {
+    const set = type === 'lf' ? selectedLF : selectedQN;
+    if (set.has(idx)) set.delete(idx); else set.add(idx);
+    renderGames();
 }
 
-// ===== MAIN GENERATION =====
-function generateAll() {
-    const { lfCount, qnCount } = updateSummary();
+// ===== REGENERATE UNSELECTED =====
+function regenerateUnselected() {
+    const { lfQ, qnQ } = updateSummary();
 
-    if (lfCount === 0 && qnCount === 0) {
-        showToast('Orçamento insuficiente para gerar jogos.');
-        return;
+    // Keep selected, regenerate the rest
+    const keptLF = [];
+    selectedLF.forEach(i => { if (currentLF[i]) keptLF.push(currentLF[i]); });
+    const needLF = Math.max(0, lfQ - keptLF.length);
+    const newLF = genLFGames(needLF);
+    // Diversity check against kept games
+    const filteredLF = [];
+    for (const g of newLF) {
+        if (!keptLF.some(k => intersect(g, k).length > 10) && !filteredLF.some(f => intersect(g, f).length > 10)) {
+            filteredLF.push(g);
+        }
     }
+    currentLF = [...keptLF, ...filteredLF];
 
-    const btn = document.getElementById('btn-generate');
-    btn.classList.add('generating');
-    btn.innerHTML = `<svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Gerando...`;
+    const keptQN = [];
+    selectedQN.forEach(i => { if (currentQN[i]) keptQN.push(currentQN[i]); });
+    const needQN = Math.max(0, qnQ - keptQN.length);
+    const newQN = genQNGames(needQN);
+    const filteredQN = [];
+    for (const g of newQN) {
+        if (!keptQN.some(k => intersect(g, k).length > 2) && !filteredQN.some(f => intersect(g, f).length > 2)) {
+            filteredQN.push(g);
+        }
+    }
+    currentQN = [...keptQN, ...filteredQN];
+
+    // Update selection indices (kept games are now at the start)
+    selectedLF = new Set(keptLF.map((_, i) => i));
+    selectedQN = new Set(keptQN.map((_, i) => i));
+
+    renderGames();
+    renderAnalysis();
+    toast('Jogos não selecionados regenerados!');
+}
+
+// ===== GENERATE =====
+function generateAll() {
+    const { lfQ, qnQ } = updateSummary();
+    if (lfQ === 0 && qnQ === 0) { toast('Orçamento insuficiente'); return; }
+
+    const btn = $('btn-generate');
+    btn.classList.add('loading');
+    btn.textContent = 'Gerando...';
 
     setTimeout(() => {
-        const lfGames = generateLotofacilGames(lfCount);
-        const qnGames = generateQuinaGames(qnCount);
-
-        // Render Lotofácil
-        const lfContainer = document.getElementById('lotofacil-games');
-        if (lfGames.length > 0) {
-            lfContainer.innerHTML = lfGames.map((g, i) => renderLotofacilGame(g, i)).join('');
-            document.getElementById('lotofacil-results').style.display = 'block';
+        if (selectedLF.size === 0 && selectedQN.size === 0) {
+            currentLF = genLFGames(lfQ);
+            currentQN = genQNGames(qnQ);
+            selectedLF.clear();
+            selectedQN.clear();
         } else {
-            document.getElementById('lotofacil-results').style.display = 'none';
+            regenerateUnselected();
         }
 
-        // Render Quina
-        const qnContainer = document.getElementById('quina-games');
-        if (qnGames.length > 0) {
-            qnContainer.innerHTML = qnGames.map((g, i) => renderQuinaGame(g, i)).join('');
-            document.getElementById('quina-results').style.display = 'block';
-        } else {
-            document.getElementById('quina-results').style.display = 'none';
-        }
+        renderGames();
+        renderAnalysis();
+        $('results-area').classList.remove('hidden');
+        $('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-        // Render Analysis
-        document.getElementById('analysis-content').innerHTML = generateFullAnalysis(lfGames, qnGames);
-
-        // Show results section
-        document.getElementById('resultados').classList.remove('hidden');
-
-        // Copy buttons
-        document.getElementById('btn-copy-lotofacil').onclick = () => copyGames(lfGames, 'lotofacil');
-        document.getElementById('btn-copy-quina').onclick = () => copyGames(qnGames, 'quina');
-
-        // Scroll to results
-        document.getElementById('resultados').scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-        // Reset button
-        btn.classList.remove('generating');
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Gerar Jogos Otimizados`;
-    }, 600);
+        btn.classList.remove('loading');
+        btn.textContent = selectedLF.size || selectedQN.size ? 'Regenerar não selecionados' : 'Gerar Jogos';
+    }, 300);
 }
 
-// ===== EVENT LISTENERS =====
-document.addEventListener('DOMContentLoaded', () => {
-    // Budget inputs
-    ['budget-input', 'lotofacil-price', 'quina-price', 'split-slider'].forEach(id => {
-        document.getElementById(id).addEventListener('input', updateSummary);
+// ===== HISTORY (localStorage) =====
+const HISTORY_KEY = 'lotosmart_history';
+
+function loadHistory() {
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
+    catch { return []; }
+}
+function saveHistoryData(data) { localStorage.setItem(HISTORY_KEY, JSON.stringify(data)); }
+
+function saveToHistory() {
+    if (!currentLF.length && !currentQN.length) return;
+    const history = loadHistory();
+    history.unshift({
+        id: Date.now(),
+        date: new Date().toLocaleString('pt-BR'),
+        lf: currentLF,
+        qn: currentQN
     });
+    if (history.length > 50) history.length = 50;
+    saveHistoryData(history);
+    toast('Salvo no histórico!');
+    renderHistory();
+}
 
-    // Generate button
-    document.getElementById('btn-generate').addEventListener('click', generateAll);
+function deleteHistoryEntry(id) {
+    const history = loadHistory().filter(h => h.id !== id);
+    saveHistoryData(history);
+    renderHistory();
+}
 
-    // Nav links
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            link.classList.add('active');
+function clearHistory() {
+    if (!confirm('Limpar todo o histórico?')) return;
+    saveHistoryData([]);
+    renderHistory();
+}
+
+function loadFromHistory(entry) {
+    currentLF = entry.lf || [];
+    currentQN = entry.qn || [];
+    selectedLF.clear();
+    selectedQN.clear();
+    switchView('gerador');
+    renderGames();
+    renderAnalysis();
+    $('results-area').classList.remove('hidden');
+    $('btn-generate').textContent = 'Gerar Jogos';
+    toast('Jogos carregados do histórico');
+}
+
+function renderHistory() {
+    const history = loadHistory();
+    const el = $('history-list');
+    const empty = $('history-empty');
+
+    if (!history.length) {
+        el.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+    }
+    empty.classList.add('hidden');
+
+    el.innerHTML = history.map(h => {
+        const lfTxt = (h.lf || []).map((g, i) => `<div style="font-size:.78rem;color:var(--text-2);padding:2px 0;font-family:var(--mono)">J${pad(i + 1)}: ${g.map(pad).join(' ')}</div>`).join('');
+        const qnTxt = (h.qn || []).map((g, i) => `<div style="font-size:.78rem;color:var(--text-2);padding:2px 0;font-family:var(--mono)">J${pad(i + 1)}: ${g.map(pad).join(' ')}</div>`).join('');
+        return `<div class="history-entry" data-id="${h.id}">
+            <div class="history-entry-header">
+                <span class="history-date">${h.date}</span>
+                <span class="history-summary">${(h.lf || []).length} LF · ${(h.qn || []).length} QN</span>
+            </div>
+            <div class="history-body">
+                ${lfTxt ? `<p style="font-size:.75rem;font-weight:600;color:var(--purple);margin:10px 0 4px">LOTOFÁCIL</p>${lfTxt}` : ''}
+                ${qnTxt ? `<p style="font-size:.75rem;font-weight:600;color:var(--cyan);margin:10px 0 4px">QUINA</p>${qnTxt}` : ''}
+                <div class="history-actions">
+                    <button class="btn-sm btn-load-hist">Carregar</button>
+                    <button class="btn-sm btn-copy-hist">Copiar</button>
+                    <button class="btn-sm btn-danger btn-del-hist">Excluir</button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+
+    // Bind history events
+    $$('.history-entry-header').forEach(hdr => {
+        hdr.addEventListener('click', () => hdr.nextElementSibling.classList.toggle('open'));
+    });
+    $$('.btn-load-hist').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = parseInt(btn.closest('.history-entry').dataset.id);
+            const entry = loadHistory().find(h => h.id === id);
+            if (entry) loadFromHistory(entry);
         });
     });
+    $$('.btn-copy-hist').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = parseInt(btn.closest('.history-entry').dataset.id);
+            const entry = loadHistory().find(h => h.id === id);
+            if (!entry) return;
+            let txt = `=== LotoSmart — ${entry.date} ===\n`;
+            if (entry.lf?.length) { txt += '\nLOTOFÁCIL:\n'; entry.lf.forEach((g, i) => txt += `J${pad(i + 1)}: ${g.map(pad).join(' - ')}\n`); }
+            if (entry.qn?.length) { txt += '\nQUINA:\n'; entry.qn.forEach((g, i) => txt += `J${pad(i + 1)}: ${g.map(pad).join(' - ')}\n`); }
+            copyText(txt);
+        });
+    });
+    $$('.btn-del-hist').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = parseInt(btn.closest('.history-entry').dataset.id);
+            deleteHistoryEntry(id);
+        });
+    });
+}
 
-    // Initial summary calculation
+// ===== CARD BUTTONS =====
+function bindCardButtons() {
+    $$('.btn-copy-one').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            copyOneGame(btn.dataset.type, parseInt(btn.dataset.idx));
+        });
+    });
+    $$('.btn-select').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            toggleSelect(btn.dataset.type, parseInt(btn.dataset.idx));
+            // Update button text
+            const hasSelection = selectedLF.size || selectedQN.size;
+            $('btn-generate').textContent = hasSelection ? 'Regenerar não selecionados' : 'Gerar Jogos';
+        });
+    });
+}
+
+// ===== TOAST =====
+function toast(msg) {
+    $('toast-msg').textContent = msg;
+    $('toast').classList.add('show');
+    setTimeout(() => $('toast').classList.remove('show'), 2500);
+}
+
+// ===== VIEW SWITCHING =====
+function switchView(view) {
+    $$('[id^="view-"]').forEach(el => el.classList.add('hidden'));
+    $('view-' + view).classList.remove('hidden');
+    $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+    if (view === 'historico') renderHistory();
+}
+
+// ===== TABS =====
+function switchTab(tabId) {
+    $$('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+    $$('.tab-content').forEach(tc => tc.classList.toggle('active', tc.id === tabId));
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+    ['budget', 'lf-price', 'qn-price', 'split'].forEach(id => $(id).addEventListener('input', updateSummary));
+    $('btn-generate').addEventListener('click', generateAll);
+    $('btn-save-history').addEventListener('click', saveToHistory);
+    $('btn-clear-history').addEventListener('click', clearHistory);
+    $('btn-copy-all-lf').addEventListener('click', () => copyAllGames('lf'));
+    $('btn-copy-all-qn').addEventListener('click', () => copyAllGames('qn'));
+    $$('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+    $$('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
     updateSummary();
 });
-
-// ===== SPIN ANIMATION (via CSS) =====
-const styleTag = document.createElement('style');
-styleTag.textContent = `
-    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    .spin { animation: spin 1s linear infinite; }
-`;
-document.head.appendChild(styleTag);
