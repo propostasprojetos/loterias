@@ -295,7 +295,8 @@ function regenerateUnselected() {
 
     renderGames();
     renderAnalysis();
-    toast('Jogos não selecionados regenerados!');
+    saveToHistory();
+    toast('Jogos não selecionados regenerados e salvos!');
 }
 
 // ===== GENERATE =====
@@ -322,6 +323,11 @@ function generateAll() {
         $('results-area').classList.remove('hidden');
         $('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+        saveToHistory();
+        if (selectedLF.size === 0 && selectedQN.size === 0) {
+            toast('Jogos gerados e salvos no histórico!');
+        }
+
         btn.classList.remove('loading');
         btn.textContent = selectedLF.size || selectedQN.size ? 'Regenerar não selecionados' : 'Gerar Jogos';
     }, 300);
@@ -347,7 +353,6 @@ function saveToHistory() {
     });
     if (history.length > 50) history.length = 50;
     saveHistoryData(history);
-    toast('Salvo no histórico!');
     renderHistory();
 }
 
@@ -482,7 +487,6 @@ function switchTab(tabId) {
 document.addEventListener('DOMContentLoaded', () => {
     ['budget', 'lf-price', 'qn-price', 'split'].forEach(id => $(id).addEventListener('input', updateSummary));
     $('btn-generate').addEventListener('click', generateAll);
-    $('btn-save-history').addEventListener('click', saveToHistory);
     $('btn-clear-history').addEventListener('click', clearHistory);
     $('btn-copy-all-lf').addEventListener('click', () => copyAllGames('lf'));
     $('btn-copy-all-qn').addEventListener('click', () => copyAllGames('qn'));
