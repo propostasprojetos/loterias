@@ -131,10 +131,10 @@ function renderLFCard(game, idx) {
             <span class="game-label">Jogo ${pad(idx + 1)}</span>
             <div class="game-actions">
                 <div class="game-meta">
-                    <span class="meta-tag meta-par">${ev}P</span>
-                    <span class="meta-tag meta-impar">${od}I</span>
-                    <span class="meta-tag meta-low">${lo}↓</span>
-                    <span class="meta-tag meta-high">${hi}↑</span>
+                    <span class="meta-tag meta-par" title="Quantidade de números PARES (Ideal: 7 a 8)">${ev}P</span>
+                    <span class="meta-tag meta-impar" title="Quantidade de números ÍMPARES (Ideal: 7 a 8)">${od}I</span>
+                    <span class="meta-tag meta-low" title="Dezenas baixas, de 01 a 13 (Ideal: 6 a 9)">${lo}↓</span>
+                    <span class="meta-tag meta-high" title="Dezenas altas, de 14 a 25">${hi}↑</span>
                 </div>
                 <button class="btn-icon btn-copy-one" title="Copiar jogo" data-type="lf" data-idx="${idx}">${ICON.copy}</button>
                 <button class="btn-icon btn-select ${sel ? 'checked' : ''}" title="Manter jogo" data-type="lf" data-idx="${idx}">${sel ? ICON.check : ICON.pin}</button>
@@ -142,8 +142,8 @@ function renderLFCard(game, idx) {
         </div>
         <div class="game-numbers">${game.map(n => renderBall(n, 'lf')).join('')}</div>
         <div class="game-bottom">
-            <span class="game-stat">Linhas: ${rows.join('-')}</span>
-            <span class="game-stat">Seq: ${maxConsec(game)}</span>
+            <span class="game-stat" title="Quantidade de números em cada uma das 5 linhas do volante">Linhas: ${rows.join('-')}</span>
+            <span class="game-stat" title="Maior sequência de números seguidos (Ideal: Máx 2)">Seq: ${maxConsec(game)}</span>
         </div>
     </div>`;
 }
@@ -163,8 +163,8 @@ function renderQNCard(game, idx) {
             <span class="game-label">Jogo ${pad(idx + 1)}</span>
             <div class="game-actions">
                 <div class="game-meta">
-                    <span class="meta-tag meta-par">${ev}P</span>
-                    <span class="meta-tag meta-impar">${od}I</span>
+                    <span class="meta-tag meta-par" title="Quantidade de números PARES (Ideal: 2 a 3)">${ev}P</span>
+                    <span class="meta-tag meta-impar" title="Quantidade de números ÍMPARES (Ideal: 2 a 3)">${od}I</span>
                 </div>
                 <button class="btn-icon btn-copy-one" title="Copiar jogo" data-type="qn" data-idx="${idx}">${ICON.copy}</button>
                 <button class="btn-icon btn-select ${sel ? 'checked' : ''}" title="Manter jogo" data-type="qn" data-idx="${idx}">${sel ? ICON.check : ICON.pin}</button>
@@ -172,8 +172,8 @@ function renderQNCard(game, idx) {
         </div>
         <div class="game-numbers">${game.map(n => renderBall(n, 'qn')).join('')}</div>
         <div class="game-bottom">
-            <span class="game-stat">Faixas: ${rStr}</span>
-            <span class="game-stat">Gap: ${avgG}</span>
+            <span class="game-stat" title="Distribuição dos números pelos 4 quadrantes/faixas (1-20, 21-40, 41-60, 61-80)">Faixas: ${rStr}</span>
+            <span class="game-stat" title="Distância média (salto) entre os números. Gaps maiores indicam maior dispersão.">Gap médio: ${avgG}</span>
         </div>
     </div>`;
 }
@@ -227,11 +227,9 @@ function updateSummary() {
     $('s-qn-qty').textContent = qnQ + ' jogos';
     $('s-total').textContent = fmt(total);
     $('s-change').textContent = fmt(budget - total);
-    $('lf-pct-label').textContent = pct + '%';
-    $('qn-pct-label').textContent = (100 - pct) + '%';
 
     const slider = $('split');
-    slider.style.background = `linear-gradient(to right,var(--purple) ${pct}%,var(--surface-2) ${pct}%)`;
+    slider.style.background = `linear-gradient(to right,var(--gold) ${pct}%,var(--surface-3) ${pct}%)`;
 
     return { lfQ, qnQ };
 }
@@ -485,7 +483,29 @@ function switchTab(tabId) {
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
-    ['budget', 'lf-price', 'qn-price', 'split'].forEach(id => $(id).addEventListener('input', updateSummary));
+    ['budget', 'lf-price', 'qn-price'].forEach(id => $(id).addEventListener('input', updateSummary));
+    
+    $('split-input-lf').addEventListener('input', (e) => {
+        let val = parseInt(e.target.value) || 0;
+        if(val > 100) val = 100; if(val < 0) val = 0;
+        $('split').value = val;
+        $('split-input-qn').value = 100 - val;
+        updateSummary();
+    });
+    $('split-input-qn').addEventListener('input', (e) => {
+        let val = parseInt(e.target.value) || 0;
+        if(val > 100) val = 100; if(val < 0) val = 0;
+        $('split').value = 100 - val;
+        $('split-input-lf').value = 100 - val;
+        updateSummary();
+    });
+    $('split').addEventListener('input', (e) => {
+        let val = parseInt(e.target.value) || 0;
+        $('split-input-lf').value = val;
+        $('split-input-qn').value = 100 - val;
+        updateSummary();
+    });
+
     $('btn-generate').addEventListener('click', generateAll);
     $('btn-clear-history').addEventListener('click', clearHistory);
     $('btn-copy-all-lf').addEventListener('click', () => copyAllGames('lf'));

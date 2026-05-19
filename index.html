@@ -30,29 +30,39 @@
                 <h2>Configuração</h2>
                 <div class="config-grid">
                     <div class="field">
-                        <label for="budget">Orçamento semanal</label>
+                        <label for="budget" title="Valor total que você deseja investir na semana">Orçamento semanal</label>
                         <div class="input-row">
                             <span class="prefix">R$</span>
                             <input type="number" id="budget" value="50" min="3" max="5000">
                         </div>
                     </div>
                     <div class="field">
-                        <label for="lf-price">Aposta Lotofácil</label>
+                        <label for="lf-price" title="Preço atual da aposta simples (15 números) na Lotofácil">Aposta Lotofácil</label>
                         <div class="input-row">
                             <span class="prefix">R$</span>
                             <input type="number" id="lf-price" value="3.00" min="2" step="0.50">
                         </div>
                     </div>
                     <div class="field">
-                        <label for="qn-price">Aposta Quina</label>
+                        <label for="qn-price" title="Preço atual da aposta simples (5 números) na Quina">Aposta Quina</label>
                         <div class="input-row">
                             <span class="prefix">R$</span>
                             <input type="number" id="qn-price" value="2.50" min="1" step="0.50">
                         </div>
                     </div>
                     <div class="field field-slider">
-                        <label>Distribuição: <strong id="lf-pct-label">60%</strong> Lotofácil · <strong id="qn-pct-label">40%</strong> Quina</label>
-                        <input type="range" id="split" min="0" max="100" value="60">
+                        <label title="Como o orçamento será dividido entre as duas loterias">Distribuição de Orçamento (%)</label>
+                        <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
+                            <div class="input-row" style="width:90px;" title="Porcentagem para Lotofácil">
+                                <span class="prefix">LF</span>
+                                <input type="number" id="split-input-lf" value="60" min="0" max="100">
+                            </div>
+                            <input type="range" id="split" min="0" max="100" value="60" style="flex:1;margin-top:0;">
+                            <div class="input-row" style="width:90px;" title="Porcentagem para Quina">
+                                <span class="prefix">QN</span>
+                                <input type="number" id="split-input-qn" value="40" min="0" max="100">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
