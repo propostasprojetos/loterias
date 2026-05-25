@@ -1076,7 +1076,19 @@ function generateAll() {
         }
 
         btn.classList.remove('loading');
-        btn.textContent = selectedLF.size || selectedQN.size ? 'Regenerar não selecionados' : 'Gerar Jogos';
+        const hasSelection = selectedLF.size || selectedQN.size;
+        btn.textContent = hasSelection ? 'Regenerar não selecionados' : 'Gerar Jogos';
+
+        // Show "Register bet" button
+        let regBtn = $('btn-register-bet-gen');
+        if (!regBtn) {
+            regBtn = document.createElement('button');
+            regBtn.id = 'btn-register-bet-gen';
+            regBtn.className = 'btn-secondary';
+            regBtn.textContent = '💰 Registrar esta aposta no Financeiro';
+            regBtn.addEventListener('click', registerBetFromGenerator);
+            btn.parentNode.insertBefore(regBtn, btn.nextSibling);
+        }
     }, 300);
 }
 
@@ -1232,6 +1244,7 @@ function switchView(view) {
     $('view-' + view).classList.remove('hidden');
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
     if (view === 'historico') renderHistory();
+    if (view === 'financeiro') refreshFinancialData();
 }
 
 // ===== TABS =====
@@ -1250,6 +1263,528 @@ function updateModeUI() {
     $$('.mode-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.mode === generationMode);
     });
+}
+
+// ===== POCKETBASE INITIALIZATION =====
+const PB_URL = 'http://127.0.0.1:8090';
+let pb = null;
+let pbReady = false;
+
+async function initPocketBase() {
+    try {
+        pb = new PocketBase(PB_URL);
+        // Test connection by checking health
+        const health = await fetch(PB_URL + '/api/health').then(r => r.json());
+        if (health.code === 200) {
+            pbReady = true;
+            console.log('PocketBase connected successfully');
+            await ensureCollections();
+            return true;
+        }
+    } catch (e) {
+        console.warn('PocketBase not available, financial module will use localStorage fallback:', e.message);
+        pbReady = false;
+    }
+    return false;
+}
+
+// Ensure collections exist via API
+async function ensureCollections() {
+    try {
+        // Try to access the collections to see if they exist
+        await pb.collection('bets').getList(1, 1);
+    } catch (e) {
+        // Collections don't exist yet — they need to be created via admin UI
+        console.warn('Collections not found. Please create them via PocketBase admin at', PB_URL + '/_/');
+    }
+}
+
+// ===== FINANCIAL DATA — LOCALSTORAGE FALLBACK =====
+const FIN_BETS_KEY = 'lotosmart_bets';
+const FIN_PRIZES_KEY = 'lotosmart_prizes';
+
+function loadLocalBets() {
+    try { return JSON.parse(localStorage.getItem(FIN_BETS_KEY)) || []; }
+    catch { return []; }
+}
+function saveLocalBets(data) { localStorage.setItem(FIN_BETS_KEY, JSON.stringify(data)); }
+
+function loadLocalPrizes() {
+    try { return JSON.parse(localStorage.getItem(FIN_PRIZES_KEY)) || []; }
+    catch { return []; }
+}
+function saveLocalPrizes(data) { localStorage.setItem(FIN_PRIZES_KEY, JSON.stringify(data)); }
+
+// ===== FINANCIAL CRUD =====
+async function addBet(betData) {
+    if (pbReady) {
+        try {
+            await pb.collection('bets').create(betData);
+        } catch (e) {
+            console.error('PB create bet failed, using localStorage:', e);
+            const bets = loadLocalBets();
+            bets.unshift({ ...betData, id: Date.now().toString(), created: new Date().toISOString() });
+            saveLocalBets(bets);
+        }
+    } else {
+        const bets = loadLocalBets();
+        bets.unshift({ ...betData, id: Date.now().toString(), created: new Date().toISOString() });
+        saveLocalBets(bets);
+    }
+    await refreshFinancialData();
+}
+
+async function addPrize(prizeData) {
+    if (pbReady) {
+        try {
+            await pb.collection('prizes').create(prizeData);
+        } catch (e) {
+            console.error('PB create prize failed, using localStorage:', e);
+            const prizes = loadLocalPrizes();
+            prizes.unshift({ ...prizeData, id: Date.now().toString(), created: new Date().toISOString() });
+            saveLocalPrizes(prizes);
+        }
+    } else {
+        const prizes = loadLocalPrizes();
+        prizes.unshift({ ...prizeData, id: Date.now().toString(), created: new Date().toISOString() });
+        saveLocalPrizes(prizes);
+    }
+    await refreshFinancialData();
+}
+
+async function deleteBet(id) {
+    if (pbReady) {
+        try { await pb.collection('bets').delete(id); }
+        catch (e) {
+            console.error('PB delete bet failed:', e);
+            const bets = loadLocalBets().filter(b => b.id !== id);
+            saveLocalBets(bets);
+        }
+    } else {
+        const bets = loadLocalBets().filter(b => b.id !== id);
+        saveLocalBets(bets);
+    }
+    await refreshFinancialData();
+}
+
+async function deletePrize(id) {
+    if (pbReady) {
+        try { await pb.collection('prizes').delete(id); }
+        catch (e) {
+            console.error('PB delete prize failed:', e);
+            const prizes = loadLocalPrizes().filter(p => p.id !== id);
+            saveLocalPrizes(prizes);
+        }
+    } else {
+        const prizes = loadLocalPrizes().filter(p => p.id !== id);
+        saveLocalPrizes(prizes);
+    }
+    await refreshFinancialData();
+}
+
+async function getAllBets() {
+    if (pbReady) {
+        try {
+            const result = await pb.collection('bets').getFullList({ sort: '-bet_date' });
+            return result;
+        } catch (e) {
+            console.error('PB get bets failed:', e);
+            return loadLocalBets();
+        }
+    }
+    return loadLocalBets();
+}
+
+async function getAllPrizes() {
+    if (pbReady) {
+        try {
+            const result = await pb.collection('prizes').getFullList({ sort: '-prize_date' });
+            return result;
+        } catch (e) {
+            console.error('PB get prizes failed:', e);
+            return loadLocalPrizes();
+        }
+    }
+    return loadLocalPrizes();
+}
+
+// ===== FINANCIAL STATE =====
+let allBets = [];
+let allPrizes = [];
+let finFilter = 'all';
+let finChart = null;
+
+async function refreshFinancialData() {
+    allBets = await getAllBets();
+    allPrizes = await getAllPrizes();
+    renderFinancialDashboard();
+    renderTransactions();
+    renderFinancialChart();
+}
+
+// ===== FINANCIAL DASHBOARD =====
+function renderFinancialDashboard() {
+    const totalSpent = allBets.reduce((s, b) => s + (parseFloat(b.total_cost) || 0), 0);
+    const totalWon = allPrizes.reduce((s, p) => s + (parseFloat(p.prize_amount) || 0), 0);
+    const pl = totalWon - totalSpent;
+    const roi = totalSpent > 0 ? ((totalWon / totalSpent) * 100 - 100) : 0;
+
+    // Count unique weeks
+    const weekSet = new Set();
+    allBets.forEach(b => {
+        if (b.bet_date) {
+            const d = new Date(b.bet_date);
+            const weekStart = new Date(d);
+            weekStart.setDate(d.getDate() - d.getDay());
+            weekSet.add(weekStart.toISOString().slice(0, 10));
+        }
+    });
+
+    // Hit rate: % of bets that have matching prizes
+    const betsWithPrize = allPrizes.length;
+    const totalBetEntries = allBets.length;
+    const hitRate = totalBetEntries > 0 ? ((betsWithPrize / totalBetEntries) * 100) : 0;
+
+    $('fin-total-spent').textContent = fmt(totalSpent);
+    $('fin-total-spent').className = 'metric-value' + (totalSpent > 0 ? ' negative' : '');
+    $('fin-spent-detail').textContent = `${allBets.length} aposta${allBets.length !== 1 ? 's' : ''} registrada${allBets.length !== 1 ? 's' : ''}`;
+
+    $('fin-total-won').textContent = fmt(totalWon);
+    $('fin-total-won').className = 'metric-value' + (totalWon > 0 ? ' positive' : '');
+    $('fin-won-detail').textContent = `${allPrizes.length} prêmio${allPrizes.length !== 1 ? 's' : ''} registrado${allPrizes.length !== 1 ? 's' : ''}`;
+
+    $('fin-pl').textContent = (pl >= 0 ? '+' : '') + fmt(pl);
+    $('fin-pl').className = 'metric-value ' + (pl >= 0 ? 'positive' : 'negative');
+    $('fin-pl-detail').textContent = pl >= 0 ? 'Lucro acumulado' : 'Prejuízo acumulado';
+
+    $('fin-roi').textContent = (roi >= 0 ? '+' : '') + roi.toFixed(1) + '%';
+    $('fin-roi').className = 'metric-value ' + (roi >= 0 ? 'positive' : 'negative');
+
+    $('fin-hit-rate').textContent = hitRate.toFixed(1) + '%';
+    $('fin-rate-detail').textContent = `${betsWithPrize} de ${totalBetEntries} apostas premiadas`;
+
+    $('fin-weeks').textContent = weekSet.size;
+    $('fin-weeks-detail').textContent = weekSet.size > 0 ? `desde ${[...weekSet].sort()[0].split('-').reverse().join('/')}` : '—';
+}
+
+// ===== TRANSACTION TABLE =====
+function renderTransactions() {
+    // Combine bets and prizes into a single list
+    const transactions = [];
+
+    allBets.forEach(b => {
+        transactions.push({
+            id: b.id,
+            type: 'bet',
+            date: b.bet_date,
+            lottery: b.lottery_type,
+            details: `${b.game_count || 1} jogo${(b.game_count || 1) > 1 ? 's' : ''}` + (b.contest_number ? ` · Conc. ${b.contest_number}` : '') + (b.notes ? ` · ${b.notes}` : ''),
+            amount: -(parseFloat(b.total_cost) || 0),
+            source: 'bets'
+        });
+    });
+
+    allPrizes.forEach(p => {
+        transactions.push({
+            id: p.id,
+            type: 'prize',
+            date: p.prize_date,
+            lottery: p.lottery_type,
+            details: `${p.matches || 0} acertos` + (p.contest_number ? ` · Conc. ${p.contest_number}` : '') + (p.notes ? ` · ${p.notes}` : ''),
+            amount: parseFloat(p.prize_amount) || 0,
+            source: 'prizes'
+        });
+    });
+
+    // Sort by date descending
+    transactions.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+    // Apply filter
+    const filtered = transactions.filter(t => {
+        if (finFilter === 'all') return true;
+        if (finFilter === 'bet') return t.type === 'bet';
+        if (finFilter === 'prize') return t.type === 'prize';
+        if (finFilter === 'lf') return t.lottery === 'lf';
+        if (finFilter === 'qn') return t.lottery === 'qn';
+        return true;
+    });
+
+    const tbody = $('fin-table-body');
+    const emptyEl = $('fin-table-empty');
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '';
+        emptyEl.style.display = 'block';
+        return;
+    }
+    emptyEl.style.display = 'none';
+
+    tbody.innerHTML = filtered.map(t => {
+        const dateStr = t.date ? t.date.split('-').reverse().join('/') : '—';
+        const lotteryLabel = t.lottery === 'lf' ? 'Lotofácil' : t.lottery === 'qn' ? 'Quina' : '—';
+        const amountClass = t.amount >= 0 ? 'amount-positive' : 'amount-negative';
+        const amountStr = (t.amount >= 0 ? '+' : '') + fmt(Math.abs(t.amount));
+        const typeBadge = t.type === 'bet'
+            ? '<span class="type-badge badge-bet">Gasto</span>'
+            : '<span class="type-badge badge-prize">Prêmio</span>';
+
+        return `<tr>
+            <td>${dateStr}</td>
+            <td>${typeBadge}</td>
+            <td>${lotteryLabel}</td>
+            <td>${t.details}</td>
+            <td class="amount-cell ${amountClass}">${amountStr}</td>
+            <td class="actions-cell">
+                <button class="btn-icon btn-table-action btn-del-transaction" title="Excluir" data-id="${t.id}" data-source="${t.source}">${ICON.copy.replace('copy', 'x')}</button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    // Bind delete buttons
+    tbody.querySelectorAll('.btn-del-transaction').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!confirm('Excluir esta transação?')) return;
+            const id = btn.dataset.id;
+            const source = btn.dataset.source;
+            if (source === 'bets') await deleteBet(id);
+            else await deletePrize(id);
+        });
+    });
+}
+
+// ===== DELETE ICON =====
+const ICON_DELETE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14"/></svg>`;
+
+// ===== FINANCIAL CHART =====
+function renderFinancialChart() {
+    const ctx = $('fin-chart');
+    if (!ctx) return;
+
+    // Combine all transactions and sort by date
+    const allTransactions = [];
+    allBets.forEach(b => allTransactions.push({
+        date: b.bet_date, amount: -(parseFloat(b.total_cost) || 0)
+    }));
+    allPrizes.forEach(p => allTransactions.push({
+        date: p.prize_date, amount: parseFloat(p.prize_amount) || 0
+    }));
+    allTransactions.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    if (allTransactions.length === 0) {
+        if (finChart) { finChart.destroy(); finChart = null; }
+        return;
+    }
+
+    // Group by week
+    const weeklyData = {};
+    allTransactions.forEach(t => {
+        if (!t.date) return;
+        const d = new Date(t.date);
+        const weekStart = new Date(d);
+        weekStart.setDate(d.getDate() - d.getDay());
+        const key = weekStart.toISOString().slice(0, 10);
+        if (!weeklyData[key]) weeklyData[key] = { spent: 0, won: 0 };
+        if (t.amount < 0) weeklyData[key].spent += Math.abs(t.amount);
+        else weeklyData[key].won += t.amount;
+    });
+
+    const weeks = Object.keys(weeklyData).sort();
+    const labels = weeks.map(w => {
+        const d = w.split('-');
+        return `${d[2]}/${d[1]}`;
+    });
+
+    // Cumulative P&L
+    let cumPL = 0;
+    const cumulativePL = weeks.map(w => {
+        cumPL += weeklyData[w].won - weeklyData[w].spent;
+        return cumPL;
+    });
+
+    const spentData = weeks.map(w => weeklyData[w].spent);
+    const wonData = weeks.map(w => weeklyData[w].won);
+
+    if (finChart) finChart.destroy();
+
+    finChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Gastos',
+                    data: spentData,
+                    backgroundColor: 'rgba(232, 93, 93, 0.6)',
+                    borderColor: 'rgba(232, 93, 93, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    order: 2
+                },
+                {
+                    label: 'Prêmios',
+                    data: wonData,
+                    backgroundColor: 'rgba(109, 213, 117, 0.6)',
+                    borderColor: 'rgba(109, 213, 117, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    order: 2
+                },
+                {
+                    label: 'P&L Acumulado',
+                    data: cumulativePL,
+                    type: 'line',
+                    borderColor: '#e8b44d',
+                    backgroundColor: 'rgba(232, 180, 77, 0.1)',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#e8b44d',
+                    pointBorderColor: '#0e1015',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    fill: true,
+                    tension: 0.3,
+                    order: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#a0a5b8',
+                        font: { family: "'Inter', sans-serif", size: 11 },
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        padding: 16
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#191c24',
+                    borderColor: '#353a4a',
+                    borderWidth: 1,
+                    titleColor: '#eaedf3',
+                    bodyColor: '#a0a5b8',
+                    titleFont: { family: "'Inter', sans-serif", weight: '600' },
+                    bodyFont: { family: "'Outfit', sans-serif" },
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: ctx => {
+                            const val = ctx.parsed.y;
+                            return ` ${ctx.dataset.label}: R$ ${Math.abs(val).toFixed(2).replace('.', ',')}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#636880', font: { family: "'Outfit', sans-serif", size: 10 } },
+                    grid: { color: 'rgba(39, 43, 56, 0.5)', drawBorder: false }
+                },
+                y: {
+                    ticks: {
+                        color: '#636880',
+                        font: { family: "'Outfit', sans-serif", size: 10 },
+                        callback: v => 'R$' + v.toFixed(0)
+                    },
+                    grid: { color: 'rgba(39, 43, 56, 0.5)', drawBorder: false }
+                }
+            }
+        }
+    });
+}
+
+// ===== FINANCIAL FORM HANDLERS =====
+function handleAddBet() {
+    const betDate = $('fin-bet-date').value;
+    const lotteryType = $('fin-bet-type').value;
+    const gameCount = parseInt($('fin-bet-qty').value) || 1;
+    const totalCost = parseFloat($('fin-bet-cost').value) || 0;
+    const contestNumber = parseInt($('fin-bet-contest').value) || null;
+    const notes = $('fin-bet-notes').value.trim();
+
+    if (!betDate) { toast('Informe a data da aposta'); return; }
+    if (totalCost <= 0) { toast('Informe o valor gasto'); return; }
+
+    addBet({
+        bet_date: betDate,
+        lottery_type: lotteryType,
+        game_count: gameCount,
+        total_cost: totalCost,
+        contest_number: contestNumber,
+        notes: notes
+    });
+
+    // Reset form
+    $('fin-bet-contest').value = '';
+    $('fin-bet-notes').value = '';
+    toast('💸 Gasto registrado com sucesso!');
+}
+
+function handleAddPrize() {
+    const prizeDate = $('fin-prize-date').value;
+    const lotteryType = $('fin-prize-type').value;
+    const matches = parseInt($('fin-prize-matches').value) || 0;
+    const prizeAmount = parseFloat($('fin-prize-amount').value) || 0;
+    const contestNumber = parseInt($('fin-prize-contest').value) || null;
+    const notes = $('fin-prize-notes').value.trim();
+
+    if (!prizeDate) { toast('Informe a data do resultado'); return; }
+    if (prizeAmount <= 0) { toast('Informe o valor do prêmio'); return; }
+
+    addPrize({
+        prize_date: prizeDate,
+        lottery_type: lotteryType,
+        matches: matches,
+        prize_amount: prizeAmount,
+        contest_number: contestNumber,
+        notes: notes
+    });
+
+    // Reset form
+    $('fin-prize-contest').value = '';
+    $('fin-prize-notes').value = '';
+    $('fin-prize-amount').value = '0';
+    toast('🏆 Prêmio registrado com sucesso!');
+}
+
+// ===== REGISTER BET FROM GENERATOR =====
+function registerBetFromGenerator() {
+    const budget = parseFloat($('budget').value) || 0;
+    const lfP = parseFloat($('lf-price').value) || 3;
+    const qnP = parseFloat($('qn-price').value) || 2.5;
+    const pct = parseInt($('split').value) || 60;
+    const lfQ = Math.floor((budget * pct / 100) / lfP);
+    const qnQ = Math.floor((budget * (100 - pct) / 100) / qnP);
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (lfQ > 0) {
+        addBet({
+            bet_date: today,
+            lottery_type: 'lf',
+            game_count: lfQ,
+            total_cost: lfQ * lfP,
+            contest_number: null,
+            notes: `Gerado no LotoSmart (${MODES[generationMode].label})`,
+            games: JSON.stringify(currentLF)
+        });
+    }
+
+    if (qnQ > 0) {
+        addBet({
+            bet_date: today,
+            lottery_type: 'qn',
+            game_count: qnQ,
+            total_cost: qnQ * qnP,
+            contest_number: null,
+            notes: `Gerado no LotoSmart (${MODES[generationMode].label})`,
+            games: JSON.stringify(currentQN)
+        });
+    }
+
+    toast('💰 Apostas registradas no financeiro!');
 }
 
 // ===== INIT =====
@@ -1289,6 +1824,31 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => setMode(btn.dataset.mode));
     });
 
+    // Financial module
+    $('btn-add-bet').addEventListener('click', handleAddBet);
+    $('btn-add-prize').addEventListener('click', handleAddPrize);
+
+    // Financial filters
+    $$('.fin-filter').forEach(btn => {
+        btn.addEventListener('click', () => {
+            $$('.fin-filter').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            finFilter = btn.dataset.filter;
+            renderTransactions();
+        });
+    });
+
+    // Set default dates to today
+    const today = new Date().toISOString().slice(0, 10);
+    if ($('fin-bet-date')) $('fin-bet-date').value = today;
+    if ($('fin-prize-date')) $('fin-prize-date').value = today;
+
     updateSummary();
     updateModeUI();
+
+    // Initialize PocketBase and load financial data
+    initPocketBase().then(() => {
+        refreshFinancialData();
+    });
 });
+

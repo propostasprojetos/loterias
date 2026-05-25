@@ -438,6 +438,124 @@ footer p{font-size:.76rem;color:var(--text-3)}
     flex:1;text-align:center;font-size:.5rem;color:var(--text-3);font-family:var(--font-num);
 }
 
+/* ===== FINANCIAL DASHBOARD ===== */
+.fin-dashboard{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.fin-metric-card{
+    background:var(--bg-subtle);border:1px solid var(--border);border-radius:var(--radius-sm);
+    padding:18px 20px;display:flex;flex-direction:column;gap:4px;
+    border-left:3px solid var(--border);
+}
+.fin-metric-card.metric-spent{border-left-color:var(--red)}
+.fin-metric-card.metric-won{border-left-color:var(--green)}
+.fin-metric-card.metric-pl{border-left-color:var(--gold)}
+.fin-metric-card.metric-roi{border-left-color:var(--teal)}
+.fin-metric-card.metric-rate{border-left-color:var(--lavender)}
+.fin-metric-card.metric-weeks{border-left-color:var(--text-3)}
+.fin-metric-card .metric-label{
+    font-size:.68rem;color:var(--text-3);text-transform:uppercase;
+    letter-spacing:.4px;font-weight:600;
+}
+.fin-metric-card .metric-value{
+    font-family:var(--font-num);font-size:1.3rem;font-weight:700;color:var(--text);
+}
+.fin-metric-card .metric-detail{
+    font-size:.72rem;color:var(--text-3);font-weight:500;
+}
+.metric-value.positive{color:var(--green)}
+.metric-value.negative{color:var(--red)}
+
+/* ===== FINANCIAL FORMS ===== */
+.fin-forms{display:flex;gap:16px;margin-bottom:24px}
+.fin-form-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:24px;box-shadow:var(--shadow-card);flex:1;
+}
+.fin-form-card h3{
+    font-size:.95rem;font-weight:600;margin-bottom:20px;color:var(--text);
+    display:flex;align-items:center;gap:8px;
+}
+.fin-form-card h3::before{content:'';width:3px;height:18px;background:var(--gold);border-radius:2px}
+.fin-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.fin-form-grid .field.full-width{grid-column:span 2}
+.btn-register-bet{
+    padding:10px 20px;border:none;border-radius:var(--radius-sm);cursor:pointer;
+    font-family:var(--font);font-size:.92rem;font-weight:600;letter-spacing:-.1px;
+    background:var(--red);color:var(--text);
+    transition:all .2s ease;width:auto;
+    box-shadow:0 2px 8px rgba(232,93,93,.2);
+}
+.btn-register-prize{
+    padding:10px 20px;border:none;border-radius:var(--radius-sm);cursor:pointer;
+    font-family:var(--font);font-size:.92rem;font-weight:600;letter-spacing:-.1px;
+    background:var(--green);color:#0e1015;
+    transition:all .2s ease;width:auto;
+    box-shadow:0 2px 8px rgba(109,213,117,.2);
+}
+.btn-register-bet:hover{filter:brightness(1.08);box-shadow:0 4px 16px rgba(232,93,93,.3);transform:translateY(-1px)}
+.btn-register-bet:active{transform:translateY(0);filter:brightness(.95)}
+.btn-register-prize:hover{filter:brightness(1.08);box-shadow:0 4px 16px rgba(109,213,117,.3);transform:translateY(-1px)}
+.btn-register-prize:active{transform:translateY(0);filter:brightness(.95)}
+
+/* ===== FINANCIAL TABLE ===== */
+.fin-table-section{margin-bottom:24px}
+.fin-table-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.fin-table-header h3{
+    font-size:.92rem;font-weight:600;
+    display:flex;align-items:center;gap:8px;
+}
+.fin-table-header h3::before{content:'';width:3px;height:16px;background:var(--teal);border-radius:2px}
+.fin-filters{display:flex;gap:8px;flex-wrap:wrap}
+.fin-filter{
+    padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;
+    font-family:var(--font);font-size:.76rem;font-weight:600;
+    background:var(--surface-2);color:var(--text-2);transition:all .15s;white-space:nowrap;
+}
+.fin-filter:hover{background:var(--surface-3);color:var(--text);border-color:var(--border-h)}
+.fin-filter.active{color:var(--gold);background:var(--gold-dim);border-color:var(--gold-border)}
+.fin-table-wrap{overflow-x:auto}
+.fin-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.fin-table th{
+    text-align:left;padding:10px 14px;font-size:.7rem;color:var(--text-3);
+    text-transform:uppercase;letter-spacing:.4px;font-weight:600;
+    border-bottom:1px solid var(--border);
+}
+.fin-table td{
+    padding:10px 14px;border-bottom:1px solid var(--border);
+    color:var(--text-2);vertical-align:middle;
+}
+.fin-table tr:hover td{background:var(--surface-2)}
+.fin-table .type-badge{
+    display:inline-block;font-size:.68rem;font-weight:700;
+    padding:2px 8px;border-radius:4px;
+}
+.type-badge.badge-bet{background:rgba(232,93,93,.12);color:var(--red)}
+.type-badge.badge-prize{background:var(--green-dim);color:var(--green)}
+.fin-table .amount-cell{font-family:var(--font-num);font-weight:600}
+.amount-cell.amount-negative{color:var(--red)}
+.amount-cell.amount-positive{color:var(--green)}
+.fin-table .actions-cell{display:flex;gap:4px}
+.btn-table-action{
+    width:26px;height:26px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;
+    background:var(--bg-subtle);color:var(--text-3);
+    display:flex;align-items:center;justify-content:center;
+    transition:all .2s;flex-shrink:0;
+}
+.btn-table-action:hover{background:var(--surface-3);color:var(--text);border-color:var(--border-h)}
+.btn-table-action svg{width:12px;height:12px}
+
+/* ===== FINANCIAL CHART ===== */
+.fin-chart-section{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:22px 24px;box-shadow:var(--shadow-card);
+}
+.fin-chart-section h3{
+    font-size:.92rem;font-weight:600;margin-bottom:14px;
+    display:flex;align-items:center;gap:8px;
+}
+.fin-chart-section h3::before{content:'';width:3px;height:16px;background:var(--gold);border-radius:2px}
+.fin-chart-wrap{position:relative;height:300px;margin-top:16px}
+.fin-empty-state{text-align:center;color:var(--text-3);padding:40px 20px;font-size:.84rem}
+
 /* ===== RESPONSIVE ===== */
 @media(max-width:680px){
     main{padding:20px 16px 60px}
@@ -451,6 +569,11 @@ footer p{font-size:.76rem;color:var(--text-3)}
     .analysis-grid{grid-template-columns:1fr}
     .mode-selector{flex-wrap:wrap}
     .mode-btn{min-width:calc(33% - 2px)}
+    .fin-dashboard{grid-template-columns:1fr 1fr}
+    .fin-forms{flex-direction:column}
+    .fin-form-grid{grid-template-columns:1fr}
+    .fin-form-grid .field.full-width{grid-column:span 1}
+    .fin-chart-wrap{height:250px}
 }
 @media(max-width:440px){
     .config-grid{grid-template-columns:1fr}
@@ -462,4 +585,8 @@ footer p{font-size:.76rem;color:var(--text-3)}
     .split-input-wrapper { flex: 1; width: auto; }
     .mode-btn{flex:1;min-width:0}
     .score-row{flex-wrap:wrap}
+    .fin-dashboard{grid-template-columns:1fr}
+    .fin-table{font-size:.76rem}
+    .fin-table th,.fin-table td{padding:8px 10px}
+    .fin-chart-wrap{height:200px}
 }

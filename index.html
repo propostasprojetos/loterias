@@ -18,6 +18,7 @@
             <nav>
                 <button class="nav-btn active" data-view="gerador">Gerador</button>
                 <button class="nav-btn" data-view="historico">Histórico</button>
+                <button class="nav-btn" data-view="financeiro">💰 Financeiro</button>
             </nav>
         </div>
     </header>
@@ -132,6 +133,183 @@
             <p class="empty-state hidden" id="history-empty">Nenhum histórico salvo ainda.</p>
         </section>
 
+        <!-- ====== FINANCEIRO ====== -->
+        <section id="view-financeiro" class="hidden">
+
+            <!-- Dashboard Métricas -->
+            <div class="fin-dashboard">
+                <div class="fin-metric-card metric-spent">
+                    <span class="metric-label">Total Gasto</span>
+                    <span class="metric-value negative" id="fin-total-spent">R$ 0,00</span>
+                    <span class="metric-detail" id="fin-spent-detail">0 apostas registradas</span>
+                </div>
+                <div class="fin-metric-card metric-won">
+                    <span class="metric-label">Total Ganho</span>
+                    <span class="metric-value positive" id="fin-total-won">R$ 0,00</span>
+                    <span class="metric-detail" id="fin-won-detail">0 prêmios registrados</span>
+                </div>
+                <div class="fin-metric-card metric-pl">
+                    <span class="metric-label">Resultado (P&L)</span>
+                    <span class="metric-value" id="fin-pl">R$ 0,00</span>
+                    <span class="metric-detail" id="fin-pl-detail">—</span>
+                </div>
+                <div class="fin-metric-card metric-roi">
+                    <span class="metric-label">ROI</span>
+                    <span class="metric-value" id="fin-roi">0%</span>
+                    <span class="metric-detail">retorno sobre investimento</span>
+                </div>
+                <div class="fin-metric-card metric-rate">
+                    <span class="metric-label">Taxa de Acerto</span>
+                    <span class="metric-value" id="fin-hit-rate">0%</span>
+                    <span class="metric-detail" id="fin-rate-detail">—</span>
+                </div>
+                <div class="fin-metric-card metric-weeks">
+                    <span class="metric-label">Semanas Jogando</span>
+                    <span class="metric-value" id="fin-weeks">0</span>
+                    <span class="metric-detail" id="fin-weeks-detail">—</span>
+                </div>
+            </div>
+
+            <!-- Formulários -->
+            <div class="fin-forms">
+                <!-- Registrar Aposta -->
+                <div class="fin-form-card">
+                    <h3>Registrar Aposta</h3>
+                    <div class="fin-form-grid">
+                        <div class="field">
+                            <label for="fin-bet-date">Data</label>
+                            <div class="input-row">
+                                <input type="date" id="fin-bet-date">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="fin-bet-type">Loteria</label>
+                            <div class="input-row">
+                                <select id="fin-bet-type">
+                                    <option value="lf">Lotofácil</option>
+                                    <option value="qn">Quina</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="fin-bet-qty">Qtd Jogos</label>
+                            <div class="input-row">
+                                <input type="number" id="fin-bet-qty" value="1" min="1">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="fin-bet-cost">Valor Total (R$)</label>
+                            <div class="input-row">
+                                <span class="prefix">R$</span>
+                                <input type="number" id="fin-bet-cost" value="3.00" min="0" step="0.50">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="fin-bet-contest">Concurso (opcional)</label>
+                            <div class="input-row">
+                                <input type="number" id="fin-bet-contest" placeholder="Nº">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="fin-bet-notes">Observação</label>
+                            <div class="input-row">
+                                <input type="text" id="fin-bet-notes" placeholder="Ex: gerado no LotoSmart">
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn-primary btn-register-bet" id="btn-add-bet">💸 Registrar Gasto</button>
+                </div>
+
+                <!-- Registrar Prêmio -->
+                <div class="fin-form-card">
+                    <h3>Registrar Prêmio</h3>
+                    <div class="fin-form-grid">
+                        <div class="field">
+                            <label for="fin-prize-date">Data</label>
+                            <div class="input-row">
+                                <input type="date" id="fin-prize-date">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="fin-prize-type">Loteria</label>
+                            <div class="input-row">
+                                <select id="fin-prize-type">
+                                    <option value="lf">Lotofácil</option>
+                                    <option value="qn">Quina</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="fin-prize-matches">Acertos</label>
+                            <div class="input-row">
+                                <input type="number" id="fin-prize-matches" value="11" min="0" max="15">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="fin-prize-amount">Valor do Prêmio (R$)</label>
+                            <div class="input-row">
+                                <span class="prefix">R$</span>
+                                <input type="number" id="fin-prize-amount" value="0" min="0" step="0.01">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="fin-prize-contest">Concurso (opcional)</label>
+                            <div class="input-row">
+                                <input type="number" id="fin-prize-contest" placeholder="Nº">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="fin-prize-notes">Observação</label>
+                            <div class="input-row">
+                                <input type="text" id="fin-prize-notes" placeholder="Ex: 12 acertos LF">
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn-primary btn-register-prize" id="btn-add-prize">🏆 Registrar Prêmio</button>
+                </div>
+            </div>
+
+            <!-- Tabela de Transações -->
+            <div class="fin-table-section">
+                <div class="fin-table-header">
+                    <h3>Transações</h3>
+                    <div class="fin-filters">
+                        <button class="fin-filter active" data-filter="all">Todos</button>
+                        <button class="fin-filter" data-filter="bet">Gastos</button>
+                        <button class="fin-filter" data-filter="prize">Prêmios</button>
+                        <button class="fin-filter" data-filter="lf">Lotofácil</button>
+                        <button class="fin-filter" data-filter="qn">Quina</button>
+                    </div>
+                </div>
+                <div class="fin-table-wrap">
+                    <table class="fin-table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Loteria</th>
+                                <th>Detalhes</th>
+                                <th>Valor</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fin-table-body">
+                        </tbody>
+                    </table>
+                </div>
+                <p class="fin-empty-state" id="fin-table-empty">Nenhuma transação registrada ainda. Comece registrando uma aposta ou prêmio acima.</p>
+            </div>
+
+            <!-- Gráfico -->
+            <div class="fin-chart-section">
+                <h3>Evolução Financeira</h3>
+                <div class="fin-chart-wrap">
+                    <canvas id="fin-chart"></canvas>
+                </div>
+            </div>
+
+        </section>
+
     </main>
 
     <footer>
@@ -142,6 +320,8 @@
 
     <div class="toast" id="toast"><span id="toast-msg">Copiado!</span></div>
 
+    <script src="https://unpkg.com/pocketbase/dist/pocketbase.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
