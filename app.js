@@ -1285,14 +1285,14 @@ function updateModeUI() {
 // ===== SUPABASE INITIALIZATION =====
 const SUPABASE_URL = 'https://klrivylidketfbaakbil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtscml2eWxpZGtldGZiYWFrYmlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDg3MTEsImV4cCI6MjA5NTM4NDcxMX0.hM-wBFJV8mUlUj1G0QhDtBrJ4Xcb0L4HBel0dR0bi7s';
-let supabase = null;
+let supabaseClient = null;
 let sbReady = false;
 let currentSession = null;
 let currentProfile = null;
 
 async function initPocketBase() {
     try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         sbReady = true;
         console.log('Supabase initialized successfully');
         return true;
@@ -1312,10 +1312,10 @@ async function ensureCollections() {
 async function loginUser(email, password) {
     if (!sbReady) return { success: false, message: 'Supabase não inicializado' };
     try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
         if (data.user) {
-            await supabase.from('profiles').update({
+            await supabaseClient.from('profiles').update({
                 ultimo_login: new Date().toISOString()
             }).eq('id', data.user.id);
             
@@ -1331,12 +1331,12 @@ async function loginUser(email, password) {
 }
 
 async function logoutUser() {
-    if (supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
+    if (supabaseClient) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
             await logAudit('logout', session.user.id, {});
         }
-        await supabase.auth.signOut();
+        await supabaseClient.auth.signOut();
     }
     currentSession = null;
     currentProfile = null;
@@ -1344,14 +1344,14 @@ async function logoutUser() {
 }
 
 async function changePassword(oldPass, newPass) {
-    if (!supabase) return { success: false, message: 'Não autenticado' };
+    if (!supabaseClient) return { success: false, message: 'Não autenticado' };
     try {
-        const { error } = await supabase.auth.updateUser({ password: newPass });
+        const { error } = await supabaseClient.auth.updateUser({ password: newPass });
         if (error) throw error;
 
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
-            await supabase.from('profiles').update({
+            await supabaseClient.from('profiles').update({
                 must_change_password: false
             }).eq('id', session.user.id);
             await logAudit('password_change', session.user.id, {});
@@ -1372,12 +1372,12 @@ async function checkAuthState() {
 
     try {
         if (!sbReady) return;
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabaseClient.auth.getSession();
         currentSession = session;
         currentProfile = null;
 
         if (session) {
-            const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+            const { data: profile, error } = await supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
             if (!error && profile) {
                 currentProfile = profile;
             }
@@ -1387,7 +1387,7 @@ async function checkAuthState() {
         const profile = currentProfile;
 
         if (profile && profile.ativo === false) {
-            await supabase.auth.signOut();
+            await supabaseClient.auth.signOut();
             currentSession = null;
             currentProfile = null;
             toast('Sua conta foi desativada pelo administrador.');
@@ -1453,7 +1453,7 @@ async function checkAuthState() {
 async function logAudit(action, targetId = '', details = {}) {
     if (!sbReady || !currentSession) return;
     try {
-        await supabase.from('audit_logs').insert({
+        await supabaseClient.from('audit_logs').insert({
             action,
             user_id: currentSession.user.id,
             target_id: targetId,
@@ -1469,10 +1469,10 @@ async function loadAdminData() {
     if (!sbReady || !currentSession || !currentProfile || currentProfile.role !== 'admin') return;
 
     try {
-        const { data: users, error: usersErr } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+        const { data: users, error: usersErr } = await supabaseClient.from('profiles').select('*').order('created_at', { ascending: false });
         if (usersErr) throw usersErr;
 
-        const { data: audit, error: auditErr } = await supabase.from('audit_logs').select(`
+        const { data: audit, error: auditErr } = await supabaseClient.from('audit_logs').select(`
             created_at, action, target_id, details, user_id,
             profiles (name, id)
         `).order('created_at', { ascending: false });
@@ -1521,7 +1521,7 @@ async function loadAdminData() {
 async function createUser(name, email, role, password) {
     if (!sbReady) return { success: false, message: 'Supabase offline' };
     try {
-        const { data, error } = await supabase.auth.signUp({
+        const { data, error } = await supabaseClient.auth.signUp({
             email,
             password,
             options: {
@@ -1547,7 +1547,7 @@ async function createUser(name, email, role, password) {
 
 async function handleToggleUser(userId, currentActive) {
     try {
-        const { error } = await supabase.from('profiles').update({ ativo: !currentActive }).eq('id', userId);
+        const { error } = await supabaseClient.from('profiles').update({ ativo: !currentActive }).eq('id', userId);
         if (error) throw error;
         await logAudit(!currentActive ? 'user_activated' : 'user_deactivated', userId, {});
         toast('Status do usuário atualizado!');
@@ -1562,7 +1562,7 @@ async function handleResetUserPassword(userId) {
     const email = prompt("Confirme o e-mail do usuário para enviar o link de redefinição de senha:");
     if (!email) return;
     try {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
             redirectTo: window.location.origin
         });
         if (error) throw error;
@@ -1599,7 +1599,7 @@ async function addBet(betData) {
     if (sbReady && currentSession) {
         try {
             const dataWithOwner = { ...betData, owner_id: currentSession.user.id };
-            const { error } = await supabase.from('bets').insert(dataWithOwner);
+            const { error } = await supabaseClient.from('bets').insert(dataWithOwner);
             if (error) throw error;
         } catch (e) {
             console.error('Supabase create bet failed, using localStorage:', e);
@@ -1619,7 +1619,7 @@ async function addPrize(prizeData) {
     if (sbReady && currentSession) {
         try {
             const dataWithOwner = { ...prizeData, owner_id: currentSession.user.id };
-            const { error } = await supabase.from('prizes').insert(dataWithOwner);
+            const { error } = await supabaseClient.from('prizes').insert(dataWithOwner);
             if (error) throw error;
         } catch (e) {
             console.error('Supabase create prize failed, using localStorage:', e);
@@ -1638,7 +1638,7 @@ async function addPrize(prizeData) {
 async function deleteBet(id) {
     if (sbReady && currentSession) {
         try {
-            const { error } = await supabase.from('bets').delete().eq('id', id);
+            const { error } = await supabaseClient.from('bets').delete().eq('id', id);
             if (error) throw error;
         } catch (e) {
             console.error('Supabase delete bet failed:', e);
@@ -1655,7 +1655,7 @@ async function deleteBet(id) {
 async function deletePrize(id) {
     if (sbReady && currentSession) {
         try {
-            const { error } = await supabase.from('prizes').delete().eq('id', id);
+            const { error } = await supabaseClient.from('prizes').delete().eq('id', id);
             if (error) throw error;
         } catch (e) {
             console.error('Supabase delete prize failed:', e);
@@ -1672,7 +1672,7 @@ async function deletePrize(id) {
 async function getAllBets() {
     if (sbReady && currentSession) {
         try {
-            const { data, error } = await supabase.from('bets').select('*').order('bet_date', { ascending: false });
+            const { data, error } = await supabaseClient.from('bets').select('*').order('bet_date', { ascending: false });
             if (error) throw error;
             return data;
         } catch (e) {
@@ -1686,7 +1686,7 @@ async function getAllBets() {
 async function getAllPrizes() {
     if (sbReady && currentSession) {
         try {
-            const { data, error } = await supabase.from('prizes').select('*').order('prize_date', { ascending: false });
+            const { data, error } = await supabaseClient.from('prizes').select('*').order('prize_date', { ascending: false });
             if (error) throw error;
             return data;
         } catch (e) {
