@@ -1282,44 +1282,45 @@ function updateModeUI() {
     });
 }
 
-// ===== POCKETBASE INITIALIZATION =====
-const PB_URL = 'https://lotosmart.pockethost.io';
-let pb = null;
-let pbReady = false;
+// ===== SUPABASE INITIALIZATION =====
+const SUPABASE_URL = 'https://klrivylidketfbaakbil.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtscml2eWxpZGtldGZiYWFrYmlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDg3MTEsImV4cCI6MjA5NTM4NDcxMX0.hM-wBFJV8mUlUj1G0QhDtBrJ4Xcb0L4HBel0dR0bi7s';
+let supabase = null;
+let sbReady = false;
+let currentSession = null;
+let currentProfile = null;
 
 async function initPocketBase() {
     try {
-        pb = new PocketBase(PB_URL);
-        // Test connection by checking health
-        const health = await fetch(PB_URL + '/api/health').then(r => r.json());
-        if (health.code === 200) {
-            pbReady = true;
-            console.log('PocketBase connected successfully');
-            return true;
-        }
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        sbReady = true;
+        console.log('Supabase initialized successfully');
+        return true;
     } catch (e) {
-        console.warn('PocketBase not available:', e.message);
-        pbReady = false;
+        console.warn('Supabase not available:', e.message);
+        sbReady = false;
     }
     return false;
 }
 
-// Ensure collections exist via API (Deprecating local setup - Pockethost managed)
+// Deprecated local setup method
 async function ensureCollections() {
     return true;
 }
 
 // ===== AUTHENTICATION MODULE =====
 async function loginUser(email, password) {
-    if (!pbReady) return { success: false, message: 'PocketBase não inicializado' };
+    if (!sbReady) return { success: false, message: 'Supabase não inicializado' };
     try {
-        const authData = await pb.collection('users').authWithPassword(email, password);
-        if (authData.record) {
-            await pb.collection('users').update(authData.record.id, {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        if (data.user) {
+            await supabase.from('profiles').update({
                 ultimo_login: new Date().toISOString()
-            });
-            await logAudit('login', authData.record.id, { email });
-            checkAuthState();
+            }).eq('id', data.user.id);
+            
+            await logAudit('login', data.user.id, { email });
+            await checkAuthState();
             return { success: true };
         }
     } catch (e) {
@@ -1329,27 +1330,33 @@ async function loginUser(email, password) {
     return { success: false, message: 'Credenciais inválidas' };
 }
 
-function logoutUser() {
-    if (pb && pb.authStore.model) {
-        logAudit('logout', pb.authStore.model.id, {});
+async function logoutUser() {
+    if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            await logAudit('logout', session.user.id, {});
+        }
+        await supabase.auth.signOut();
     }
-    pb.authStore.clear();
-    checkAuthState();
+    currentSession = null;
+    currentProfile = null;
+    await checkAuthState();
 }
 
 async function changePassword(oldPass, newPass) {
-    if (!pb || !pb.authStore.model) return { success: false, message: 'Não autenticado' };
+    if (!supabase) return { success: false, message: 'Não autenticado' };
     try {
-        await pb.collection('users').update(pb.authStore.model.id, {
-            oldPassword: oldPass,
-            password: newPass,
-            passwordConfirm: newPass,
-            must_change_password: false
-        });
-        await logAudit('password_change', pb.authStore.model.id, {});
-        const email = pb.authStore.model.email;
-        await pb.collection('users').authWithPassword(email, newPass);
-        checkAuthState();
+        const { error } = await supabase.auth.updateUser({ password: newPass });
+        if (error) throw error;
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            await supabase.from('profiles').update({
+                must_change_password: false
+            }).eq('id', session.user.id);
+            await logAudit('password_change', session.user.id, {});
+        }
+        await checkAuthState();
         return { success: true };
     } catch (e) {
         console.error('Password change error:', e);
@@ -1359,18 +1366,32 @@ async function changePassword(oldPass, newPass) {
 
 // Navigation Guards
 let isAuthChecking = false;
-function checkAuthState() {
+async function checkAuthState() {
     if (isAuthChecking) return;
     isAuthChecking = true;
 
     try {
-        const isValid = pb && pb.authStore.isValid;
-        const user = isValid ? pb.authStore.model : null;
+        if (!sbReady) return;
+        const { data: { session } } = await supabase.auth.getSession();
+        currentSession = session;
+        currentProfile = null;
 
-        if (user && user.ativo === false) {
-            pb.authStore.clear();
+        if (session) {
+            const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+            if (!error && profile) {
+                currentProfile = profile;
+            }
+        }
+
+        const user = currentSession ? currentSession.user : null;
+        const profile = currentProfile;
+
+        if (profile && profile.ativo === false) {
+            await supabase.auth.signOut();
+            currentSession = null;
+            currentProfile = null;
             toast('Sua conta foi desativada pelo administrador.');
-            checkAuthState();
+            await checkAuthState();
             isAuthChecking = false;
             return;
         }
@@ -1383,7 +1404,7 @@ function checkAuthState() {
         const userMenu = $('user-menu');
         const headerUserName = $('header-user-name');
 
-        if (!isValid) {
+        if (!currentSession) {
             navGerador.style.display = 'none';
             navHistorico.style.display = 'none';
             navFinanceiro.style.display = 'none';
@@ -1396,9 +1417,9 @@ function checkAuthState() {
             }
         } else {
             userMenu.style.display = 'flex';
-            headerUserName.textContent = user.name || user.email;
+            headerUserName.textContent = (profile && profile.name) || user.email;
 
-            if (user.must_change_password) {
+            if (profile && profile.must_change_password) {
                 navGerador.style.display = 'none';
                 navHistorico.style.display = 'none';
                 navFinanceiro.style.display = 'none';
@@ -1409,7 +1430,7 @@ function checkAuthState() {
                 navHistorico.style.display = 'inline-block';
                 navFinanceiro.style.display = 'inline-block';
                 
-                if (user.role === 'admin') {
+                if (profile && profile.role === 'admin') {
                     navAdmin.style.display = 'inline-block';
                 } else {
                     navAdmin.style.display = 'none';
@@ -1418,7 +1439,7 @@ function checkAuthState() {
                 const currentView = document.querySelector('[id^="view-"]:not(.hidden)');
                 if (!currentView || currentView.id === 'view-login' || currentView.id === 'view-change-password') {
                     switchView('gerador');
-                } else if (currentView.id === 'view-admin' && user.role !== 'admin') {
+                } else if (currentView.id === 'view-admin' && (!profile || profile.role !== 'admin')) {
                     switchView('gerador');
                 }
             }
@@ -1430,11 +1451,11 @@ function checkAuthState() {
 
 // ===== AUDIT LOGS =====
 async function logAudit(action, targetId = '', details = {}) {
-    if (!pbReady || !pb.authStore.isValid) return;
+    if (!sbReady || !currentSession) return;
     try {
-        await pb.collection('audit_logs').create({
+        await supabase.from('audit_logs').insert({
             action,
-            user_id: pb.authStore.model.id,
+            user_id: currentSession.user.id,
             target_id: targetId,
             details: details
         });
@@ -1445,14 +1466,17 @@ async function logAudit(action, targetId = '', details = {}) {
 
 // ===== ADMIN CRUD FUNCTIONS =====
 async function loadAdminData() {
-    if (!pbReady || !pb.authStore.isValid || pb.authStore.model.role !== 'admin') return;
+    if (!sbReady || !currentSession || !currentProfile || currentProfile.role !== 'admin') return;
 
     try {
-        const users = await pb.collection('users').getFullList({ sort: '-created' });
-        const audit = await pb.collection('audit_logs').getFullList({ 
-            sort: '-created',
-            expand: 'user_id'
-        });
+        const { data: users, error: usersErr } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+        if (usersErr) throw usersErr;
+
+        const { data: audit, error: auditErr } = await supabase.from('audit_logs').select(`
+            created_at, action, target_id, details, user_id,
+            profiles (name, id)
+        `).order('created_at', { ascending: false });
+        if (auditErr) throw auditErr;
 
         $('admin-stat-total').textContent = users.length;
         $('admin-stat-active').textContent = users.filter(u => u.ativo !== false).length;
@@ -1463,7 +1487,7 @@ async function loadAdminData() {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${u.name || '-'}</td>
-                <td>${u.email}</td>
+                <td>${u.id}</td>
                 <td><span class="type-badge ${u.role === 'admin' ? 'badge-prize' : 'badge-bet'}">${u.role}</span></td>
                 <td><span class="type-badge ${u.ativo !== false ? 'badge-prize' : 'badge-bet'}">${u.ativo !== false ? 'Ativo' : 'Inativo'}</span></td>
                 <td>${u.ultimo_login ? new Date(u.ultimo_login).toLocaleString('pt-BR') : 'Nunca'}</td>
@@ -1479,9 +1503,9 @@ async function loadAdminData() {
         auditTable.innerHTML = '';
         audit.slice(0, 50).forEach(log => {
             const tr = document.createElement('tr');
-            const userName = log.expand && log.expand.user_id ? log.expand.user_id.name || log.expand.user_id.email : 'Sistema';
+            const userName = log.profiles ? log.profiles.name : 'Sistema';
             tr.innerHTML = `
-                <td>${new Date(log.created).toLocaleString('pt-BR')}</td>
+                <td>${new Date(log.created_at).toLocaleString('pt-BR')}</td>
                 <td>${log.action}</td>
                 <td>${userName}</td>
                 <td><pre style="font-size:0.7rem; max-width: 300px; overflow: auto; margin:0;">${JSON.stringify(log.details)}</pre></td>
@@ -1495,29 +1519,36 @@ async function loadAdminData() {
 }
 
 async function createUser(name, email, role, password) {
-    if (!pbReady) return { success: false, message: 'PocketBase offline' };
+    if (!sbReady) return { success: false, message: 'Supabase offline' };
     try {
-        const newUser = await pb.collection('users').create({
+        const { data, error } = await supabase.auth.signUp({
             email,
             password,
-            passwordConfirm: password,
-            name,
-            role,
-            ativo: true,
-            must_change_password: true
+            options: {
+                data: {
+                    name: name,
+                    role: role
+                }
+            }
         });
-        await logAudit('user_created', newUser.id, { name, email, role });
-        await loadAdminData();
-        return { success: true };
+        if (error) throw error;
+        
+        if (data.user) {
+            await logAudit('user_created', data.user.id, { name, email, role });
+            await loadAdminData();
+            return { success: true };
+        }
     } catch (e) {
         console.error('Create user failed:', e);
         return { success: false, message: e.message || 'Erro ao criar usuário' };
     }
+    return { success: false, message: 'Erro ao criar usuário' };
 }
 
 async function handleToggleUser(userId, currentActive) {
     try {
-        await pb.collection('users').update(userId, { ativo: !currentActive });
+        const { error } = await supabase.from('profiles').update({ ativo: !currentActive }).eq('id', userId);
+        if (error) throw error;
         await logAudit(!currentActive ? 'user_activated' : 'user_deactivated', userId, {});
         toast('Status do usuário atualizado!');
         await loadAdminData();
@@ -1528,15 +1559,15 @@ async function handleToggleUser(userId, currentActive) {
 }
 
 async function handleResetUserPassword(userId) {
-    const tempPass = 'Loto@' + Math.floor(100000 + Math.random() * 900000);
+    const email = prompt("Confirme o e-mail do usuário para enviar o link de redefinição de senha:");
+    if (!email) return;
     try {
-        await pb.collection('users').update(userId, {
-            password: tempPass,
-            passwordConfirm: tempPass,
-            must_change_password: true
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin
         });
-        await logAudit('password_reset', userId, {});
-        alert(`Senha resetada com sucesso!\nSenha temporária: ${tempPass}\n\nCopie esta senha e passe para o usuário.`);
+        if (error) throw error;
+        await logAudit('password_reset_requested', userId, { email });
+        alert('E-mail de redefinição enviado com sucesso para o usuário!');
         await loadAdminData();
     } catch (e) {
         console.error('Reset password failed:', e);
@@ -1565,12 +1596,13 @@ function saveLocalPrizes(data) { localStorage.setItem(FIN_PRIZES_KEY, JSON.strin
 
 // ===== FINANCIAL CRUD =====
 async function addBet(betData) {
-    if (pbReady && pb.authStore.isValid) {
+    if (sbReady && currentSession) {
         try {
-            const dataWithOwner = { ...betData, owner_id: pb.authStore.model.id };
-            await pb.collection('bets').create(dataWithOwner);
+            const dataWithOwner = { ...betData, owner_id: currentSession.user.id };
+            const { error } = await supabase.from('bets').insert(dataWithOwner);
+            if (error) throw error;
         } catch (e) {
-            console.error('PB create bet failed, using localStorage:', e);
+            console.error('Supabase create bet failed, using localStorage:', e);
             const bets = loadLocalBets();
             bets.unshift({ ...betData, id: Date.now().toString(), created: new Date().toISOString() });
             saveLocalBets(bets);
@@ -1584,12 +1616,13 @@ async function addBet(betData) {
 }
 
 async function addPrize(prizeData) {
-    if (pbReady && pb.authStore.isValid) {
+    if (sbReady && currentSession) {
         try {
-            const dataWithOwner = { ...prizeData, owner_id: pb.authStore.model.id };
-            await pb.collection('prizes').create(dataWithOwner);
+            const dataWithOwner = { ...prizeData, owner_id: currentSession.user.id };
+            const { error } = await supabase.from('prizes').insert(dataWithOwner);
+            if (error) throw error;
         } catch (e) {
-            console.error('PB create prize failed, using localStorage:', e);
+            console.error('Supabase create prize failed, using localStorage:', e);
             const prizes = loadLocalPrizes();
             prizes.unshift({ ...prizeData, id: Date.now().toString(), created: new Date().toISOString() });
             saveLocalPrizes(prizes);
@@ -1603,10 +1636,12 @@ async function addPrize(prizeData) {
 }
 
 async function deleteBet(id) {
-    if (pbReady && pb.authStore.isValid) {
-        try { await pb.collection('bets').delete(id); }
-        catch (e) {
-            console.error('PB delete bet failed:', e);
+    if (sbReady && currentSession) {
+        try {
+            const { error } = await supabase.from('bets').delete().eq('id', id);
+            if (error) throw error;
+        } catch (e) {
+            console.error('Supabase delete bet failed:', e);
             const bets = loadLocalBets().filter(b => b.id !== id);
             saveLocalBets(bets);
         }
@@ -1618,10 +1653,12 @@ async function deleteBet(id) {
 }
 
 async function deletePrize(id) {
-    if (pbReady && pb.authStore.isValid) {
-        try { await pb.collection('prizes').delete(id); }
-        catch (e) {
-            console.error('PB delete prize failed:', e);
+    if (sbReady && currentSession) {
+        try {
+            const { error } = await supabase.from('prizes').delete().eq('id', id);
+            if (error) throw error;
+        } catch (e) {
+            console.error('Supabase delete prize failed:', e);
             const prizes = loadLocalPrizes().filter(p => p.id !== id);
             saveLocalPrizes(prizes);
         }
@@ -1633,12 +1670,13 @@ async function deletePrize(id) {
 }
 
 async function getAllBets() {
-    if (pbReady && pb.authStore.isValid) {
+    if (sbReady && currentSession) {
         try {
-            const result = await pb.collection('bets').getFullList({ sort: '-bet_date' });
-            return result;
+            const { data, error } = await supabase.from('bets').select('*').order('bet_date', { ascending: false });
+            if (error) throw error;
+            return data;
         } catch (e) {
-            console.error('PB get bets failed:', e);
+            console.error('Supabase get bets failed:', e);
             return loadLocalBets();
         }
     }
@@ -1646,12 +1684,13 @@ async function getAllBets() {
 }
 
 async function getAllPrizes() {
-    if (pbReady && pb.authStore.isValid) {
+    if (sbReady && currentSession) {
         try {
-            const result = await pb.collection('prizes').getFullList({ sort: '-prize_date' });
-            return result;
+            const { data, error } = await supabase.from('prizes').select('*').order('prize_date', { ascending: false });
+            if (error) throw error;
+            return data;
         } catch (e) {
-            console.error('PB get prizes failed:', e);
+            console.error('Supabase get prizes failed:', e);
             return loadLocalPrizes();
         }
     }
@@ -2186,10 +2225,10 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSummary();
     updateModeUI();
 
-    // Initialize PocketBase and check session
-    initPocketBase().then(() => {
-        checkAuthState();
-        if (pb && pb.authStore.isValid && !pb.authStore.model.must_change_password) {
+    // Initialize Supabase and check session
+    initPocketBase().then(async () => {
+        await checkAuthState();
+        if (currentSession && (!currentProfile || !currentProfile.must_change_password)) {
             refreshFinancialData();
         }
     });
