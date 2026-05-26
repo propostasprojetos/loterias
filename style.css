@@ -556,6 +556,27 @@ footer p{font-size:.76rem;color:var(--text-3)}
 .fin-chart-wrap{position:relative;height:300px;margin-top:16px}
 .fin-empty-state{text-align:center;color:var(--text-3);padding:40px 20px;font-size:.84rem}
 
+/* ===== AUTH & USER MENU ===== */
+.auth-card{max-width:400px;margin:80px auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:32px;box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:18px}
+.auth-card h2{font-size:1.4rem;font-weight:700;color:var(--gold);text-align:center}
+.auth-subtitle{font-size:.84rem;color:var(--text-3);text-align:center;margin-top:-10px}
+.btn-auth{width:100%;padding:12px;font-weight:600;margin-top:10px}
+.auth-footer{font-size:.78rem;color:var(--text-3);text-align:center;margin-top:10px}
+.auth-footer a{color:var(--teal);text-decoration:none}
+.auth-footer a:hover{text-decoration:underline}
+.user-menu-wrap{display:flex;align-items:center;gap:10px;margin-left:14px;border-left:1px solid var(--border);padding-left:14px}
+.user-name-tag{font-size:.8rem;font-weight:600;color:var(--text-2)}
+.btn-logout{background:none;border:1px solid var(--red);color:var(--red);padding:4px 10px;font-size:.74rem;border-radius:var(--radius-sm);cursor:pointer;transition:all .2s}
+.btn-logout:hover{background:var(--red);color:var(--bg)}
+
+/* ===== ADMIN PANEL ===== */
+.admin-container{display:flex;flex-direction:column;gap:24px}
+.admin-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:14px}
+.admin-header h2{font-size:1.2rem;font-weight:700}
+.admin-stats{display:flex;gap:10px}
+.stat-badge{background:var(--surface-2);border:1px solid var(--border);padding:6px 14px;border-radius:var(--radius-sm);font-size:.8rem;color:var(--text-2)}
+.stat-badge strong{color:var(--gold)}
+
 /* ===== RESPONSIVE ===== */
 @media(max-width:680px){
     main{padding:20px 16px 60px}

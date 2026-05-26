@@ -1238,13 +1238,30 @@ function toast(msg) {
     setTimeout(() => $('toast').classList.remove('show'), 2500);
 }
 
-// ===== VIEW SWITCHING =====
 function switchView(view) {
+    const isValid = pb && pb.authStore.isValid;
+    const user = isValid ? pb.authStore.model : null;
+
+    if (!isValid) {
+        if (view !== 'login' && view !== 'contato') {
+            view = 'login';
+        }
+    } else if (user && user.must_change_password) {
+        view = 'change-password';
+    } else {
+        if (view === 'login' || view === 'change-password') {
+            view = 'gerador';
+        } else if (view === 'admin' && user.role !== 'admin') {
+            view = 'gerador';
+        }
+    }
+
     $$('[id^="view-"]').forEach(el => el.classList.add('hidden'));
     $('view-' + view).classList.remove('hidden');
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
     if (view === 'historico') renderHistory();
     if (view === 'financeiro') refreshFinancialData();
+    if (view === 'admin') loadAdminData();
 }
 
 // ===== TABS =====
@@ -1266,7 +1283,7 @@ function updateModeUI() {
 }
 
 // ===== POCKETBASE INITIALIZATION =====
-const PB_URL = 'http://127.0.0.1:8090';
+const PB_URL = 'https://lotosmart.pockethost.io';
 let pb = null;
 let pbReady = false;
 
@@ -1278,26 +1295,257 @@ async function initPocketBase() {
         if (health.code === 200) {
             pbReady = true;
             console.log('PocketBase connected successfully');
-            await ensureCollections();
             return true;
         }
     } catch (e) {
-        console.warn('PocketBase not available, financial module will use localStorage fallback:', e.message);
+        console.warn('PocketBase not available:', e.message);
         pbReady = false;
     }
     return false;
 }
 
-// Ensure collections exist via API
+// Ensure collections exist via API (Deprecating local setup - Pockethost managed)
 async function ensureCollections() {
+    return true;
+}
+
+// ===== AUTHENTICATION MODULE =====
+async function loginUser(email, password) {
+    if (!pbReady) return { success: false, message: 'PocketBase não inicializado' };
     try {
-        // Try to access the collections to see if they exist
-        await pb.collection('bets').getList(1, 1);
+        const authData = await pb.collection('users').authWithPassword(email, password);
+        if (authData.record) {
+            await pb.collection('users').update(authData.record.id, {
+                ultimo_login: new Date().toISOString()
+            });
+            await logAudit('login', authData.record.id, { email });
+            checkAuthState();
+            return { success: true };
+        }
     } catch (e) {
-        // Collections don't exist yet — they need to be created via admin UI
-        console.warn('Collections not found. Please create them via PocketBase admin at', PB_URL + '/_/');
+        console.error('Login error:', e);
+        return { success: false, message: e.message || 'E-mail ou senha incorretos' };
+    }
+    return { success: false, message: 'Credenciais inválidas' };
+}
+
+function logoutUser() {
+    if (pb && pb.authStore.model) {
+        logAudit('logout', pb.authStore.model.id, {});
+    }
+    pb.authStore.clear();
+    checkAuthState();
+}
+
+async function changePassword(oldPass, newPass) {
+    if (!pb || !pb.authStore.model) return { success: false, message: 'Não autenticado' };
+    try {
+        await pb.collection('users').update(pb.authStore.model.id, {
+            oldPassword: oldPass,
+            password: newPass,
+            passwordConfirm: newPass,
+            must_change_password: false
+        });
+        await logAudit('password_change', pb.authStore.model.id, {});
+        const email = pb.authStore.model.email;
+        await pb.collection('users').authWithPassword(email, newPass);
+        checkAuthState();
+        return { success: true };
+    } catch (e) {
+        console.error('Password change error:', e);
+        return { success: false, message: e.message || 'Erro ao alterar a senha' };
     }
 }
+
+// Navigation Guards
+let isAuthChecking = false;
+function checkAuthState() {
+    if (isAuthChecking) return;
+    isAuthChecking = true;
+
+    try {
+        const isValid = pb && pb.authStore.isValid;
+        const user = isValid ? pb.authStore.model : null;
+
+        if (user && user.ativo === false) {
+            pb.authStore.clear();
+            toast('Sua conta foi desativada pelo administrador.');
+            checkAuthState();
+            isAuthChecking = false;
+            return;
+        }
+
+        const navGerador = $('nav-btn-gerador');
+        const navHistorico = $('nav-btn-historico');
+        const navFinanceiro = $('nav-btn-financeiro');
+        const navAdmin = $('nav-btn-admin');
+        const navContato = $('nav-btn-contato');
+        const userMenu = $('user-menu');
+        const headerUserName = $('header-user-name');
+
+        if (!isValid) {
+            navGerador.style.display = 'none';
+            navHistorico.style.display = 'none';
+            navFinanceiro.style.display = 'none';
+            navAdmin.style.display = 'none';
+            userMenu.style.display = 'none';
+            
+            const currentView = document.querySelector('[id^="view-"]:not(.hidden)');
+            if (!currentView || (currentView.id !== 'view-login' && currentView.id !== 'view-contato')) {
+                switchView('login');
+            }
+        } else {
+            userMenu.style.display = 'flex';
+            headerUserName.textContent = user.name || user.email;
+
+            if (user.must_change_password) {
+                navGerador.style.display = 'none';
+                navHistorico.style.display = 'none';
+                navFinanceiro.style.display = 'none';
+                navAdmin.style.display = 'none';
+                switchView('change-password');
+            } else {
+                navGerador.style.display = 'inline-block';
+                navHistorico.style.display = 'inline-block';
+                navFinanceiro.style.display = 'inline-block';
+                
+                if (user.role === 'admin') {
+                    navAdmin.style.display = 'inline-block';
+                } else {
+                    navAdmin.style.display = 'none';
+                }
+
+                const currentView = document.querySelector('[id^="view-"]:not(.hidden)');
+                if (!currentView || currentView.id === 'view-login' || currentView.id === 'view-change-password') {
+                    switchView('gerador');
+                } else if (currentView.id === 'view-admin' && user.role !== 'admin') {
+                    switchView('gerador');
+                }
+            }
+        }
+    } finally {
+        isAuthChecking = false;
+    }
+}
+
+// ===== AUDIT LOGS =====
+async function logAudit(action, targetId = '', details = {}) {
+    if (!pbReady || !pb.authStore.isValid) return;
+    try {
+        await pb.collection('audit_logs').create({
+            action,
+            user_id: pb.authStore.model.id,
+            target_id: targetId,
+            details: details
+        });
+    } catch (e) {
+        console.error('Audit log failed:', e);
+    }
+}
+
+// ===== ADMIN CRUD FUNCTIONS =====
+async function loadAdminData() {
+    if (!pbReady || !pb.authStore.isValid || pb.authStore.model.role !== 'admin') return;
+
+    try {
+        const users = await pb.collection('users').getFullList({ sort: '-created' });
+        const audit = await pb.collection('audit_logs').getFullList({ 
+            sort: '-created',
+            expand: 'user_id'
+        });
+
+        $('admin-stat-total').textContent = users.length;
+        $('admin-stat-active').textContent = users.filter(u => u.ativo !== false).length;
+
+        const usersTable = $('admin-users-table');
+        usersTable.innerHTML = '';
+        users.forEach(u => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${u.name || '-'}</td>
+                <td>${u.email}</td>
+                <td><span class="type-badge ${u.role === 'admin' ? 'badge-prize' : 'badge-bet'}">${u.role}</span></td>
+                <td><span class="type-badge ${u.ativo !== false ? 'badge-prize' : 'badge-bet'}">${u.ativo !== false ? 'Ativo' : 'Inativo'}</span></td>
+                <td>${u.ultimo_login ? new Date(u.ultimo_login).toLocaleString('pt-BR') : 'Nunca'}</td>
+                <td>
+                    <button class="btn-sm" onclick="handleToggleUser('${u.id}', ${u.ativo !== false})">${u.ativo !== false ? 'Desativar' : 'Ativar'}</button>
+                    <button class="btn-sm" style="margin-left:4px" onclick="handleResetUserPassword('${u.id}')">Resetar Senha</button>
+                </td>
+            `;
+            usersTable.appendChild(tr);
+        });
+
+        const auditTable = $('admin-audit-table');
+        auditTable.innerHTML = '';
+        audit.slice(0, 50).forEach(log => {
+            const tr = document.createElement('tr');
+            const userName = log.expand && log.expand.user_id ? log.expand.user_id.name || log.expand.user_id.email : 'Sistema';
+            tr.innerHTML = `
+                <td>${new Date(log.created).toLocaleString('pt-BR')}</td>
+                <td>${log.action}</td>
+                <td>${userName}</td>
+                <td><pre style="font-size:0.7rem; max-width: 300px; overflow: auto; margin:0;">${JSON.stringify(log.details)}</pre></td>
+            `;
+            auditTable.appendChild(tr);
+        });
+    } catch (e) {
+        console.error('Error loading admin data:', e);
+        toast('Erro ao carregar dados administrativos.');
+    }
+}
+
+async function createUser(name, email, role, password) {
+    if (!pbReady) return { success: false, message: 'PocketBase offline' };
+    try {
+        const newUser = await pb.collection('users').create({
+            email,
+            password,
+            passwordConfirm: password,
+            name,
+            role,
+            ativo: true,
+            must_change_password: true
+        });
+        await logAudit('user_created', newUser.id, { name, email, role });
+        await loadAdminData();
+        return { success: true };
+    } catch (e) {
+        console.error('Create user failed:', e);
+        return { success: false, message: e.message || 'Erro ao criar usuário' };
+    }
+}
+
+async function handleToggleUser(userId, currentActive) {
+    try {
+        await pb.collection('users').update(userId, { ativo: !currentActive });
+        await logAudit(!currentActive ? 'user_activated' : 'user_deactivated', userId, {});
+        toast('Status do usuário atualizado!');
+        await loadAdminData();
+    } catch (e) {
+        console.error('Toggle status failed:', e);
+        toast('Erro ao alterar status.');
+    }
+}
+
+async function handleResetUserPassword(userId) {
+    const tempPass = 'Loto@' + Math.floor(100000 + Math.random() * 900000);
+    try {
+        await pb.collection('users').update(userId, {
+            password: tempPass,
+            passwordConfirm: tempPass,
+            must_change_password: true
+        });
+        await logAudit('password_reset', userId, {});
+        alert(`Senha resetada com sucesso!\nSenha temporária: ${tempPass}\n\nCopie esta senha e passe para o usuário.`);
+        await loadAdminData();
+    } catch (e) {
+        console.error('Reset password failed:', e);
+        toast('Erro ao resetar senha.');
+    }
+}
+
+window.handleToggleUser = handleToggleUser;
+window.handleResetUserPassword = handleResetUserPassword;
 
 // ===== FINANCIAL DATA — LOCALSTORAGE FALLBACK =====
 const FIN_BETS_KEY = 'lotosmart_bets';
@@ -1317,9 +1565,10 @@ function saveLocalPrizes(data) { localStorage.setItem(FIN_PRIZES_KEY, JSON.strin
 
 // ===== FINANCIAL CRUD =====
 async function addBet(betData) {
-    if (pbReady) {
+    if (pbReady && pb.authStore.isValid) {
         try {
-            await pb.collection('bets').create(betData);
+            const dataWithOwner = { ...betData, owner_id: pb.authStore.model.id };
+            await pb.collection('bets').create(dataWithOwner);
         } catch (e) {
             console.error('PB create bet failed, using localStorage:', e);
             const bets = loadLocalBets();
@@ -1335,9 +1584,10 @@ async function addBet(betData) {
 }
 
 async function addPrize(prizeData) {
-    if (pbReady) {
+    if (pbReady && pb.authStore.isValid) {
         try {
-            await pb.collection('prizes').create(prizeData);
+            const dataWithOwner = { ...prizeData, owner_id: pb.authStore.model.id };
+            await pb.collection('prizes').create(dataWithOwner);
         } catch (e) {
             console.error('PB create prize failed, using localStorage:', e);
             const prizes = loadLocalPrizes();
@@ -1353,7 +1603,7 @@ async function addPrize(prizeData) {
 }
 
 async function deleteBet(id) {
-    if (pbReady) {
+    if (pbReady && pb.authStore.isValid) {
         try { await pb.collection('bets').delete(id); }
         catch (e) {
             console.error('PB delete bet failed:', e);
@@ -1368,7 +1618,7 @@ async function deleteBet(id) {
 }
 
 async function deletePrize(id) {
-    if (pbReady) {
+    if (pbReady && pb.authStore.isValid) {
         try { await pb.collection('prizes').delete(id); }
         catch (e) {
             console.error('PB delete prize failed:', e);
@@ -1383,7 +1633,7 @@ async function deletePrize(id) {
 }
 
 async function getAllBets() {
-    if (pbReady) {
+    if (pbReady && pb.authStore.isValid) {
         try {
             const result = await pb.collection('bets').getFullList({ sort: '-bet_date' });
             return result;
@@ -1396,7 +1646,7 @@ async function getAllBets() {
 }
 
 async function getAllPrizes() {
-    if (pbReady) {
+    if (pbReady && pb.authStore.isValid) {
         try {
             const result = await pb.collection('prizes').getFullList({ sort: '-prize_date' });
             return result;
@@ -1407,6 +1657,7 @@ async function getAllPrizes() {
     }
     return loadLocalPrizes();
 }
+
 
 // ===== FINANCIAL STATE =====
 let allBets = [];
@@ -1838,6 +2089,95 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Authentication UI Handlers
+    $('form-login').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = $('login-email').value.trim();
+        const password = $('login-password').value;
+        const btn = $('btn-login-submit');
+        btn.disabled = true;
+        btn.textContent = 'Entrando...';
+        const res = await loginUser(email, password);
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+        if (res.success) {
+            toast('Bem-vindo ao LotoSmart!');
+        } else {
+            toast(res.message);
+        }
+    });
+
+    $('btn-logout').addEventListener('click', () => {
+        logoutUser();
+        toast('Sessão encerrada.');
+    });
+
+    $('form-change-password').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const oldPass = $('change-old-password').value;
+        const newPass = $('change-new-password').value;
+        const confirmPass = $('change-confirm-password').value;
+        const btn = $('btn-change-pass-submit');
+
+        if (newPass.length < 8) {
+            toast('A nova senha deve ter pelo menos 8 caracteres.');
+            return;
+        }
+        if (newPass !== confirmPass) {
+            toast('As senhas não coincidem.');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Alterando...';
+        const res = await changePassword(oldPass, newPass);
+        btn.disabled = false;
+        btn.textContent = 'Alterar Senha';
+        if (res.success) {
+            toast('Senha alterada com sucesso!');
+        } else {
+            toast(res.message);
+        }
+    });
+
+    $('form-create-user').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = $('new-user-name').value.trim();
+        const email = $('new-user-email').value.trim();
+        const role = $('new-user-role').value;
+        const password = $('new-user-password').value;
+
+        if (password.length < 8) {
+            toast('A senha deve ter pelo menos 8 caracteres.');
+            return;
+        }
+
+        const res = await createUser(name, email, role, password);
+        if (res.success) {
+            toast('Usuário criado com sucesso!');
+            $('form-create-user').reset();
+        } else {
+            toast(res.message);
+        }
+    });
+
+    $('form-contato').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = $('contact-name').value.trim();
+        const email = $('contact-email').value.trim();
+        const message = $('contact-message').value.trim();
+
+        const subject = encodeURIComponent('Solicitação de Acesso LotoSmart');
+        const body = encodeURIComponent(`Nome: ${name}\nE-mail: ${email}\nMensagem:\n${message}`);
+        window.location.href = `mailto:contato@lotosmart.com?subject=${subject}&body=${body}`;
+        
+        toast('Direcionando para o e-mail...');
+        $('form-contato').reset();
+    });
+
+    $('link-go-contato').addEventListener('click', (e) => { e.preventDefault(); switchView('contato'); });
+    $('link-go-login').addEventListener('click', (e) => { e.preventDefault(); switchView('login'); });
+
     // Set default dates to today
     const today = new Date().toISOString().slice(0, 10);
     if ($('fin-bet-date')) $('fin-bet-date').value = today;
@@ -1846,9 +2186,12 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSummary();
     updateModeUI();
 
-    // Initialize PocketBase and load financial data
+    // Initialize PocketBase and check session
     initPocketBase().then(() => {
-        refreshFinancialData();
+        checkAuthState();
+        if (pb && pb.authStore.isValid && !pb.authStore.model.must_change_password) {
+            refreshFinancialData();
+        }
     });
 });
 

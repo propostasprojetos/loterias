@@ -15,10 +15,16 @@
                 <span class="brand-icon">🎱</span>
                 <span class="brand-name">LotoSmart</span>
             </div>
-            <nav>
-                <button class="nav-btn active" data-view="gerador">Gerador</button>
-                <button class="nav-btn" data-view="historico">Histórico</button>
-                <button class="nav-btn" data-view="financeiro">💰 Financeiro</button>
+            <nav id="main-nav">
+                <button class="nav-btn active" data-view="gerador" id="nav-btn-gerador">Gerador</button>
+                <button class="nav-btn" data-view="historico" id="nav-btn-historico">Histórico</button>
+                <button class="nav-btn" data-view="financeiro" id="nav-btn-financeiro">💰 Financeiro</button>
+                <button class="nav-btn hidden" data-view="admin" id="nav-btn-admin">🛡️ Admin</button>
+                <button class="nav-btn" data-view="contato" id="nav-btn-contato">📞 Contato</button>
+                <div class="user-menu-wrap" id="user-menu" style="display: none;">
+                    <span class="user-name-tag" id="header-user-name">...</span>
+                    <button class="nav-btn btn-logout" id="btn-logout">Sair</button>
+                </div>
             </nav>
         </div>
     </header>
@@ -308,6 +314,178 @@
                 </div>
             </div>
 
+        </section>
+
+        <!-- ====== LOGIN ====== -->
+        <section id="view-login" class="hidden">
+            <div class="auth-card">
+                <h2>🎱 LotoSmart</h2>
+                <p class="auth-subtitle">Faça login para gerenciar suas apostas</p>
+                <form id="form-login">
+                    <div class="field">
+                        <label for="login-email">E-mail</label>
+                        <div class="input-row">
+                            <input type="email" id="login-email" required placeholder="seu@email.com">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="login-password">Senha</label>
+                        <div class="input-row">
+                            <input type="password" id="login-password" required placeholder="Sua senha">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary btn-auth" id="btn-login-submit">Entrar</button>
+                </form>
+                <p class="auth-footer">Não tem uma conta? <a href="#" id="link-go-contato">Fale Conosco</a> para adquirir acesso.</p>
+            </div>
+        </section>
+
+        <!-- ====== TROCA DE SENHA ====== -->
+        <section id="view-change-password" class="hidden">
+            <div class="auth-card">
+                <h2>🔒 Alterar Senha</h2>
+                <p class="auth-subtitle">Esta é a sua primeira inicialização. Por favor, defina uma senha forte.</p>
+                <form id="form-change-password">
+                    <div class="field">
+                        <label for="change-old-password">Senha Atual</label>
+                        <div class="input-row">
+                            <input type="password" id="change-old-password" required placeholder="Senha atual ou temporária">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="change-new-password">Nova Senha</label>
+                        <div class="input-row">
+                            <input type="password" id="change-new-password" required placeholder="Mínimo 8 caracteres">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="change-confirm-password">Confirmar Nova Senha</label>
+                        <div class="input-row">
+                            <input type="password" id="change-confirm-password" required placeholder="Confirme a nova senha">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary btn-auth" id="btn-change-pass-submit">Alterar Senha</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ====== ADMIN PANEL ====== -->
+        <section id="view-admin" class="hidden">
+            <div class="admin-container">
+                <div class="admin-header">
+                    <h2>Painel Administrativo</h2>
+                    <div class="admin-stats">
+                        <div class="stat-badge">Total Usuários: <strong id="admin-stat-total">0</strong></div>
+                        <div class="stat-badge">Ativos: <strong id="admin-stat-active">0</strong></div>
+                    </div>
+                </div>
+
+                <div class="config-panel">
+                    <h2>Novo Usuário</h2>
+                    <form id="form-create-user">
+                        <div class="admin-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px;">
+                            <div class="field">
+                                <label for="new-user-name">Nome</label>
+                                <div class="input-row">
+                                    <input type="text" id="new-user-name" required placeholder="Nome completo">
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label for="new-user-email">E-mail</label>
+                                <div class="input-row">
+                                    <input type="email" id="new-user-email" required placeholder="email@lotosmart.com">
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label for="new-user-role">Função</label>
+                                <div class="input-row">
+                                    <select id="new-user-role">
+                                        <option value="usuario">Usuário Comum</option>
+                                        <option value="admin">Administrador</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label for="new-user-password">Senha Temporária</label>
+                                <div class="input-row">
+                                    <input type="password" id="new-user-password" required placeholder="Min 8 chars">
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: auto; margin-top: 18px;">Criar Usuário</button>
+                    </form>
+                </div>
+
+                <!-- Tabela de Usuários -->
+                <div class="fin-table-section">
+                    <h3>Gestão de Usuários</h3>
+                    <div class="fin-table-wrap">
+                       <table class="fin-table">
+                           <thead>
+                               <tr>
+                                   <th>Nome</th>
+                                   <th>E-mail</th>
+                                   <th>Função</th>
+                                   <th>Status</th>
+                                   <th>Último Login</th>
+                                   <th>Ações</th>
+                               </tr>
+                           </thead>
+                           <tbody id="admin-users-table">
+                           </tbody>
+                       </table>
+                    </div>
+                </div>
+
+                <!-- Auditoria -->
+                <div class="fin-table-section">
+                    <h3>Log de Auditoria</h3>
+                    <div class="fin-table-wrap">
+                       <table class="fin-table">
+                           <thead>
+                               <tr>
+                                   <th>Data</th>
+                                   <th>Ação</th>
+                                   <th>Usuário</th>
+                                   <th>Detalhes</th>
+                               </tr>
+                           </thead>
+                           <tbody id="admin-audit-table">
+                           </tbody>
+                       </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ====== CONTATO ====== -->
+        <section id="view-contato" class="hidden">
+            <div class="auth-card contact-card">
+                <h2>📞 Fale Conosco / Adquirir Acesso</h2>
+                <p class="auth-subtitle">Deseja criar uma conta no LotoSmart ou tirar dúvidas? Envie uma mensagem!</p>
+                <form id="form-contato">
+                    <div class="field">
+                        <label for="contact-name">Nome</label>
+                        <div class="input-row">
+                            <input type="text" id="contact-name" required placeholder="Seu nome">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="contact-email">E-mail</label>
+                        <div class="input-row">
+                            <input type="email" id="contact-email" required placeholder="seu@email.com">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="contact-message">Mensagem</label>
+                        <div class="input-row">
+                            <textarea id="contact-message" required placeholder="Olá, gostaria de solicitar acesso ao sistema..." rows="4" style="width: 100%; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; color: var(--text); font-family: var(--font); resize: vertical;"></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary btn-auth" id="btn-contato-submit">Enviar Mensagem</button>
+                </form>
+                <p class="auth-footer"><a href="#" id="link-go-login">Voltar para o Login</a></p>
+            </div>
         </section>
 
     </main>
