@@ -1239,25 +1239,26 @@ function toast(msg) {
 }
 
 function switchView(view) {
-    const isValid = pb && pb.authStore.isValid;
-    const user = isValid ? pb.authStore.model : null;
+    const isValid = !!currentSession;
+    const userProfile = currentProfile;
 
     if (!isValid) {
         if (view !== 'login' && view !== 'contato') {
             view = 'login';
         }
-    } else if (user && user.must_change_password) {
+    } else if (userProfile && userProfile.must_change_password) {
         view = 'change-password';
     } else {
         if (view === 'login' || view === 'change-password') {
             view = 'gerador';
-        } else if (view === 'admin' && user.role !== 'admin') {
+        } else if (view === 'admin' && (!userProfile || userProfile.role !== 'admin')) {
             view = 'gerador';
         }
     }
 
     $$('[id^="view-"]').forEach(el => el.classList.add('hidden'));
-    $('view-' + view).classList.remove('hidden');
+    const targetView = $('view-' + view);
+    if(targetView) targetView.classList.remove('hidden');
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
     if (view === 'historico') renderHistory();
     if (view === 'financeiro') refreshFinancialData();
@@ -1290,7 +1291,7 @@ let sbReady = false;
 let currentSession = null;
 let currentProfile = null;
 
-async function initPocketBase() {
+async function initSupabase() {
     try {
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         sbReady = true;
@@ -2226,7 +2227,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateModeUI();
 
     // Initialize Supabase and check session
-    initPocketBase().then(async () => {
+    initSupabase().then(async () => {
         await checkAuthState();
         if (currentSession && (!currentProfile || !currentProfile.must_change_password)) {
             refreshFinancialData();
