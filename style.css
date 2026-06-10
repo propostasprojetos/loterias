@@ -108,7 +108,7 @@ header{
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
-nav{display:flex;gap:6px; flex-wrap: wrap; justify-content: flex-end;}
+nav{display:flex;gap:6px; flex-wrap: wrap; justify-content: flex-end; align-items: center;}
 .nav-btn{
     background:none;border:1px solid transparent;color:var(--text-2);font-family:var(--font);
     font-size:.85rem;font-weight:600;padding:8px 18px;border-radius:var(--radius-sm);cursor:pointer;
@@ -123,6 +123,20 @@ nav{display:flex;gap:6px; flex-wrap: wrap; justify-content: flex-end;}
 }
 .btn-logout { border-color: rgba(239, 68, 68, 0.3); color: var(--red); }
 .btn-logout:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--red); }
+
+/* User Name Tag in Header */
+.user-menu-wrap { display: flex; align-items: center; gap: 12px; margin-left: 8px;}
+.user-name-tag {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--gold);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    text-shadow: 0 0 10px rgba(245, 192, 81, 0.2);
+}
 
 /* ===== MAIN ===== */
 main{padding:40px 24px 100px;max-width:1100px;margin:0 auto; animation: fadeInScale 0.5s ease backwards;}
@@ -255,26 +269,26 @@ input[type=range]::-webkit-slider-thumb:hover{
 .btn-danger{border-color:rgba(239,68,68,.3);color:var(--red)}
 .btn-danger:hover{background:rgba(239,68,68,.15);border-color:var(--red);color:var(--red); box-shadow: var(--red-glow);}
 
-/* ===== TABS ===== */
-.tabs{
+/* ===== TABS & MODAL TABS ===== */
+.tabs, .modal-tabs {
     display:flex;gap:4px;
     background: rgba(0,0,0,0.2); border:1px solid var(--border);
     border-radius:var(--radius);padding:6px;margin-bottom:24px;
     backdrop-filter: blur(10px);
 }
-.tab{
+.tab, .modal-tab-btn {
     flex:1;padding:10px;border:none;border-radius:calc(var(--radius) - 4px);cursor:pointer;
     font-family:var(--font);font-size:.85rem;font-weight:600;
     background:none;color:var(--text-3);transition:all .3s ease;
 }
-.tab:hover{color:var(--text-2); background: rgba(255,255,255,0.03);}
-.tab.active{
+.tab:hover, .modal-tab-btn:hover {color:var(--text-2); background: rgba(255,255,255,0.03);}
+.tab.active, .modal-tab-btn.active {
     background: var(--surface-3);color:var(--text);
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     border: 1px solid var(--border-h);
 }
-.tab-content{display:none; animation: fadeInScale 0.4s ease forwards;}
-.tab-content.active{display:block}
+.tab-content, .modal-tab-content {display:none; animation: fadeInScale 0.4s ease forwards;}
+.tab-content.active, .modal-tab-content.active {display:block}
 .tab-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
 .tab-info{font-size:.85rem;color:var(--text-2);font-weight:600}
 
@@ -396,6 +410,16 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .badge-bet{background:var(--red-dim);color:var(--red); border: 1px solid rgba(239,68,68,0.2);}
 .badge-prize{background:var(--teal-dim);color:var(--teal); border: 1px solid rgba(16,185,129,0.2);}
 
+/* Finance Filters */
+.fin-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;}
+.fin-filter {
+    padding: 8px 16px; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer;
+    font-family: var(--font); font-size: 0.8rem; font-weight: 600;
+    background: rgba(255,255,255,0.03); color: var(--text-2); transition: all 0.2s; white-space: nowrap;
+}
+.fin-filter:hover { background: rgba(255,255,255,0.1); color: var(--text); border-color: var(--border-h); }
+.fin-filter.active { background: var(--gold-dim); color: var(--gold); border-color: var(--gold-border); box-shadow: var(--gold-glow); }
+
 /* ===== MODAIS ===== */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 1; transition: opacity 0.4s ease; }
 .modal-overlay.hidden { opacity: 0; pointer-events: none; }
@@ -415,11 +439,18 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .modal-footer { display: flex; justify-content: flex-end; gap: 14px; margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); }
 
 /* Form Grids in Modals */
+.admin-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
 .checkbox-grid, .games-override-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-top: 14px; }
 .checkbox-item { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; }
 .checkbox-item:hover { border-color: var(--gold); background: rgba(245,192,81,0.05); transform: translateY(-1px);}
 .checkbox-item input[type="checkbox"] { accent-color: var(--gold); width: 18px; height: 18px; cursor: pointer; }
 .checkbox-item span { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.override-card {
+    background: var(--surface); backdrop-filter: blur(8px);
+    padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+.override-card:hover { border-color: var(--border-h); transform: translateY(-2px); box-shadow: var(--shadow-glass);}
 .hidden{display:none!important}
 
 /* ===== MISC FIXES ===== */
@@ -517,10 +548,10 @@ select option { background: var(--surface-solid); color: var(--text); }
     .split-controls { flex-wrap: wrap; }
     .split-range { order: -1; flex-basis: 100%; }
     .split-input-wrapper { flex: 1; }
-    .games-override-grid { grid-template-columns: 1fr; }
+    .games-override-grid, .admin-form-grid { grid-template-columns: 1fr; }
     .fin-form-grid { grid-template-columns: 1fr; }
     .fin-form-grid .field.full-width { grid-column: 1; }
-    .tab { padding: 8px 6px; font-size: 0.75rem;}
+    .tab, .modal-tab-btn { padding: 8px 6px; font-size: 0.75rem;}
 }
 @media(max-width:430px){
     main{padding:16px 12px 80px}

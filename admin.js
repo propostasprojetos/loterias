@@ -230,13 +230,15 @@ async function openUserModal(userId = null) {
                     const val = modulos[g.slug];
                     const stateStr = val === true ? 'ForÃ§ar LiberaÃ§Ã£o' : val === false ? 'ForÃ§ar Bloqueio' : 'Herdar do Plano';
                     overridesDiv.innerHTML += `
-                        <div style="background: var(--surface-2); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
-                            <div style="font-size: 0.9rem; font-weight: 500; margin-bottom: 5px;">${g.nome}</div>
-                            <select class="override-select" data-slug="${g.slug}" style="width: 100%; font-size: 0.8rem; padding: 4px;">
-                                <option value="inherit" ${val === undefined ? 'selected' : ''}>Herdar do Plano</option>
-                                <option value="true" ${val === true ? 'selected' : ''}>ForÃ§ar LiberaÃ§Ã£o</option>
-                                <option value="false" ${val === false ? 'selected' : ''}>ForÃ§ar Bloqueio</option>
-                            </select>
+                        <div class="override-card">
+                            <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; color: var(--gold);">${g.nome}</div>
+                            <div class="input-row" style="padding: 2px;">
+                                <select class="override-select" data-slug="${g.slug}" style="width: 100%; background: none; border: none; color: var(--text); outline: none; font-size: 0.85rem;">
+                                    <option value="inherit" ${val === undefined ? 'selected' : ''}>Herdar do Plano</option>
+                                    <option value="true" ${val === true ? 'selected' : ''}>Forçar Liberação</option>
+                                    <option value="false" ${val === false ? 'selected' : ''}>Forçar Bloqueio</option>
+                                </select>
+                            </div>
                         </div>
                     `;
                 });

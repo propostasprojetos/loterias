@@ -961,19 +961,28 @@ function renderTransactions() {
         if (finFilter === 'bet') return t.type === 'bet';
         if (finFilter === 'prize') return t.type === 'prize';
         if (finFilter === 'lf') return t.lottery === 'lf';
-        if (finFilter === 'qn') return t.lottery === 'qn';
+            if (finFilter === 'qn') return t.lottery === 'qn';
         return true;
     });
 
     const tbody = $('fin-table-body');
-    const emptyEl = $('fin-table-empty');
+    
+    // Header and wrappers
+    const header = $('fin-history-header');
+    const tableWrap = document.querySelector('.fin-table-wrap');
+    const emptyState = $('fin-table-empty');
 
-    if (filtered.length === 0) {
+    if (transactions.length === 0) {
+        if(header) header.style.display = 'none';
+        if(tableWrap) tableWrap.style.display = 'none';
+        if(emptyState) emptyState.style.display = 'block';
         tbody.innerHTML = '';
-        emptyEl.style.display = 'block';
         return;
+    } else {
+        if(header) header.style.display = 'flex';
+        if(tableWrap) tableWrap.style.display = 'block';
+        if(emptyState) emptyState.style.display = 'none';
     }
-    emptyEl.style.display = 'none';
 
     tbody.innerHTML = filtered.map(t => {
         const dateStr = t.date ? t.date.split('-').reverse().join('/') : '—';
@@ -1013,9 +1022,19 @@ function renderTransactions() {
 
 // ===== FINANCIAL CHART =====
 function renderFinancialChart() {
-    const ctx = $('fin-chart');
-    if (!ctx) return;
+    const chartContainer = $('fin-chart-container');
+    
+    if (allBets.length === 0 && allPrizes.length === 0) {
+        if(chartContainer) chartContainer.style.display = 'none';
+        return;
+    } else {
+        if(chartContainer) chartContainer.style.display = 'block';
+    }
 
+    const canvasEl = $('fin-chart');
+    if (!canvasEl) return;
+    const ctx = canvasEl.getContext('2d');
+    
     // Combine all transactions and sort by date
     const allTransactions = [];
     allBets.forEach(b => allTransactions.push({

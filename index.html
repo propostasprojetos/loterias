@@ -126,6 +126,14 @@
                 </div>
             </div>
 
+            <!-- Gráfico -->
+            <div class="fin-chart-section" id="fin-chart-container" style="margin-bottom: 24px; display: none;">
+                <h3 style="font-size: 1.05rem; color: var(--gold); margin-bottom: 16px;">Evolução Financeira</h3>
+                <div class="fin-chart-wrap" style="height: 300px;">
+                    <canvas id="fin-chart"></canvas>
+                </div>
+            </div>
+
             <!-- Formulários -->
             <div class="fin-forms">
                 <!-- Registrar Aposta -->
@@ -225,8 +233,8 @@
 
             <!-- Tabela de Transações -->
             <div class="fin-table-section">
-                <div class="fin-table-header">
-                    <h3>Transações</h3>
+                <div class="fin-table-header" id="fin-history-header">
+                    <h3>Histórico Financeiro</h3>
                     <div class="fin-filters" id="fin-filters-container">
                         <button class="fin-filter active" data-filter="all">Todos</button>
                         <button class="fin-filter" data-filter="bet">Gastos</button>
@@ -250,14 +258,10 @@
                         </tbody>
                     </table>
                 </div>
-                <p class="fin-empty-state" id="fin-table-empty">Nenhuma transação registrada ainda. Comece registrando uma aposta ou prêmio acima.</p>
-            </div>
-
-            <!-- Gráfico -->
-            <div class="fin-chart-section">
-                <h3>Evolução Financeira</h3>
-                <div class="fin-chart-wrap">
-                    <canvas id="fin-chart"></canvas>
+                <div class="empty-state" id="fin-table-empty" style="display: none;">
+                    <div style="font-size: 3rem; margin-bottom: 16px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">📊</div>
+                    <h3 style="color: var(--text); margin-bottom: 8px; font-size: 1.2rem;">Você ainda não registrou apostas ou prêmios.</h3>
+                    <p>Utilize os formulários acima para registrar sua primeira movimentação e acompanhar sua evolução financeira.</p>
                 </div>
             </div>
 
