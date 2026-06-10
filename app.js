@@ -637,11 +637,11 @@ async function checkAuthState() {
         const headerUserName = $('header-user-name');
 
         if (!currentSession) {
-            navGerador.style.display = 'none';
-            navHistorico.style.display = 'none';
-            navFinanceiro.style.display = 'none';
-            navAdmin.style.display = 'none';
-            userMenu.style.display = 'none';
+            if(navGerador) navGerador.style.display = 'none';
+            if(navHistorico) navHistorico.style.display = 'none';
+            if(navFinanceiro) navFinanceiro.style.display = 'none';
+            if(navAdmin) navAdmin.style.display = 'none';
+            if(userMenu) userMenu.style.display = 'none';
             activeGames = [];
             currentGamesData = {};
             const currentView = document.querySelector('[id^="view-"]:not(.hidden)');
@@ -649,24 +649,24 @@ async function checkAuthState() {
                 switchView('login');
             }
         } else {
-            userMenu.style.display = 'flex';
-            headerUserName.textContent = (profile && profile.name) || user.email;
+            if(userMenu) userMenu.style.display = 'flex';
+            if(headerUserName) headerUserName.textContent = (profile && profile.name) || user.email;
 
             if (profile && profile.must_change_password) {
-                navGerador.style.display = 'none';
-                navHistorico.style.display = 'none';
-                navFinanceiro.style.display = 'none';
-                navAdmin.style.display = 'none';
+                if(navGerador) navGerador.style.display = 'none';
+                if(navHistorico) navHistorico.style.display = 'none';
+                if(navFinanceiro) navFinanceiro.style.display = 'none';
+                if(navAdmin) navAdmin.style.display = 'none';
                 switchView('change-password');
             } else {
-                navGerador.style.display = 'inline-block';
-                navHistorico.style.display = 'inline-block';
-                navFinanceiro.style.display = 'inline-block';
+                if(navGerador) navGerador.style.display = 'inline-block';
+                if(navHistorico) navHistorico.style.display = 'inline-block';
+                if(navFinanceiro) navFinanceiro.style.display = 'inline-block';
                 
                 if (window.isSuperAdmin) {
-                    navAdmin.style.display = 'inline-block';
+                    if(navAdmin) navAdmin.style.display = 'inline-block';
                 } else {
-                    navAdmin.style.display = 'none';
+                    if(navAdmin) navAdmin.style.display = 'none';
                 }
 
                 await loadAvailableGames();
