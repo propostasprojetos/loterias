@@ -1,4 +1,4 @@
-// ===== LotoSmart v2 — Advanced Optimization Engine =====
+﻿// ===== LotoSmart v2 — Advanced Optimization Engine =====
 
 // ===== UTILS =====
 const $ = id => document.getElementById(id);
@@ -1199,25 +1199,38 @@ function handleAddPrize() {
 
 // ===== REGISTER BET FROM GENERATOR =====
 function registerBetFromGenerator() {
-    const qtys = updateSummary();
+    const budget = parseFloat($('budget').value) || 0;
+    const lfP = parseFloat($('lf-price').value) || 3;
+    const qnP = parseFloat($('qn-price').value) || 2.5;
+    const pct = parseInt($('split').value) || 60;
+    const lfQ = Math.floor((budget * pct / 100) / lfP);
+    const qnQ = Math.floor((budget * (100 - pct) / 100) / qnP);
+
     const today = new Date().toISOString().slice(0, 10);
 
-    activeGames.forEach(g => {
-        const qty = qtys[g.slug];
-        if (qty > 0) {
-            const cost = parseFloat($('qty-'+g.slug)?.dataset.cost) || 0;
-            const total = qty * cost;
-            addBet({
-                bet_date: today,
-                lottery_type: g.slug,
-                game_count: qty,
-                total_cost: total,
-                contest_number: null,
-                notes: `Gerado no LotoSmart`,
-                games: JSON.stringify(currentGamesData[g.slug]?.games || [])
-            });
-        }
-    });
+    if (lfQ > 0) {
+        addBet({
+            bet_date: today,
+            lottery_type: 'lf',
+            game_count: lfQ,
+            total_cost: lfQ * lfP,
+            contest_number: null,
+            notes: `Gerado no LotoSmart (${MODES[generationMode].label})`,
+            games: JSON.stringify(currentLF)
+        });
+    }
+
+    if (qnQ > 0) {
+        addBet({
+            bet_date: today,
+            lottery_type: 'qn',
+            game_count: qnQ,
+            total_cost: qnQ * qnP,
+            contest_number: null,
+            notes: `Gerado no LotoSmart (${MODES[generationMode].label})`,
+            games: JSON.stringify(currentQN)
+        });
+    }
 
     toast('💰 Apostas registradas no financeiro!');
 }
@@ -1379,124 +1392,3 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-
-// ===== HISTORY DYNAMICS =====
-const HISTORY_KEY = 'lotosmart_history';
-
-function loadHistory() {
-    try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
-    catch { return []; }
-}
-function saveHistoryData(data) { localStorage.setItem(HISTORY_KEY, JSON.stringify(data)); }
-
-function saveToHistory() {
-    const history = loadHistory();
-    history.unshift({
-        id: Date.now(),
-        date: new Date().toLocaleString('pt-BR'),
-        games: currentGamesData
-    });
-    if (history.length > 50) history.length = 50;
-    saveHistoryData(history);
-    renderHistory();
-}
-
-function loadFromHistory(entry) {
-    currentGamesData = entry.games || {};
-    switchView('gerador');
-    renderGames();
-    renderAnalysis();
-    $('results-area')?.classList.remove('hidden');
-    toast('Jogos carregados do histórico');
-}
-
-function deleteHistoryEntry(id) {
-    const history = loadHistory().filter(h => h.id !== id);
-    saveHistoryData(history);
-    renderHistory();
-}
-
-function clearHistory() {
-    if (!confirm('Limpar todo o histórico?')) return;
-    saveHistoryData([]);
-    renderHistory();
-}
-
-function renderHistory() {
-    const history = loadHistory();
-    const el = $('history-list');
-    const empty = $('history-empty');
-
-    if (!el || !empty) return;
-
-    if (!history.length) {
-        el.innerHTML = '';
-        empty.classList.remove('hidden');
-        return;
-    }
-    empty.classList.add('hidden');
-
-    el.innerHTML = history.map(h => {
-        let txtArr = [];
-        let summaryArr = [];
-        if(h.games) {
-            Object.keys(h.games).forEach(slug => {
-                const gList = h.games[slug].games;
-                if(gList && gList.length > 0) {
-                    summaryArr.push(`${gList.length} ${slug.toUpperCase()}`);
-                    const block = gList.map((g, i) => `<div style="font-size:.78rem;color:var(--text-2);padding:2px 0;font-family:var(--mono)">J${pad(i + 1)}: ${g.map(pad).join(' ')}</div>`).join('');
-                    txtArr.push(`<p style="font-size:.75rem;font-weight:600;color:var(--gold);margin:10px 0 4px">${slug.toUpperCase()}</p>${block}`);
-                }
-            });
-        }
-        
-        return `<div class="history-entry" data-id="${h.id}">
-            <div class="history-entry-header">
-                <span class="history-date">${h.date}</span>
-                <span class="history-summary">${summaryArr.join(' · ')}</span>
-            </div>
-            <div class="history-body">
-                ${txtArr.join('')}
-                <div class="history-actions">
-                    <button class="btn-sm btn-load-hist">Carregar</button>
-                    <button class="btn-sm btn-copy-hist">Copiar</button>
-                    <button class="btn-sm btn-danger btn-del-hist">Excluir</button>
-                </div>
-            </div>
-        </div>`;
-    }).join('');
-
-    $$('.history-entry-header').forEach(hdr => {
-        hdr.addEventListener('click', () => hdr.nextElementSibling.classList.toggle('open'));
-    });
-    $$('.btn-load-hist').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = parseInt(btn.closest('.history-entry').dataset.id);
-            const entry = loadHistory().find(h => h.id === id);
-            if (entry) loadFromHistory(entry);
-        });
-    });
-    $$('.btn-copy-hist').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = parseInt(btn.closest('.history-entry').dataset.id);
-            const entry = loadHistory().find(h => h.id === id);
-            if (!entry || !entry.games) return;
-            let txt = `=== LotoSmart — ${entry.date} ===\n`;
-            Object.keys(entry.games).forEach(slug => {
-                const gList = entry.games[slug].games;
-                if(gList && gList.length > 0) {
-                    txt += `\n${slug.toUpperCase()}:\n`;
-                    gList.forEach((g, i) => txt += `J${pad(i + 1)}: ${g.map(pad).join(' - ')}\n`);
-                }
-            });
-            navigator.clipboard.writeText(txt);
-            toast('Copiado!');
-        });
-    });
-    $$('.btn-del-hist').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = parseInt(btn.closest('.history-entry').dataset.id);
-            deleteHistoryEntry(id);
-        });
-    });
-}

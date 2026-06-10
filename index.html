@@ -35,42 +35,8 @@
         <section id="view-gerador">
             <div class="config-panel">
                 <h2>Configuração</h2>
-                <div class="config-grid">
-                    <div class="field">
-                        <label for="budget" title="Valor total que você deseja investir na semana">Orçamento semanal</label>
-                        <div class="input-row">
-                            <span class="prefix">R$</span>
-                            <input type="number" id="budget" value="50" min="3" max="5000">
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label for="lf-price" title="Preço atual da aposta simples (15 números) na Lotofácil">Aposta Lotofácil</label>
-                        <div class="input-row">
-                            <span class="prefix">R$</span>
-                            <input type="number" id="lf-price" value="3.00" min="2" step="0.50">
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label for="qn-price" title="Preço atual da aposta simples (5 números) na Quina">Aposta Quina</label>
-                        <div class="input-row">
-                            <span class="prefix">R$</span>
-                            <input type="number" id="qn-price" value="2.50" min="1" step="0.50">
-                        </div>
-                    </div>
-                    <div class="field field-slider">
-                        <label title="Como o orçamento será dividido entre as duas loterias">Distribuição de Orçamento (%)</label>
-                        <div class="split-controls">
-                            <div class="input-row split-input-wrapper" title="Porcentagem para Lotofácil">
-                                <span class="prefix">LF</span>
-                                <input type="number" id="split-input-lf" value="60" min="0" max="100">
-                            </div>
-                            <input type="range" id="split" min="0" max="100" value="60" class="split-range">
-                            <div class="input-row split-input-wrapper" title="Porcentagem para Quina">
-                                <span class="prefix">QN</span>
-                                <input type="number" id="split-input-qn" value="40" min="0" max="100">
-                            </div>
-                        </div>
-                    </div>
+                <div class="config-grid" id="config-grid">
+                    <!-- Configurações dinâmicas (orçamento, quantidades) injetadas via JS -->
                 </div>
 
                 <div class="mode-selector">
@@ -88,11 +54,8 @@
                     </button>
                 </div>
 
-                <div class="summary-bar">
-                    <div class="summary-item"><span>Lotofácil</span><strong id="s-lf-qty">10 jogos</strong></div>
-                    <div class="summary-item"><span>Quina</span><strong id="s-qn-qty">8 jogos</strong></div>
-                    <div class="summary-item"><span>Total</span><strong id="s-total">R$ 50,00</strong></div>
-                    <div class="summary-item"><span>Troco</span><strong id="s-change">R$ 0,00</strong></div>
+                <div class="summary-bar" id="summary-bar">
+                    <!-- Resumo dinâmico injetado via JS -->
                 </div>
 
                 <button id="btn-generate" class="btn-primary">Gerar Jogos</button>
@@ -100,25 +63,12 @@
 
             <!-- Tabs de resultado -->
             <div id="results-area" class="hidden">
-                <div class="tabs">
-                    <button class="tab active" data-tab="tab-lf">Lotofácil</button>
-                    <button class="tab" data-tab="tab-qn">Quina</button>
+                <div class="tabs" id="dynamic-tabs">
+                    <!-- Tabs dinâmicas injetadas via JS -->
                 </div>
 
-                <div id="tab-lf" class="tab-content active">
-                    <div class="tab-toolbar">
-                        <span class="tab-info" id="lf-info">15 dezenas · 01 a 25</span>
-                        <button class="btn-sm" id="btn-copy-all-lf">Copiar todos</button>
-                    </div>
-                    <div class="games-list" id="lf-games"></div>
-                </div>
-
-                <div id="tab-qn" class="tab-content">
-                    <div class="tab-toolbar">
-                        <span class="tab-info" id="qn-info">5 dezenas · 01 a 80</span>
-                        <button class="btn-sm" id="btn-copy-all-qn">Copiar todos</button>
-                    </div>
-                    <div class="games-list" id="qn-games"></div>
+                <div id="dynamic-tab-contents">
+                    <!-- Conteúdos dinâmicos injetados via JS -->
                 </div>
 
                 <div class="analysis-box" id="analysis-box">
@@ -192,8 +142,7 @@
                             <label for="fin-bet-type">Loteria</label>
                             <div class="input-row">
                                 <select id="fin-bet-type">
-                                    <option value="lf">Lotofácil</option>
-                                    <option value="qn">Quina</option>
+                                    <!-- Opções dinâmicas de jogos injetadas via JS -->
                                 </select>
                             </div>
                         </div>
@@ -240,8 +189,7 @@
                             <label for="fin-prize-type">Loteria</label>
                             <div class="input-row">
                                 <select id="fin-prize-type">
-                                    <option value="lf">Lotofácil</option>
-                                    <option value="qn">Quina</option>
+                                    <!-- Opções dinâmicas de jogos injetadas via JS -->
                                 </select>
                             </div>
                         </div>
@@ -279,12 +227,11 @@
             <div class="fin-table-section">
                 <div class="fin-table-header">
                     <h3>Transações</h3>
-                    <div class="fin-filters">
+                    <div class="fin-filters" id="fin-filters-container">
                         <button class="fin-filter active" data-filter="all">Todos</button>
                         <button class="fin-filter" data-filter="bet">Gastos</button>
                         <button class="fin-filter" data-filter="prize">Prêmios</button>
-                        <button class="fin-filter" data-filter="lf">Lotofácil</button>
-                        <button class="fin-filter" data-filter="qn">Quina</button>
+                        <!-- Filtros de jogos dinâmicos injetados via JS -->
                     </div>
                 </div>
                 <div class="fin-table-wrap">
