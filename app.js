@@ -60,6 +60,7 @@ async function loadAvailableGames() {
         
         const modulos = currentProfile.modulos_customizados || {};
         activeGames = (allGames || []).filter(g => {
+            if (window.isSuperAdmin) return true;
             if (modulos[g.slug] !== undefined) return modulos[g.slug];
             return planGameIds.includes(g.id);
         });
@@ -680,9 +681,15 @@ async function checkAuthState() {
                 if(navFinanceiro) navFinanceiro.style.display = 'inline-block';
                 
                 if (window.isSuperAdmin) {
-                    if(navAdmin) navAdmin.style.display = 'inline-block';
+                    if(navAdmin) {
+                        navAdmin.style.display = 'inline-block';
+                        navAdmin.classList.remove('hidden');
+                    }
                 } else {
-                    if(navAdmin) navAdmin.style.display = 'none';
+                    if(navAdmin) {
+                        navAdmin.style.display = 'none';
+                        navAdmin.classList.add('hidden');
+                    }
                 }
 
                 await loadAvailableGames();
