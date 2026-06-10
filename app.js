@@ -340,7 +340,6 @@ function renderGames() {
         });
     });
 }
-
 function renderAnalysis() {
     const ab = $('analysis-body');
     if(ab) ab.innerHTML = '<p>Análise estatística dinâmica ativada.</p>';
@@ -356,15 +355,20 @@ function loadHistory() {
 function saveHistoryData(data) { localStorage.setItem(HISTORY_KEY, JSON.stringify(data)); }
 
 function saveToHistory() {
-    if (!currentLF.length && !currentQN.length) return;
     const history = loadHistory();
-    history.unshift({
+    const entry = {
         id: Date.now(),
         date: new Date().toLocaleString('pt-BR'),
-        mode: generationMode,
-        lf: currentLF,
-        qn: currentQN
+        gamesData: {}
+    };
+    
+    activeGames.forEach(g => {
+        if(currentGamesData[g.slug]) {
+            entry.gamesData[g.slug] = currentGamesData[g.slug].games;
+        }
     });
+
+    history.unshift(entry);
     if (history.length > 50) history.length = 50;
     saveHistoryData(history);
     renderHistory();
@@ -383,15 +387,15 @@ function clearHistory() {
 }
 
 function loadFromHistory(entry) {
-    currentLF = entry.lf || [];
-    currentQN = entry.qn || [];
-    if (entry.mode && MODES[entry.mode]) {
-        generationMode = entry.mode;
-        updateModeUI();
-    }
-    selectedLF.clear();
-    selectedQN.clear();
-    currentBaseSetLF = null;
+    activeGames.forEach(g => {
+        if(entry.gamesData[g.slug]) {
+            currentGamesData[g.slug] = {
+                games: entry.gamesData[g.slug],
+                selected: new Set()
+            };
+        }
+    });
+    
     switchView('gerador');
     renderGames();
     renderAnalysis();
@@ -413,27 +417,20 @@ function renderHistory() {
     empty.classList.add('hidden');
 
     el.innerHTML = history.map(h => {
-        const modeLabel = h.mode && MODES[h.mode] ? MODES[h.mode].label : 'Balanceado';
-        const lfTxt = (h.lf || []).map((g, i) => `<div style="font-size:.78rem;color:var(--text-2);padding:2px 0;font-family:var(--mono)">J${pad(i + 1)}: ${g.map(pad).join(' ')}</div>`).join('');
-        const qnTxt = (h.qn || []).map((g, i) => `<div style="font-size:.78rem;color:var(--text-2);padding:2px 0;font-family:var(--mono)">J${pad(i + 1)}: ${g.map(pad).join(' ')}</div>`).join('');
         return `<div class="history-entry" data-id="${h.id}">
             <div class="history-entry-header">
                 <span class="history-date">${h.date}</span>
-                <span class="history-summary">${(h.lf || []).length} LF · ${(h.qn || []).length} QN · ${modeLabel}</span>
+                <span class="history-summary">${Object.keys(h.gamesData).length} jogos salvos</span>
             </div>
             <div class="history-body">
-                ${lfTxt ? `<p style="font-size:.75rem;font-weight:600;color:var(--purple);margin:10px 0 4px">LOTOFÁCIL</p>${lfTxt}` : ''}
-                ${qnTxt ? `<p style="font-size:.75rem;font-weight:600;color:var(--cyan);margin:10px 0 4px">QUINA</p>${qnTxt}` : ''}
                 <div class="history-actions">
                     <button class="btn-sm btn-load-hist">Carregar</button>
-                    <button class="btn-sm btn-copy-hist">Copiar</button>
                     <button class="btn-sm btn-danger btn-del-hist">Excluir</button>
                 </div>
             </div>
         </div>`;
     }).join('');
 
-    // Bind history events
     $$('.history-entry-header').forEach(hdr => {
         hdr.addEventListener('click', () => hdr.nextElementSibling.classList.toggle('open'));
     });
@@ -444,43 +441,10 @@ function renderHistory() {
             if (entry) loadFromHistory(entry);
         });
     });
-    $$('.btn-copy-hist').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = parseInt(btn.closest('.history-entry').dataset.id);
-            const entry = loadHistory().find(h => h.id === id);
-            if (!entry) return;
-            const modeLabel = entry.mode && MODES[entry.mode] ? MODES[entry.mode].label : 'Balanceado';
-            let txt = `=== LotoSmart — ${entry.date} (${modeLabel}) ===\n`;
-            if (entry.lf?.length) { txt += '\nLOTOFÁCIL:\n'; entry.lf.forEach((g, i) => txt += `J${pad(i + 1)}: ${g.map(pad).join(' - ')}\n`); }
-            if (entry.qn?.length) { txt += '\nQUINA:\n'; entry.qn.forEach((g, i) => txt += `J${pad(i + 1)}: ${g.map(pad).join(' - ')}\n`); }
-            copyText(txt);
-        });
-    });
     $$('.btn-del-hist').forEach(btn => {
         btn.addEventListener('click', () => {
             const id = parseInt(btn.closest('.history-entry').dataset.id);
             deleteHistoryEntry(id);
-        });
-    });
-}
-
-// ===== CARD BUTTONS =====
-function bindCardButtons() {
-    $$('.btn-copy-one').forEach(btn => {
-        btn.addEventListener('click', e => {
-            e.stopPropagation();
-            const origIdx = parseInt(btn.dataset.origIdx);
-            copyOneGame(btn.dataset.type, origIdx);
-        });
-    });
-    $$('.btn-select').forEach(btn => {
-        btn.addEventListener('click', e => {
-            e.stopPropagation();
-            const origIdx = parseInt(btn.dataset.origIdx);
-            toggleSelect(btn.dataset.type, origIdx);
-            // Update button text
-            const hasSelection = selectedLF.size || selectedQN.size;
-            $('btn-generate').textContent = hasSelection ? 'Regenerar não selecionados' : 'Gerar Jogos';
         });
     });
 }
@@ -678,9 +642,9 @@ async function checkAuthState() {
             navFinanceiro.style.display = 'none';
             navAdmin.style.display = 'none';
             userMenu.style.display = 'none';
-            
-            await loadAvailableGames();
-                const currentView = document.querySelector('[id^="view-"]:not(.hidden)');
+            activeGames = [];
+            currentGamesData = {};
+            const currentView = document.querySelector('[id^="view-"]:not(.hidden)');
             if (!currentView || (currentView.id !== 'view-login' && currentView.id !== 'view-contato')) {
                 switchView('login');
             }
@@ -1380,123 +1344,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// ===== HISTORY DYNAMICS =====
-const HISTORY_KEY = 'lotosmart_history';
 
-function loadHistory() {
-    try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
-    catch { return []; }
-}
-function saveHistoryData(data) { localStorage.setItem(HISTORY_KEY, JSON.stringify(data)); }
-
-function saveToHistory() {
-    const history = loadHistory();
-    history.unshift({
-        id: Date.now(),
-        date: new Date().toLocaleString('pt-BR'),
-        games: currentGamesData
-    });
-    if (history.length > 50) history.length = 50;
-    saveHistoryData(history);
-    renderHistory();
-}
-
-function loadFromHistory(entry) {
-    currentGamesData = entry.games || {};
-    switchView('gerador');
-    renderGames();
-    renderAnalysis();
-    $('results-area')?.classList.remove('hidden');
-    toast('Jogos carregados do histórico');
-}
-
-function deleteHistoryEntry(id) {
-    const history = loadHistory().filter(h => h.id !== id);
-    saveHistoryData(history);
-    renderHistory();
-}
-
-function clearHistory() {
-    if (!confirm('Limpar todo o histórico?')) return;
-    saveHistoryData([]);
-    renderHistory();
-}
-
-function renderHistory() {
-    const history = loadHistory();
-    const el = $('history-list');
-    const empty = $('history-empty');
-
-    if (!el || !empty) return;
-
-    if (!history.length) {
-        el.innerHTML = '';
-        empty.classList.remove('hidden');
-        return;
-    }
-    empty.classList.add('hidden');
-
-    el.innerHTML = history.map(h => {
-        let txtArr = [];
-        let summaryArr = [];
-        if(h.games) {
-            Object.keys(h.games).forEach(slug => {
-                const gList = h.games[slug].games;
-                if(gList && gList.length > 0) {
-                    summaryArr.push(`${gList.length} ${slug.toUpperCase()}`);
-                    const block = gList.map((g, i) => `<div style="font-size:.78rem;color:var(--text-2);padding:2px 0;font-family:var(--mono)">J${pad(i + 1)}: ${g.map(pad).join(' ')}</div>`).join('');
-                    txtArr.push(`<p style="font-size:.75rem;font-weight:600;color:var(--gold);margin:10px 0 4px">${slug.toUpperCase()}</p>${block}`);
-                }
-            });
-        }
-        
-        return `<div class="history-entry" data-id="${h.id}">
-            <div class="history-entry-header">
-                <span class="history-date">${h.date}</span>
-                <span class="history-summary">${summaryArr.join(' · ')}</span>
-            </div>
-            <div class="history-body">
-                ${txtArr.join('')}
-                <div class="history-actions">
-                    <button class="btn-sm btn-load-hist">Carregar</button>
-                    <button class="btn-sm btn-copy-hist">Copiar</button>
-                    <button class="btn-sm btn-danger btn-del-hist">Excluir</button>
-                </div>
-            </div>
-        </div>`;
-    }).join('');
-
-    $$('.history-entry-header').forEach(hdr => {
-        hdr.addEventListener('click', () => hdr.nextElementSibling.classList.toggle('open'));
-    });
-    $$('.btn-load-hist').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = parseInt(btn.closest('.history-entry').dataset.id);
-            const entry = loadHistory().find(h => h.id === id);
-            if (entry) loadFromHistory(entry);
-        });
-    });
-    $$('.btn-copy-hist').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = parseInt(btn.closest('.history-entry').dataset.id);
-            const entry = loadHistory().find(h => h.id === id);
-            if (!entry || !entry.games) return;
-            let txt = `=== LotoSmart — ${entry.date} ===\n`;
-            Object.keys(entry.games).forEach(slug => {
-                const gList = entry.games[slug].games;
-                if(gList && gList.length > 0) {
-                    txt += `\n${slug.toUpperCase()}:\n`;
-                    gList.forEach((g, i) => txt += `J${pad(i + 1)}: ${g.map(pad).join(' - ')}\n`);
-                }
-            });
-            navigator.clipboard.writeText(txt);
-            toast('Copiado!');
-        });
-    });
-    $$('.btn-del-hist').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = parseInt(btn.closest('.history-entry').dataset.id);
-            deleteHistoryEntry(id);
-        });
-    });
-}
