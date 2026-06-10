@@ -1188,33 +1188,8 @@ function registerBetFromGenerator() {
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
-    ['budget', 'lf-price', 'qn-price'].forEach(id => $(id).addEventListener('input', updateSummary));
-    
-    $('split-input-lf').addEventListener('input', (e) => {
-        let val = parseInt(e.target.value) || 0;
-        if(val > 100) val = 100; if(val < 0) val = 0;
-        $('split').value = val;
-        $('split-input-qn').value = 100 - val;
-        updateSummary();
-    });
-    $('split-input-qn').addEventListener('input', (e) => {
-        let val = parseInt(e.target.value) || 0;
-        if(val > 100) val = 100; if(val < 0) val = 0;
-        $('split').value = 100 - val;
-        $('split-input-lf').value = 100 - val;
-        updateSummary();
-    });
-    $('split').addEventListener('input', (e) => {
-        let val = parseInt(e.target.value) || 0;
-        $('split-input-lf').value = val;
-        $('split-input-qn').value = 100 - val;
-        updateSummary();
-    });
-
-    $('btn-generate').addEventListener('click', generateAll);
-    $('btn-clear-history').addEventListener('click', clearHistory);
-    $('btn-copy-all-lf').addEventListener('click', () => copyAllGames('lf'));
-    $('btn-copy-all-qn').addEventListener('click', () => copyAllGames('qn'));
+    $('btn-generate')?.addEventListener('click', generateAll);
+    $('btn-clear-history')?.addEventListener('click', clearHistory);
     $$('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
     $$('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 
