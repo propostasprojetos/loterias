@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Modais Abas (Ex: Perfil vs Módulos no Usuário)
+    // Modais Abas (Ex: Perfil vs MÃ³dulos no UsuÃ¡rio)
     const modalTabBtns = document.querySelectorAll('.modal-tab-btn');
     modalTabBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -43,9 +43,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('form-admin-game').addEventListener('submit', saveGame);
     
     // Reset password force
+    window.handleResetUserPassword = async function(id) {
+        alert('Por motivos de segurança, a redefinição de senha de usuários deve ser feita diretamente no painel do Supabase (Authentication -> Users -> Reset Password), pois a API Client não possui privilégios para alterar senhas de terceiros.');
+    };
+
     document.getElementById('btn-reset-user-pass').addEventListener('click', async (e) => {
         const id = document.getElementById('edit-user-id').value;
-        if(id && typeof window.handleResetUserPassword === 'function') {
+        if(id) {
             await window.handleResetUserPassword(id);
         }
     });
@@ -57,7 +61,7 @@ async function refreshAdminData() {
     // Verifica is_super_admin
     const { data: isSuper, error: isSuperErr } = await window.supabaseClient.rpc('is_super_admin', { _user_id: window.currentSession.user.id });
     if (isSuperErr || !isSuper) {
-        console.warn('Acesso negado: Não é super admin');
+        console.warn('Acesso negado: NÃ£o Ã© super admin');
         return;
     }
 
@@ -180,18 +184,18 @@ async function loadAuditAdmin() {
     });
 }
 
-// ======================= MODAIS DE CRIAÇÃO E EDIÇÃO =======================
+// ======================= MODAIS DE CRIAÃ‡ÃƒO E EDIÃ‡ÃƒO =======================
 
 async function openUserModal(userId = null) {
     document.getElementById('form-admin-user').reset();
     document.getElementById('edit-user-id').value = '';
     document.getElementById('modal-user-title').textContent = userId ? 'Editar Cliente' : 'Novo Cliente';
     
-    // Configurar campos baseados se é novo ou edição
+    // Configurar campos baseados se Ã© novo ou ediÃ§Ã£o
     document.getElementById('wrap-user-password').style.display = userId ? 'none' : 'block';
     document.getElementById('user-password').required = !userId;
     document.getElementById('btn-reset-user-pass').classList.toggle('hidden', !userId);
-    document.getElementById('btn-tab-modulos').disabled = !userId; // Só permite mexer no módulo de quem já existe por enquanto, ou podemos liberar sempre.
+    document.getElementById('btn-tab-modulos').disabled = !userId; // SÃ³ permite mexer no mÃ³dulo de quem jÃ¡ existe por enquanto, ou podemos liberar sempre.
     
     if(!userId) document.getElementById('btn-tab-modulos').disabled = true;
 
@@ -199,7 +203,7 @@ async function openUserModal(userId = null) {
     const { data: plans } = await window.supabaseClient.from('planos').select('id, nome').eq('status', 'ativo');
     const selectPlan = document.getElementById('user-plano');
     selectPlan.innerHTML = '<option value="">Sem Plano</option>';
-    if (plans) plans.forEach(p => selectPlan.innerHTML += \`<option value="\${p.id}">\${p.nome}</option>\`);
+    if (plans) plans.forEach(p => selectPlan.innerHTML += `<option value="${p.id}">${p.nome}</option>`);
 
     // Carregar overrides
     const { data: games } = await window.supabaseClient.from('jogos').select('slug, nome').eq('status', 'ativo');
@@ -224,17 +228,17 @@ async function openUserModal(userId = null) {
             if (games) {
                 games.forEach(g => {
                     const val = modulos[g.slug];
-                    const stateStr = val === true ? 'Forçar Liberação' : val === false ? 'Forçar Bloqueio' : 'Herdar do Plano';
-                    overridesDiv.innerHTML += \`
+                    const stateStr = val === true ? 'ForÃ§ar LiberaÃ§Ã£o' : val === false ? 'ForÃ§ar Bloqueio' : 'Herdar do Plano';
+                    overridesDiv.innerHTML += `
                         <div style="background: var(--surface-2); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
-                            <div style="font-size: 0.9rem; font-weight: 500; margin-bottom: 5px;">\${g.nome}</div>
-                            <select class="override-select" data-slug="\${g.slug}" style="width: 100%; font-size: 0.8rem; padding: 4px;">
-                                <option value="inherit" \${val === undefined ? 'selected' : ''}>Herdar do Plano</option>
-                                <option value="true" \${val === true ? 'selected' : ''}>Forçar Liberação</option>
-                                <option value="false" \${val === false ? 'selected' : ''}>Forçar Bloqueio</option>
+                            <div style="font-size: 0.9rem; font-weight: 500; margin-bottom: 5px;">${g.nome}</div>
+                            <select class="override-select" data-slug="${g.slug}" style="width: 100%; font-size: 0.8rem; padding: 4px;">
+                                <option value="inherit" ${val === undefined ? 'selected' : ''}>Herdar do Plano</option>
+                                <option value="true" ${val === true ? 'selected' : ''}>ForÃ§ar LiberaÃ§Ã£o</option>
+                                <option value="false" ${val === false ? 'selected' : ''}>ForÃ§ar Bloqueio</option>
                             </select>
                         </div>
-                    \`;
+                    `;
                 });
             }
         }
@@ -260,7 +264,7 @@ async function saveUser(e) {
 
     try {
         if (!id) {
-            // Criação
+            // CriaÃ§Ã£o
             const { data, error } = await window.supabaseClient.rpc('create_user_by_admin', {
                 p_name: name,
                 p_email: email,
@@ -270,9 +274,9 @@ async function saveUser(e) {
                 p_password: password
             });
             if (error) throw error;
-            window.toast('Usuário criado com sucesso!');
+            window.toast('UsuÃ¡rio criado com sucesso!');
         } else {
-            // Edição
+            // EdiÃ§Ã£o
             const modulos = {};
             document.querySelectorAll('.override-select').forEach(sel => {
                 const val = sel.value;
@@ -285,14 +289,14 @@ async function saveUser(e) {
             }).eq('id', id);
             
             if (error) throw error;
-            window.toast('Usuário atualizado com sucesso!');
+            window.toast('UsuÃ¡rio atualizado com sucesso!');
         }
         
         document.getElementById('modal-admin-user').classList.add('hidden');
         await refreshAdminData();
     } catch (err) {
         console.error(err);
-        alert('Erro ao salvar usuário: ' + err.message);
+        alert('Erro ao salvar usuÃ¡rio: ' + err.message);
     }
 }
 
@@ -320,12 +324,12 @@ async function openPlanModal(planId = null) {
     if (games) {
         games.forEach(g => {
             const isChecked = selectedGames.includes(g.id) ? 'checked' : '';
-            gamesDiv.innerHTML += \`
+            gamesDiv.innerHTML += `
                 <label class="checkbox-item">
-                    <input type="checkbox" name="plan_games" value="\${g.id}" \${isChecked}>
-                    <span>\${g.nome}</span>
+                    <input type="checkbox" name="plan_games" value="${g.id}" ${isChecked}>
+                    <span>${g.nome}</span>
                 </label>
-            \`;
+            `;
         });
     }
 

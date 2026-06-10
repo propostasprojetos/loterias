@@ -698,7 +698,7 @@ async function logAudit(action, targetId = '', details = {}) {
     }
 }
 
-window.handleResetUserPassword = handleResetUserPassword;
+
 
 // ===== FINANCIAL DATA — LOCALSTORAGE FALLBACK =====
 const FIN_BETS_KEY = 'lotosmart_bets';
