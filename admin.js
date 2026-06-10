@@ -33,21 +33,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Abrir modais
-    document.getElementById('btn-show-create-user').addEventListener('click', () => openUserModal());
-    document.getElementById('btn-show-create-plan').addEventListener('click', () => openPlanModal());
-    document.getElementById('btn-show-create-game').addEventListener('click', () => openGameModal());
+    document.getElementById('btn-show-create-user')?.addEventListener('click', () => openUserModal());
+    document.getElementById('btn-show-create-plan')?.addEventListener('click', () => openPlanModal());
+    document.getElementById('btn-show-create-game')?.addEventListener('click', () => openGameModal());
 
     // Forms
-    document.getElementById('form-admin-user').addEventListener('submit', saveUser);
-    document.getElementById('form-admin-plan').addEventListener('submit', savePlan);
-    document.getElementById('form-admin-game').addEventListener('submit', saveGame);
+    document.getElementById('form-admin-user')?.addEventListener('submit', saveUser);
+    document.getElementById('form-admin-plan')?.addEventListener('submit', savePlan);
+    document.getElementById('form-admin-game')?.addEventListener('submit', saveGame);
     
     // Reset password force
     window.handleResetUserPassword = async function(id) {
         alert('Por motivos de segurança, a redefinição de senha de usuários deve ser feita diretamente no painel do Supabase (Authentication -> Users -> Reset Password), pois a API Client não possui privilégios para alterar senhas de terceiros.');
     };
 
-    document.getElementById('btn-reset-user-pass').addEventListener('click', async (e) => {
+    document.getElementById('btn-reset-user-pass')?.addEventListener('click', async (e) => {
         const id = document.getElementById('edit-user-id').value;
         if(id) {
             await window.handleResetUserPassword(id);

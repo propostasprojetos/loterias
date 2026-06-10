@@ -1199,8 +1199,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Financial module
-    $('btn-add-bet').addEventListener('click', handleAddBet);
-    $('btn-add-prize').addEventListener('click', handleAddPrize);
+    $('btn-add-bet')?.addEventListener('click', handleAddBet);
+    $('btn-add-prize')?.addEventListener('click', handleAddPrize);
 
     // Financial filters
     $$('.fin-filter').forEach(btn => {
@@ -1213,7 +1213,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Authentication UI Handlers
-    $('form-login').addEventListener('submit', async (e) => {
+    $('form-login')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = $('login-email').value.trim();
         const password = $('login-password').value;
@@ -1230,12 +1230,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    $('btn-logout').addEventListener('click', () => {
+    $('btn-logout')?.addEventListener('click', () => {
         logoutUser();
         toast('Sessão encerrada.');
     });
 
-    $('form-change-password').addEventListener('submit', async (e) => {
+    $('form-change-password')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const oldPass = $('change-old-password').value;
         const newPass = $('change-new-password').value;
@@ -1263,28 +1263,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    $('form-create-user').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = $('new-user-name').value.trim();
-        const email = $('new-user-email').value.trim();
-        const role = $('new-user-role').value;
-        const password = $('new-user-password').value;
-
-        if (password.length < 8) {
-            toast('A senha deve ter pelo menos 8 caracteres.');
-            return;
-        }
-
-        const res = await createUser(name, email, role, password);
-        if (res.success) {
-            toast('Usuário criado com sucesso!');
-            $('form-create-user').reset();
-        } else {
-            toast(res.message);
-        }
-    });
-
-    $('form-contato').addEventListener('submit', (e) => {
+    $('form-contato')?.addEventListener('submit', (e) => {
         e.preventDefault();
         const name = $('contact-name').value.trim();
         const email = $('contact-email').value.trim();
@@ -1298,8 +1277,8 @@ document.addEventListener('DOMContentLoaded', () => {
         $('form-contato').reset();
     });
 
-    $('link-go-contato').addEventListener('click', (e) => { e.preventDefault(); switchView('contato'); });
-    $('link-go-login').addEventListener('click', (e) => { e.preventDefault(); switchView('login'); });
+    $('link-go-contato')?.addEventListener('click', (e) => { e.preventDefault(); switchView('contato'); });
+    $('link-go-login')?.addEventListener('click', (e) => { e.preventDefault(); switchView('login'); });
 
     // Set default dates to today
     const today = new Date().toISOString().slice(0, 10);
