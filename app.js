@@ -27,6 +27,11 @@ function maxConsec(nums) {
 function intersect(a, b) { return a.filter(n => b.includes(n)); }
 function fmt(v) { return 'R$ ' + v.toFixed(2).replace('.', ','); }
 function pad(n) { return String(n).padStart(2, '0'); }
+function renderBall(n, slug) {
+    const isEven = n % 2 === 0;
+    const isQn = slug === 'quina';
+    return `<div class="ball ${isEven ? 'even' : 'odd'} ${isQn ? 'qn' : ''}">${pad(n)}</div>`;
+}
 
 // ===== MODE CONFIGURATION =====
 const MODES = {
