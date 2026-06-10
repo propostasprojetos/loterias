@@ -369,63 +369,72 @@
             </div>
         </section>
 
-        <!-- ====== ADMIN PANEL ====== -->
+        <!-- ====== SUPER ADMIN PANEL ====== -->
         <section id="view-admin" class="hidden">
             <div class="admin-container">
                 <div class="admin-header">
-                    <h2>Painel Administrativo</h2>
-                    <div class="admin-stats">
-                        <div class="stat-badge">Total Usuários: <strong id="admin-stat-total">0</strong></div>
-                        <div class="stat-badge">Ativos: <strong id="admin-stat-active">0</strong></div>
+                    <h2>Painel Super Admin</h2>
+                    <div class="admin-tabs">
+                        <button class="admin-tab-btn active" data-tab="admin-dashboard">Visão Geral</button>
+                        <button class="admin-tab-btn" data-tab="admin-usuarios">Usuários</button>
+                        <button class="admin-tab-btn" data-tab="admin-planos">Planos</button>
+                        <button class="admin-tab-btn" data-tab="admin-jogos">Jogos (Engine)</button>
                     </div>
                 </div>
 
-                <div class="config-panel">
-                    <h2>Novo Usuário</h2>
-                    <form id="form-create-user">
-                        <div class="admin-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px;">
-                            <div class="field">
-                                <label for="new-user-name">Nome</label>
-                                <div class="input-row">
-                                    <input type="text" id="new-user-name" required placeholder="Nome completo">
-                                </div>
-                            </div>
-                            <div class="field">
-                                <label for="new-user-email">E-mail</label>
-                                <div class="input-row">
-                                    <input type="email" id="new-user-email" required placeholder="email@lotosmart.com">
-                                </div>
-                            </div>
-                            <div class="field">
-                                <label for="new-user-role">Função</label>
-                                <div class="input-row">
-                                    <select id="new-user-role">
-                                        <option value="usuario">Usuário Comum</option>
-                                        <option value="admin">Administrador</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="field">
-                                <label for="new-user-password">Senha Temporária</label>
-                                <div class="input-row">
-                                    <input type="password" id="new-user-password" required placeholder="Min 8 chars">
-                                </div>
-                            </div>
+                <!-- Tab: Dashboard -->
+                <div id="admin-dashboard" class="admin-tab-content active">
+                    <div class="admin-stats-grid">
+                        <div class="fin-metric-card">
+                            <span class="metric-label">Total de Usuários</span>
+                            <span class="metric-value" id="admin-stat-total">0</span>
                         </div>
-                        <button type="submit" class="btn-primary" style="width: auto; margin-top: 18px;">Criar Usuário</button>
-                    </form>
+                        <div class="fin-metric-card">
+                            <span class="metric-label">Usuários Ativos</span>
+                            <span class="metric-value positive" id="admin-stat-active">0</span>
+                        </div>
+                        <div class="fin-metric-card">
+                            <span class="metric-label">Planos Ativos</span>
+                            <span class="metric-value" id="admin-stat-planos">0</span>
+                        </div>
+                        <div class="fin-metric-card">
+                            <span class="metric-label">Jogos Disponíveis</span>
+                            <span class="metric-value" id="admin-stat-jogos">0</span>
+                        </div>
+                    </div>
+                    <!-- Auditoria -->
+                    <div class="fin-table-section" style="margin-top: 24px;">
+                        <h3>Log de Auditoria Recente</h3>
+                        <div class="fin-table-wrap">
+                           <table class="fin-table">
+                               <thead>
+                                   <tr>
+                                       <th>Data</th>
+                                       <th>Ação</th>
+                                       <th>Usuário</th>
+                                       <th>Detalhes</th>
+                                   </tr>
+                               </thead>
+                               <tbody id="admin-audit-table">
+                               </tbody>
+                           </table>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Tabela de Usuários -->
-                <div class="fin-table-section">
-                    <h3>Gestão de Usuários</h3>
+                <!-- Tab: Usuários -->
+                <div id="admin-usuarios" class="admin-tab-content hidden">
+                    <div class="fin-table-header">
+                        <h3>Gestão de Clientes</h3>
+                        <button class="btn-sm btn-primary" id="btn-show-create-user">+ Novo Usuário</button>
+                    </div>
                     <div class="fin-table-wrap">
                        <table class="fin-table">
                            <thead>
                                <tr>
                                    <th>Nome</th>
-                                   <th>E-mail</th>
-                                   <th>Função</th>
+                                   <th>CPF</th>
+                                   <th>Plano</th>
                                    <th>Status</th>
                                    <th>Último Login</th>
                                    <th>Ações</th>
@@ -437,26 +446,228 @@
                     </div>
                 </div>
 
-                <!-- Auditoria -->
-                <div class="fin-table-section">
-                    <h3>Log de Auditoria</h3>
+                <!-- Tab: Planos -->
+                <div id="admin-planos" class="admin-tab-content hidden">
+                    <div class="fin-table-header">
+                        <h3>Gestão de Planos</h3>
+                        <button class="btn-sm btn-primary" id="btn-show-create-plan">+ Novo Plano</button>
+                    </div>
                     <div class="fin-table-wrap">
                        <table class="fin-table">
                            <thead>
                                <tr>
-                                   <th>Data</th>
-                                   <th>Ação</th>
-                                   <th>Usuário</th>
-                                   <th>Detalhes</th>
+                                   <th>Nome do Plano</th>
+                                   <th>Jogos Inclusos (Padrão)</th>
+                                   <th>Status</th>
+                                   <th>Ações</th>
                                </tr>
                            </thead>
-                           <tbody id="admin-audit-table">
+                           <tbody id="admin-plans-table">
+                           </tbody>
+                       </table>
+                    </div>
+                </div>
+
+                <!-- Tab: Jogos -->
+                <div id="admin-jogos" class="admin-tab-content hidden">
+                    <div class="fin-table-header">
+                        <h3>Motor de Jogos (Engine Builder)</h3>
+                        <button class="btn-sm btn-primary" id="btn-show-create-game">+ Novo Jogo</button>
+                    </div>
+                    <div class="fin-table-wrap">
+                       <table class="fin-table">
+                           <thead>
+                               <tr>
+                                   <th>Nome</th>
+                                   <th>Slug</th>
+                                   <th>Range (Mín/Máx)</th>
+                                   <th>Dezenas (Pick)</th>
+                                   <th>Status</th>
+                                   <th>Ações</th>
+                               </tr>
+                           </thead>
+                           <tbody id="admin-games-table">
                            </tbody>
                        </table>
                     </div>
                 </div>
             </div>
         </section>
+
+        <!-- ====== MODAIS DO ADMIN ====== -->
+        <div id="modal-admin-user" class="modal-overlay hidden">
+            <div class="modal-content admin-modal">
+                <div class="modal-header">
+                    <h2 id="modal-user-title">Novo Usuário</h2>
+                    <button class="btn-close-modal" id="btn-close-user-modal">✕</button>
+                </div>
+                
+                <div class="modal-tabs">
+                    <button class="modal-tab-btn active" data-tab="user-tab-perfil">Perfil do Cliente</button>
+                    <button class="modal-tab-btn" data-tab="user-tab-modulos" id="btn-tab-modulos" disabled>Plano e Jogos</button>
+                </div>
+
+                <form id="form-admin-user">
+                    <input type="hidden" id="edit-user-id">
+                    
+                    <!-- Aba Perfil -->
+                    <div id="user-tab-perfil" class="modal-tab-content active">
+                        <div class="admin-form-grid">
+                            <div class="field">
+                                <label for="user-name">Nome Completo</label>
+                                <div class="input-row"><input type="text" id="user-name" required></div>
+                            </div>
+                            <div class="field">
+                                <label for="user-email">E-mail</label>
+                                <div class="input-row"><input type="email" id="user-email" required></div>
+                            </div>
+                            <div class="field">
+                                <label for="user-cpf">CPF</label>
+                                <div class="input-row"><input type="text" id="user-cpf" placeholder="Apenas números" maxlength="11"></div>
+                            </div>
+                            <div class="field">
+                                <label for="user-celular">Celular</label>
+                                <div class="input-row"><input type="text" id="user-celular" placeholder="Apenas números com DDD" maxlength="11"></div>
+                            </div>
+                            <div class="field">
+                                <label for="user-status">Status da Conta</label>
+                                <div class="input-row">
+                                    <select id="user-status">
+                                        <option value="true">Ativo (Acesso Liberado)</option>
+                                        <option value="false">Inativo (Bloqueado)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="field" id="wrap-user-password">
+                                <label for="user-password">Senha (Apenas para novos)</label>
+                                <div class="input-row"><input type="password" id="user-password" placeholder="Mín 8 chars"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Aba Plano e Módulos -->
+                    <div id="user-tab-modulos" class="modal-tab-content hidden">
+                        <div class="field">
+                            <label for="user-plano">Plano Principal</label>
+                            <div class="input-row">
+                                <select id="user-plano"></select>
+                            </div>
+                            <small style="color: var(--text-3); font-size: 0.8rem;">Alterar o plano recalcula o acesso padrão aos jogos.</small>
+                        </div>
+                        
+                        <div class="module-overrides">
+                            <h4 style="margin: 15px 0 10px; color: var(--gold); font-size: 0.9rem;">Exceções Individuais (Overrides)</h4>
+                            <p style="font-size: 0.8rem; color: var(--text-2); margin-bottom: 12px;">Selecione explicitly se deseja forçar a liberação ou bloqueio de um jogo específico para este cliente, ignorando o plano atual.</p>
+                            
+                            <div id="user-games-list" class="games-override-grid">
+                                <!-- Preenchido via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-sm btn-danger hidden" id="btn-reset-user-pass">Forçar Reset de Senha</button>
+                        <button type="submit" class="btn-primary" style="width: auto;">Salvar Cliente</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="modal-admin-plan" class="modal-overlay hidden">
+            <div class="modal-content admin-modal">
+                <div class="modal-header">
+                    <h2 id="modal-plan-title">Novo Plano</h2>
+                    <button class="btn-close-modal" id="btn-close-plan-modal">✕</button>
+                </div>
+                <form id="form-admin-plan">
+                    <input type="hidden" id="edit-plan-id">
+                    <div class="admin-form-grid">
+                        <div class="field">
+                            <label for="plan-name">Nome do Plano</label>
+                            <div class="input-row"><input type="text" id="plan-name" required></div>
+                        </div>
+                        <div class="field">
+                            <label for="plan-status">Status</label>
+                            <div class="input-row">
+                                <select id="plan-status">
+                                    <option value="ativo">Ativo</option>
+                                    <option value="inativo">Inativo</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field" style="margin-top: 16px;">
+                        <label>Jogos Inclusos no Plano</label>
+                        <div id="plan-games-list" class="checkbox-grid">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn-primary" style="width: auto;">Salvar Plano</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="modal-admin-game" class="modal-overlay hidden">
+            <div class="modal-content admin-modal">
+                <div class="modal-header">
+                    <h2 id="modal-game-title">Novo Jogo (Engine)</h2>
+                    <button class="btn-close-modal" id="btn-close-game-modal">✕</button>
+                </div>
+                <form id="form-admin-game">
+                    <input type="hidden" id="edit-game-id">
+                    <div class="admin-form-grid">
+                        <div class="field">
+                            <label for="game-name">Nome</label>
+                            <div class="input-row"><input type="text" id="game-name" required placeholder="Ex: Mega-Sena"></div>
+                        </div>
+                        <div class="field">
+                            <label for="game-slug">Slug (Identificador)</label>
+                            <div class="input-row"><input type="text" id="game-slug" required placeholder="ex: megasena"></div>
+                        </div>
+                        <div class="field">
+                            <label for="game-status">Status</label>
+                            <div class="input-row">
+                                <select id="game-status">
+                                    <option value="ativo">Ativo</option>
+                                    <option value="inativo">Inativo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="game-ordem">Ordem de Exibição</label>
+                            <div class="input-row"><input type="number" id="game-ordem" value="0"></div>
+                        </div>
+                    </div>
+                    
+                    <h4 style="margin: 20px 0 10px; color: var(--gold); border-bottom: 1px solid var(--border); padding-bottom: 5px;">Parâmetros do Gerador</h4>
+                    
+                    <div class="admin-form-grid">
+                        <div class="field">
+                            <label for="game-range-min">Bola Mínima</label>
+                            <div class="input-row"><input type="number" id="game-range-min" required value="1"></div>
+                        </div>
+                        <div class="field">
+                            <label for="game-range-max">Bola Máxima</label>
+                            <div class="input-row"><input type="number" id="game-range-max" required value="60"></div>
+                        </div>
+                        <div class="field">
+                            <label for="game-pick">Quantas Dezenas (Pick)</label>
+                            <div class="input-row"><input type="number" id="game-pick" required value="6"></div>
+                        </div>
+                        <div class="field">
+                            <label for="game-cost">Valor Aposta Base (R$)</label>
+                            <div class="input-row"><input type="number" id="game-cost" required value="5.00" step="0.50"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn-primary" style="width: auto;">Salvar Jogo</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
 
         <!-- ====== CONTATO ====== -->
         <section id="view-contato" class="hidden">
@@ -500,6 +711,7 @@
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+    <script src="admin.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

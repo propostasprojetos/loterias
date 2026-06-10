@@ -1240,29 +1240,35 @@ function toast(msg) {
 
 function switchView(view) {
     const isValid = !!currentSession;
-    const userProfile = currentProfile;
+    const profile = currentProfile;
 
     if (!isValid) {
         if (view !== 'login' && view !== 'contato') {
             view = 'login';
         }
-    } else if (userProfile && userProfile.must_change_password) {
+    } else if (profile && profile.must_change_password) {
         view = 'change-password';
     } else {
         if (view === 'login' || view === 'change-password') {
             view = 'gerador';
-        } else if (view === 'admin' && (!userProfile || userProfile.role !== 'admin')) {
+        } else if (view === 'admin' && !window.isSuperAdmin) {
             view = 'gerador';
         }
     }
 
     $$('[id^="view-"]').forEach(el => el.classList.add('hidden'));
-    const targetView = $('view-' + view);
-    if(targetView) targetView.classList.remove('hidden');
+    const target = $('view-' + view);
+    if (target) target.classList.remove('hidden');
+    
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-    if (view === 'historico') renderHistory();
-    if (view === 'financeiro') refreshFinancialData();
-    if (view === 'admin') loadAdminData();
+    
+    if (view === 'admin' && window.isSuperAdmin && typeof window.refreshAdminData === 'function') {
+        window.refreshAdminData();
+    } else if (view === 'historico') {
+        renderHistory();
+    } else if (view === 'financeiro') {
+        refreshFinancialData();
+    }
 }
 
 // ===== TABS =====
@@ -1382,6 +1388,12 @@ async function checkAuthState() {
             if (!error && profile) {
                 currentProfile = profile;
             }
+            
+            // Verifica se é super admin usando a RPC
+            const { data: isSuper } = await supabaseClient.rpc('is_super_admin', { _user_id: session.user.id });
+            window.isSuperAdmin = !!isSuper;
+        } else {
+            window.isSuperAdmin = false;
         }
 
         const user = currentSession ? currentSession.user : null;
@@ -1391,6 +1403,7 @@ async function checkAuthState() {
             await supabaseClient.auth.signOut();
             currentSession = null;
             currentProfile = null;
+            window.isSuperAdmin = false;
             toast('Sua conta foi desativada pelo administrador.');
             await checkAuthState();
             isAuthChecking = false;
@@ -1431,7 +1444,7 @@ async function checkAuthState() {
                 navHistorico.style.display = 'inline-block';
                 navFinanceiro.style.display = 'inline-block';
                 
-                if (profile && profile.role === 'admin') {
+                if (window.isSuperAdmin) {
                     navAdmin.style.display = 'inline-block';
                 } else {
                     navAdmin.style.display = 'none';
@@ -1440,7 +1453,7 @@ async function checkAuthState() {
                 const currentView = document.querySelector('[id^="view-"]:not(.hidden)');
                 if (!currentView || currentView.id === 'view-login' || currentView.id === 'view-change-password') {
                     switchView('gerador');
-                } else if (currentView.id === 'view-admin' && (!profile || profile.role !== 'admin')) {
+                } else if (currentView.id === 'view-admin' && !window.isSuperAdmin) {
                     switchView('gerador');
                 }
             }
@@ -1465,118 +1478,6 @@ async function logAudit(action, targetId = '', details = {}) {
     }
 }
 
-// ===== ADMIN CRUD FUNCTIONS =====
-async function loadAdminData() {
-    if (!sbReady || !currentSession || !currentProfile || currentProfile.role !== 'admin') return;
-
-    try {
-        const { data: users, error: usersErr } = await supabaseClient.from('profiles').select('*').order('created_at', { ascending: false });
-        if (usersErr) throw usersErr;
-
-        const { data: audit, error: auditErr } = await supabaseClient.from('audit_logs').select(`
-            created_at, action, target_id, details, user_id,
-            profiles (name, id)
-        `).order('created_at', { ascending: false });
-        if (auditErr) throw auditErr;
-
-        $('admin-stat-total').textContent = users.length;
-        $('admin-stat-active').textContent = users.filter(u => u.ativo !== false).length;
-
-        const usersTable = $('admin-users-table');
-        usersTable.innerHTML = '';
-        users.forEach(u => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${u.name || '-'}</td>
-                <td>${u.id}</td>
-                <td><span class="type-badge ${u.role === 'admin' ? 'badge-prize' : 'badge-bet'}">${u.role}</span></td>
-                <td><span class="type-badge ${u.ativo !== false ? 'badge-prize' : 'badge-bet'}">${u.ativo !== false ? 'Ativo' : 'Inativo'}</span></td>
-                <td>${u.ultimo_login ? new Date(u.ultimo_login).toLocaleString('pt-BR') : 'Nunca'}</td>
-                <td>
-                    <button class="btn-sm" onclick="handleToggleUser('${u.id}', ${u.ativo !== false})">${u.ativo !== false ? 'Desativar' : 'Ativar'}</button>
-                    <button class="btn-sm" style="margin-left:4px" onclick="handleResetUserPassword('${u.id}')">Resetar Senha</button>
-                </td>
-            `;
-            usersTable.appendChild(tr);
-        });
-
-        const auditTable = $('admin-audit-table');
-        auditTable.innerHTML = '';
-        audit.slice(0, 50).forEach(log => {
-            const tr = document.createElement('tr');
-            const userName = log.profiles ? log.profiles.name : 'Sistema';
-            tr.innerHTML = `
-                <td>${new Date(log.created_at).toLocaleString('pt-BR')}</td>
-                <td>${log.action}</td>
-                <td>${userName}</td>
-                <td><pre style="font-size:0.7rem; max-width: 300px; overflow: auto; margin:0;">${JSON.stringify(log.details)}</pre></td>
-            `;
-            auditTable.appendChild(tr);
-        });
-    } catch (e) {
-        console.error('Error loading admin data:', e);
-        toast('Erro ao carregar dados administrativos.');
-    }
-}
-
-async function createUser(name, email, role, password) {
-    if (!sbReady) return { success: false, message: 'Supabase offline' };
-    try {
-        const { data, error } = await supabaseClient.auth.signUp({
-            email,
-            password,
-            options: {
-                data: {
-                    name: name,
-                    role: role
-                }
-            }
-        });
-        if (error) throw error;
-        
-        if (data.user) {
-            await logAudit('user_created', data.user.id, { name, email, role });
-            await loadAdminData();
-            return { success: true };
-        }
-    } catch (e) {
-        console.error('Create user failed:', e);
-        return { success: false, message: e.message || 'Erro ao criar usuário' };
-    }
-    return { success: false, message: 'Erro ao criar usuário' };
-}
-
-async function handleToggleUser(userId, currentActive) {
-    try {
-        const { error } = await supabaseClient.from('profiles').update({ ativo: !currentActive }).eq('id', userId);
-        if (error) throw error;
-        await logAudit(!currentActive ? 'user_activated' : 'user_deactivated', userId, {});
-        toast('Status do usuário atualizado!');
-        await loadAdminData();
-    } catch (e) {
-        console.error('Toggle status failed:', e);
-        toast('Erro ao alterar status.');
-    }
-}
-
-async function handleResetUserPassword(userId) {
-    const email = prompt("Confirme o e-mail do usuário para enviar o link de redefinição de senha:");
-    if (!email) return;
-    try {
-        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin
-        });
-        if (error) throw error;
-        await logAudit('password_reset_requested', userId, { email });
-        alert('E-mail de redefinição enviado com sucesso para o usuário!');
-        await loadAdminData();
-    } catch (e) {
-        console.error('Reset password failed:', e);
-        toast('Erro ao resetar senha.');
-    }
-}
-
-window.handleToggleUser = handleToggleUser;
 window.handleResetUserPassword = handleResetUserPassword;
 
 // ===== FINANCIAL DATA — LOCALSTORAGE FALLBACK =====

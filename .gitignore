@@ -1,0 +1,5 @@
+# Temporary testing files
+data.json
+create_user.ps1
+supabase/.temp/
+.temp/
