@@ -549,11 +549,13 @@ async function initSupabase() {
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         window.supabaseClient = supabaseClient;
         sbReady = true;
+        window.sbReady = true;
         console.log('Supabase initialized successfully');
         return true;
     } catch (e) {
         console.warn('Supabase not available:', e.message);
         sbReady = false;
+        window.sbReady = false;
     }
     return false;
 }
@@ -629,12 +631,15 @@ async function checkAuthState() {
         if (!sbReady) return;
         const { data: { session } } = await supabaseClient.auth.getSession();
         currentSession = session;
+        window.currentSession = session;
         currentProfile = null;
+        window.currentProfile = null;
 
         if (session) {
             const { data: profile, error } = await supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
             if (!error && profile) {
                 currentProfile = profile;
+                window.currentProfile = profile;
             }
             
             // Verifica se é super admin usando a RPC
@@ -650,7 +655,9 @@ async function checkAuthState() {
         if (profile && profile.ativo === false) {
             await supabaseClient.auth.signOut();
             currentSession = null;
+            window.currentSession = null;
             currentProfile = null;
+            window.currentProfile = null;
             window.isSuperAdmin = false;
             toast('Sua conta foi desativada pelo administrador.');
             await checkAuthState();
@@ -667,6 +674,7 @@ async function checkAuthState() {
         const headerUserName = $('header-user-name');
 
         if (!currentSession) {
+            window.currentSession = null;
             if(navGerador) navGerador.style.display = 'none';
             if(navHistorico) navHistorico.style.display = 'none';
             if(navFinanceiro) navFinanceiro.style.display = 'none';
