@@ -76,6 +76,22 @@ async function loadAvailableGames() {
 function renderDynamicGameUI() {
     const configGrid = $('config-grid');
     if (configGrid) {
+        if (activeGames.length === 0) {
+            configGrid.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1; padding: 20px; text-align: center; color: var(--text-2);">
+                    <p style="margin-bottom: 10px;">Você não possui nenhum plano ou módulo de jogos ativo.</p>
+                    <p style="font-size: 0.9em; opacity: 0.7;">Por favor, contate o administrador para liberar o seu acesso aos jogos.</p>
+                </div>
+            `;
+            const summaryBar = $('summary-bar');
+            if (summaryBar) summaryBar.innerHTML = '';
+            const tabsContainer = $('dynamic-tabs');
+            const contentsContainer = $('dynamic-tab-contents');
+            if (tabsContainer) tabsContainer.innerHTML = '';
+            if (contentsContainer) contentsContainer.innerHTML = '';
+            return;
+        }
+
         configGrid.innerHTML = activeGames.map(g => {
             const cost = g.parametros.cost || 3.00;
             return `
