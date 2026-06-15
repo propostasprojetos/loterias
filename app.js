@@ -368,6 +368,8 @@ function renderGames() {
             toast('Jogo copiado!');
         });
     });
+
+    renderAnalysis();
 }
 function renderAnalysis() {
     const ab = $('analysis-body');
