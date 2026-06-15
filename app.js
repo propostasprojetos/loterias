@@ -341,6 +341,11 @@ function renderGames() {
                     </div>
                 </div>
                 <div class="game-numbers">${game.map(n => renderBall(n, g.slug)).join('')}</div>
+                <div class="game-bottom" style="margin-top: 14px; display: flex; gap: 8px; font-size: 0.75rem; color: var(--text-2); justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">
+                    <span title="Pares e Ímpares"><strong style="color:var(--text);">${countEven(game)}P / ${game.length - countEven(game)}I</strong></span>
+                    <span title="Soma das dezenas">Soma: <strong style="color:var(--text);">${game.reduce((a, b) => a + b, 0)}</strong></span>
+                    <span title="Sequência Máxima">Seq Máx: <strong style="color:var(--text);">${maxConsec(game)}</strong></span>
+                </div>
             </div>`;
         }).join('');
     });
