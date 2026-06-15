@@ -323,6 +323,31 @@ function generateAll() {
     }, 300);
 }
 
+function getGameStats(game) {
+    const gaps = [];
+    for(let i=1; i<game.length; i++) gaps.push(game[i] - game[i-1]);
+    const avgG = gaps.length ? (gaps.reduce((a,b)=>a+b,0)/gaps.length).toFixed(1) : 0;
+    
+    const ranges = {};
+    game.forEach(n => {
+        const r = Math.floor((n-1)/10)*10;
+        ranges[r] = (ranges[r] || 0) + 1;
+    });
+    const rStr = Object.keys(ranges).length;
+
+    const evens = countEven(game);
+    const odds = game.length - evens;
+    const balance = Math.abs(evens - odds);
+    
+    let score = 98 - (balance * 4);
+    if (score < 50) score = 50 + Math.floor(Math.random()*20);
+    
+    let sClass = score >= 90 ? 'high' : score >= 80 ? 'med' : 'low';
+    let sLabel = score >= 90 ? 'Excelente' : score >= 80 ? 'Bom' : 'Regular';
+
+    return { avgG, rStr, score, sClass, sLabel };
+}
+
 function renderGames() {
     activeGames.forEach(g => {
         const state = currentGamesData[g.slug];
@@ -331,6 +356,7 @@ function renderGames() {
         
         container.innerHTML = state.games.map((game, idx) => {
             const sel = state.selected.has(idx);
+            const stats = getGameStats(game);
             return `
             <div class="game-card ${sel ? 'selected' : ''}" data-slug="${g.slug}" data-idx="${idx}">
                 <div class="game-top">
@@ -341,10 +367,14 @@ function renderGames() {
                     </div>
                 </div>
                 <div class="game-numbers">${game.map(n => renderBall(n, g.slug)).join('')}</div>
-                <div class="game-bottom" style="margin-top: 14px; display: flex; gap: 8px; font-size: 0.75rem; color: var(--text-2); justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">
-                    <span title="Pares e Ímpares"><strong style="color:var(--text);">${countEven(game)}P / ${game.length - countEven(game)}I</strong></span>
-                    <span title="Soma das dezenas">Soma: <strong style="color:var(--text);">${game.reduce((a, b) => a + b, 0)}</strong></span>
-                    <span title="Sequência Máxima">Seq Máx: <strong style="color:var(--text);">${maxConsec(game)}</strong></span>
+                <div class="game-bottom">
+                    <span class="game-stat" title="Faixas">Faixas: ${stats.rStr}</span>
+                    <span class="game-stat" title="Gap médio">Gap médio: ${stats.avgG}</span>
+                </div>
+                <div class="score-row" title="Score de qualidade">
+                    <span class="score-tag ${stats.sClass}">${stats.sLabel}</span>
+                    <div class="score-bar-wrap"><div class="score-bar" style="width:${stats.score}%"></div></div>
+                    <span class="score-label ${stats.sClass}">${stats.score}/100</span>
                 </div>
             </div>`;
         }).join('');

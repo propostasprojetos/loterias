@@ -1,5 +1,32 @@
 /* ===== LotoSmart v2 Premium SaaS Design ===== */
 
+/* ===== QUALITY SCORE ===== */
+.score-row{
+    display:flex;align-items:center;gap:10px;margin-top:10px;
+    padding-top:10px;border-top:1px solid var(--border);
+}
+.score-bar-wrap{
+    flex:1;height:5px;background:rgba(255,255,255,0.03);border-radius:3px;
+    border:1px solid var(--border);overflow:hidden;
+}
+.score-bar{
+    height:100%;border-radius:3px;transition:width .4s cubic-bezier(.34,1.56,.64,1);
+    background:linear-gradient(90deg,var(--red),var(--gold),var(--green));
+}
+.score-label{
+    font-family:var(--font-num);font-size:.72rem;font-weight:700;
+    min-width:40px;text-align:right;
+}
+.score-label.high{color:var(--green)}
+.score-label.med{color:var(--gold)}
+.score-label.low{color:var(--red)}
+.score-tag{
+    font-size:.6rem;font-weight:700;letter-spacing:.3px;
+}
+.score-tag.high{color:var(--green)}
+.score-tag.med{color:var(--gold)}
+.score-tag.low{color:var(--red)}
+
 /* ===== RESET ===== */
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 
@@ -552,6 +579,7 @@ select option { background: var(--surface-solid); color: var(--text); }
     .fin-form-grid { grid-template-columns: 1fr; }
     .fin-form-grid .field.full-width { grid-column: 1; }
     .tab, .modal-tab-btn { padding: 8px 6px; font-size: 0.75rem;}
+    .score-row{flex-wrap:wrap}
 }
 @media(max-width:430px){
     main{padding:16px 12px 80px}
