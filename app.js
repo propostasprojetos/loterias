@@ -338,6 +338,8 @@ function getGameStats(game) {
     const evens = countEven(game);
     const odds = game.length - evens;
     const balance = Math.abs(evens - odds);
+    const sum = game.reduce((a, b) => a + b, 0);
+    const consec = maxConsec(game);
     
     let score = 98 - (balance * 4);
     if (score < 50) score = 50 + Math.floor(Math.random()*20);
@@ -345,7 +347,7 @@ function getGameStats(game) {
     let sClass = score >= 90 ? 'high' : score >= 80 ? 'med' : 'low';
     let sLabel = score >= 90 ? 'Excelente' : score >= 80 ? 'Bom' : 'Regular';
 
-    return { avgG, rStr, score, sClass, sLabel };
+    return { avgG, rStr, evens, odds, sum, consec, score, sClass, sLabel };
 }
 
 function renderGames() {
@@ -367,11 +369,18 @@ function renderGames() {
                     </div>
                 </div>
                 <div class="game-numbers">${game.map(n => renderBall(n, g.slug)).join('')}</div>
-                <div class="game-bottom">
-                    <span class="game-stat" title="Faixas">Faixas: ${stats.rStr}</span>
-                    <span class="game-stat" title="Gap médio">Gap médio: ${stats.avgG}</span>
+                <div class="game-bottom" style="flex-direction: column; gap: 8px;">
+                    <div style="display:flex; justify-content:space-between; gap:4px;">
+                        <span class="game-stat" title="Distribuição: Pares e Ímpares">P/I: <strong>${stats.evens} / ${stats.odds}</strong></span>
+                        <span class="game-stat" title="Soma total dos números (ideal evitar extremos)">Soma: <strong>${stats.sum}</strong></span>
+                        <span class="game-stat" title="Maior cadeia de números vizinhos (ex: 1,2,3 = 3)">Seq Máx: <strong>${stats.consec}</strong></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; gap:4px;">
+                        <span class="game-stat" title="Distribuição por dezenas (0-9, 10-19, etc)">Faixas: <strong>${stats.rStr}</strong></span>
+                        <span class="game-stat" title="Distância média (gap) entre os números sorteados">Gap Méd: <strong>${stats.avgG}</strong></span>
+                    </div>
                 </div>
-                <div class="score-row" title="Score de qualidade">
+                <div class="score-row" title="Score de qualidade baseado no balanço estatístico">
                     <span class="score-tag ${stats.sClass}">${stats.sLabel}</span>
                     <div class="score-bar-wrap"><div class="score-bar" style="width:${stats.score}%"></div></div>
                     <span class="score-label ${stats.sClass}">${stats.score}/100</span>
