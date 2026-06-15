@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS public.prizes (
 
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     action TEXT NOT NULL,
     target_id TEXT,
     details JSONB,
