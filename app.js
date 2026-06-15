@@ -371,7 +371,54 @@ function renderGames() {
 }
 function renderAnalysis() {
     const ab = $('analysis-body');
-    if(ab) ab.innerHTML = '<p>Análise estatística dinâmica ativada.</p>';
+    if (!ab) return;
+    
+    let h = '';
+    
+    // Mode badge
+    h += `<div class="analysis-section" style="margin-bottom: 16px;"><p style="font-size:.8rem;color:var(--text-2);margin-bottom:8px">
+        Modo de Geração: <strong style="color:var(--gold)">${MODES[generationMode]?.label || 'Dinâmico'}</strong></p></div>`;
+
+    let hasData = false;
+    activeGames.forEach(g => {
+        const state = currentGamesData[g.slug];
+        if (!state || state.games.length === 0) return;
+        hasData = true;
+
+        const maxDezenas = parseInt(g.dezenas_range) || 60; // default to 60 if not specified
+        
+        const freq = {};
+        for (let i = 1; i <= maxDezenas; i++) freq[i] = 0;
+        state.games.forEach(game => game.forEach(n => {
+            if (freq[n] !== undefined) freq[n]++;
+        }));
+
+        const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+        const top5 = sorted.slice(0, 5).map(([n, f]) => `${pad(n)} (${f}x)`).join(', ');
+        const bot5 = sorted.slice(-5).map(([n, f]) => `${pad(n)} (${f}x)`).join(', ');
+        const avgEv = (state.games.reduce((s, game) => s + countEven(game), 0) / state.games.length).toFixed(1);
+        const avgMaxSeq = (state.games.reduce((s, game) => s + maxConsec(game), 0) / state.games.length).toFixed(1);
+
+        h += `
+        <div class="analysis-section" style="margin-bottom: 24px;">
+            <h4 style="color: var(--gold); margin-bottom: 12px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                <span style="display:inline-block;width:4px;height:14px;background:var(--gold);border-radius:2px;"></span>
+                ${g.nome} — Análise
+            </h4>
+            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.85rem; color: var(--text-2); display: flex; flex-direction: column; gap: 8px;">
+                <li><strong style="color: var(--text);">Mais frequentes:</strong> ${top5}</li>
+                <li><strong style="color: var(--text);">Menos frequentes:</strong> ${bot5}</li>
+                <li><strong style="color: var(--text);">Média de pares/jogo:</strong> ${avgEv}</li>
+                <li><strong style="color: var(--text);">Máx. consecutivos (Média):</strong> ${avgMaxSeq}</li>
+            </ul>
+        </div>`;
+    });
+
+    if (!hasData) {
+        h = '<p style="color: var(--text-3); font-size: 0.9rem; text-align: center; padding: 20px 0;">Gere jogos para ver a análise estatística dinâmica.</p>';
+    }
+
+    ab.innerHTML = h;
 }
 
 // ===== HISTORY (localStorage) =====
