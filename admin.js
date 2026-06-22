@@ -149,6 +149,13 @@ async function loadGamesAdmin() {
 
     games.forEach(g => {
         const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', (e) => {
+            if (e.target.closest('button') || e.target.closest('a')) {
+                return;
+            }
+            editGame(g.id);
+        });
         const params = g.parametros || {};
         tr.innerHTML = `
             <td>${g.nome}</td>
@@ -157,7 +164,14 @@ async function loadGamesAdmin() {
             <td>${params.pick_size || '?'}</td>
             <td><span class="type-badge ${g.status === 'ativo' ? 'badge-prize' : 'badge-bet'}">${g.status}</span></td>
             <td>
-                <button class="btn-sm" onclick="editGame('${g.id}')">Editar</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-icon" style="color: var(--gold); border-color: rgba(232,180,77,.25); width: 28px; height: 28px;" onclick="editGame('${g.id}')" title="Editar">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                    <button class="btn-icon" style="color: var(--red); border-color: rgba(232,93,93,.25); width: 28px; height: 28px;" onclick="deleteGame('${g.id}', '${g.nome}')" title="Excluir">
+                        ✕
+                    </button>
+                </div>
             </td>
         `;
         tbody.appendChild(tr);
@@ -381,7 +395,7 @@ async function savePlan(e) {
 async function openGameModal(gameId = null) {
     document.getElementById('form-admin-game').reset();
     document.getElementById('edit-game-id').value = '';
-    document.getElementById('modal-game-title').textContent = gameId ? 'Editar Jogo' : 'Novo Jogo';
+    document.getElementById('modal-game-title').textContent = gameId ? 'Editar Tipo de Jogo' : 'Novo Tipo de Jogo';
 
     if (gameId) {
         const { data: game } = await window.supabaseClient.from('jogos').select('*').eq('id', gameId).single();
@@ -403,6 +417,20 @@ async function openGameModal(gameId = null) {
 }
 
 window.editGame = function(id) { openGameModal(id); };
+
+window.deleteGame = async function(id, name) {
+    if (confirm(`Tem certeza que deseja excluir o tipo de jogo "${name}"?`)) {
+        try {
+            const { error } = await window.supabaseClient.from('jogos').delete().eq('id', id);
+            if (error) throw error;
+            window.toast('Tipo de jogo excluído com sucesso!');
+            await refreshAdminData();
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao excluir tipo de jogo: ' + err.message);
+        }
+    }
+};
 
 async function saveGame(e) {
     e.preventDefault();

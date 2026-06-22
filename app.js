@@ -1,8 +1,22 @@
-// ===== LotoSmart v2 — Advanced Optimization Engine =====
+// ==========================================
+// app.js - Main Client Application (Module)
+// ==========================================
+
+import { strategyEngine } from './js/engine/StrategyEngine.js';
+import { historyManager } from './js/engine/HistoryManager.js';
+import { metricsCalculator } from './js/engine/MetricsCalculator.js';
 
 // ===== UTILS =====
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
+const pad = n => n.toString().padStart(2, '0');
+const fmt = v => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+// Exporting helpers to window so they are available globally (e.g. for admin.js) when used as modules
+window.$ = $;
+window.$$ = $$;
+window.pad = pad;
+window.fmt = fmt;
 
 const ICON = {
     copy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`,
@@ -25,8 +39,6 @@ function maxConsec(nums) {
     return mx;
 }
 function intersect(a, b) { return a.filter(n => b.includes(n)); }
-function fmt(v) { return 'R$ ' + v.toFixed(2).replace('.', ','); }
-function pad(n) { return String(n).padStart(2, '0'); }
 function renderBall(n, slug) {
     const isEven = n % 2 === 0;
     const isQn = slug === 'quina';
@@ -218,58 +230,8 @@ function updateSummary() {
     return qtys;
 }
 
-function generateGenericGames(count, params, keptGames = []) {
-    if (count <= 0) return [];
-    const poolSize = count * 5;
-    const candidates = [];
-    const max = params.range_max || 60;
-    const pick = params.pick_size || 6;
-    const all = Array.from({length: max}, (_, i) => i + 1);
 
-    for (let i = 0; i < poolSize * 10 && candidates.length < poolSize; i++) {
-        const g = shuffle(all).slice(0, pick).sort((a,b) => a-b);
-        if (!candidates.some(c => c.every((v, idx) => v === g[idx]))) {
-            candidates.push(g);
-        }
-    }
-
-    if (candidates.length === 0) return [];
-
-    const selected = [...keptGames];
-    const result = [];
-    const maxIntersect = Math.max(1, Math.floor(pick * 0.6));
-
-    while (result.length < count) {
-        let bestIdx = -1;
-        let bestScore = -Infinity;
-
-        for (let i = 0; i < candidates.length; i++) {
-            if (!candidates[i]) continue;
-            let penalty = 0;
-            for (const sel of selected) {
-                const common = intersect(candidates[i], sel).length;
-                if (common > maxIntersect) penalty += 100;
-                else penalty += common;
-            }
-            const score = -penalty; 
-            if (score > bestScore) {
-                bestScore = score;
-                bestIdx = i;
-            }
-        }
-        if (bestIdx !== -1) {
-            const chosen = candidates[bestIdx];
-            result.push(chosen);
-            selected.push(chosen);
-            candidates[bestIdx] = null;
-        } else {
-            break;
-        }
-    }
-    return result;
-}
-
-function generateAll() {
+async function generateAll() {
     const qtys = updateSummary();
     const totalQty = Object.values(qtys).reduce((a,b)=>a+b, 0);
     if (totalQty === 0) { toast('Selecione a quantidade de jogos'); return; }
@@ -279,26 +241,38 @@ function generateAll() {
     btn.classList.add('loading');
     btn.textContent = 'Gerando...';
 
-    setTimeout(() => {
+    // Get selected strategy (defaulting to statistical if UI not updated yet)
+    const strategySelect = $('strategy-selector');
+    const strategyName = strategySelect ? strategySelect.value : 'statistical';
+    
+    try {
         let hasSelections = false;
-        activeGames.forEach(g => {
+        for (const g of activeGames) {
             const qty = qtys[g.slug] || 0;
             const state = currentGamesData[g.slug];
-            if(!state) return;
-            if (state.selected.size === 0) {
-                state.games = generateGenericGames(qty, g.parametros, []);
-            } else {
-                const kept = state.games.filter((_, i) => state.selected.has(i));
-                const needed = qty - kept.length;
-                const newGames = generateGenericGames(needed, g.parametros, kept);
-                state.games = [...kept, ...newGames];
+            if(!state) continue;
+
+            // Fetch history if the strategy requires it (e.g. frequent, delayed)
+            let history = [];
+            if (strategyName !== 'statistical') {
+                history = await historyManager.getHistory(g.slug);
             }
+
+            const kept = state.games.filter((_, i) => state.selected.has(i));
+            const needed = qty - kept.length;
+            
+            let newGames = [];
+            if (needed > 0) {
+                newGames = strategyEngine.run(strategyName, needed, g.parametros, history, kept);
+            }
+            
+            state.games = [...kept, ...newGames];
             if(state.selected.size > 0) hasSelections = true;
             state.selected.clear();
-        });
+        }
 
         renderGames();
-        
+
         const resArea = $('results-area');
         if(resArea) {
             resArea.classList.remove('hidden');
@@ -307,9 +281,7 @@ function generateAll() {
 
         saveToHistory();
         if (!hasSelections) toast('Jogos gerados e salvos no histórico!');
-
-        btn.classList.remove('loading');
-        btn.textContent = 'Gerar Jogos';
+        else toast('Jogos complementados e salvos!');
 
         let regBtn = $('btn-register-bet-gen');
         if (!regBtn) {
@@ -320,34 +292,13 @@ function generateAll() {
             regBtn.addEventListener('click', registerBetFromGenerator);
             btn.parentNode.insertBefore(regBtn, btn.nextSibling);
         }
-    }, 300);
-}
-
-function getGameStats(game) {
-    const gaps = [];
-    for(let i=1; i<game.length; i++) gaps.push(game[i] - game[i-1]);
-    const avgG = gaps.length ? (gaps.reduce((a,b)=>a+b,0)/gaps.length).toFixed(1) : 0;
-    
-    const ranges = {};
-    game.forEach(n => {
-        const r = Math.floor((n-1)/10)*10;
-        ranges[r] = (ranges[r] || 0) + 1;
-    });
-    const rStr = Object.keys(ranges).length;
-
-    const evens = countEven(game);
-    const odds = game.length - evens;
-    const balance = Math.abs(evens - odds);
-    const sum = game.reduce((a, b) => a + b, 0);
-    const consec = maxConsec(game);
-    
-    let score = 98 - (balance * 4);
-    if (score < 50) score = 50 + Math.floor(Math.random()*20);
-    
-    let sClass = score >= 90 ? 'high' : score >= 80 ? 'med' : 'low';
-    let sLabel = score >= 90 ? 'Excelente' : score >= 80 ? 'Bom' : 'Regular';
-
-    return { avgG, rStr, evens, odds, sum, consec, score, sClass, sLabel };
+    } catch (e) {
+        console.error("Error generating games:", e);
+        toast('Erro ao gerar: ' + e.message);
+    } finally {
+        btn.classList.remove('loading');
+        btn.textContent = 'Gerar Jogos';
+    }
 }
 
 function renderGames() {
@@ -358,7 +309,7 @@ function renderGames() {
         
         container.innerHTML = state.games.map((game, idx) => {
             const sel = state.selected.has(idx);
-            const stats = getGameStats(game);
+            const stats = metricsCalculator.calculate(game, g.parametros);
             return `
             <div class="game-card ${sel ? 'selected' : ''}" data-slug="${g.slug}" data-idx="${idx}">
                 <div class="game-top">
@@ -573,10 +524,13 @@ function renderHistory() {
 
 // ===== TOAST =====
 function toast(msg) {
+    const el = $('toast');
+    if(!el) return;
     $('toast-msg').textContent = msg;
-    $('toast').classList.add('show');
-    setTimeout(() => $('toast').classList.remove('show'), 2500);
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3000);
 }
+window.toast = toast;
 
 function switchView(view) {
     const isValid = !!currentSession;

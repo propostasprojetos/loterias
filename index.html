@@ -39,19 +39,19 @@
                     <!-- Configurações dinâmicas (orçamento, quantidades) injetadas via JS -->
                 </div>
 
-                <div class="mode-selector">
-                    <button class="mode-btn" data-mode="conservative">
-                        <span class="mode-icon">🛡️</span>
-                        <span class="mode-label">Conservador</span>
-                    </button>
-                    <button class="mode-btn active" data-mode="balanced">
-                        <span class="mode-icon">⚖️</span>
-                        <span class="mode-label">Balanceado</span>
-                    </button>
-                    <button class="mode-btn" data-mode="aggressive">
-                        <span class="mode-icon">🔥</span>
-                        <span class="mode-label">Agressivo</span>
-                    </button>
+                <div class="field" style="margin-bottom: 20px;">
+                    <label for="strategy-selector" style="color: var(--gold); display: flex; align-items: center; gap: 8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        Motor Estratégico (Engine)
+                    </label>
+                    <div class="input-row">
+                        <select id="strategy-selector" style="width: 100%; padding: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: var(--font);">
+                            <option value="statistical">📊 Estatístico (Equilíbrio e Distribuição)</option>
+                            <option value="frequent">🔥 Frequentes (Dezenas mais Sorteadas)</option>
+                            <option value="delayed">❄️ Atrasadas (Dezenas Frias)</option>
+                            <!-- <option value="hybrid">⚙️ Híbrido (Misto)</option> -->
+                        </select>
+                    </div>
                 </div>
 
                 <div class="summary-bar" id="summary-bar">
@@ -329,7 +329,7 @@
                         <button class="admin-tab-btn active" data-tab="admin-dashboard">Visão Geral</button>
                         <button class="admin-tab-btn" data-tab="admin-usuarios">Usuários</button>
                         <button class="admin-tab-btn" data-tab="admin-planos">Planos</button>
-                        <button class="admin-tab-btn" data-tab="admin-jogos">Jogos (Engine)</button>
+                        <button class="admin-tab-btn" data-tab="admin-jogos">Tipos de Jogos</button>
                     </div>
                 </div>
 
@@ -422,8 +422,8 @@
                 <!-- Tab: Jogos -->
                 <div id="admin-jogos" class="admin-tab-content hidden">
                     <div class="fin-table-header">
-                        <h3>Motor de Jogos (Engine Builder)</h3>
-                        <button class="btn-sm btn-primary" id="btn-show-create-game">+ Novo Jogo</button>
+                        <h3>Tipos de Jogos</h3>
+                        <button class="btn-sm btn-primary" id="btn-show-create-game">+ Novo Tipo de Jogo</button>
                     </div>
                     <div class="fin-table-wrap">
                        <table class="fin-table">
@@ -563,7 +563,7 @@
         <div id="modal-admin-game" class="modal-overlay hidden">
             <div class="modal-content admin-modal">
                 <div class="modal-header">
-                    <h2 id="modal-game-title">Novo Jogo (Engine)</h2>
+                    <h2 id="modal-game-title">Novo Tipo de Jogo</h2>
                     <button class="btn-close-modal" id="btn-close-game-modal">✕</button>
                 </div>
                 <form id="form-admin-game">
@@ -662,7 +662,7 @@
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-    <script src="admin.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="admin.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
