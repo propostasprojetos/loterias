@@ -121,10 +121,10 @@ function renderDynamicGameUI() {
             const cost = g.parametros.cost || 3.00;
             return `
                 <div class="field">
-                    <label title="Apostas para ${g.nome}">${g.nome}</label>
-                    <div class="input-row">
+                    <label title="Digite a quantidade de jogos para ${g.nome} (Custo unitário: R$ ${cost.toFixed(2)})">${g.nome}</label>
+                    <div class="input-row" title="Informe a quantidade de jogos que deseja gerar para este tipo">
                         <span class="prefix">Qtd</span>
-                        <input type="number" id="qty-${g.slug}" value="0" min="0" data-cost="${cost}">
+                        <input type="number" id="qty-${g.slug}" min="0" data-cost="${cost}" placeholder="0" style="text-align: center;">
                     </div>
                 </div>
             `;
@@ -312,31 +312,28 @@ function renderGames() {
             const stats = metricsCalculator.calculate(game, g.parametros);
             return `
             <div class="game-card ${sel ? 'selected' : ''}" data-slug="${g.slug}" data-idx="${idx}">
-                <div class="game-top">
-                    <span class="game-label">Jogo ${pad(idx + 1)}</span>
+                <div class="game-top" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <span class="game-label" style="margin-bottom: 0;">Jogo ${pad(idx + 1)}</span>
+                    <div class="game-meta" style="margin-right: 0;">
+                        <span class="game-stat" title="Distribuição: Pares e Ímpares (Quantidade de números pares / Quantidade de números ímpares)">P/I: <strong>${stats.evens}/${stats.odds}</strong></span>
+                        <span class="game-stat" title="Soma total de todas as dezenas deste jogo">Soma: <strong>${stats.sum}</strong></span>
+                        <span class="game-stat" title="Maior sequência de dezenas consecutivas (Ex: 12, 13, 14 = 3)">Seq Máx: <strong>${stats.consec}</strong></span>
+                        <span class="game-stat" title="Distribuição por faixas de dezenas (ex: dezenas na casa de 0-9, 10-19, etc.)">Faixas: <strong>${stats.rStr}</strong></span>
+                        <span class="game-stat" title="Média dos intervalos/gaps de distância entre as dezenas">Gap Méd: <strong>${stats.avgG}</strong></span>
+                    </div>
                     <div class="game-actions">
-                        <button class="btn-icon btn-copy-one" title="Copiar jogo" data-slug="${g.slug}" data-idx="${idx}">${ICON.copy}</button>
-                        <button class="btn-icon btn-select ${sel ? 'checked' : ''}" title="Manter jogo" data-slug="${g.slug}" data-idx="${idx}">${sel ? ICON.check : ICON.pin}</button>
+                        <button class="btn-icon btn-copy-one" title="Copiar este jogo para a área de transferência" data-slug="${g.slug}" data-idx="${idx}">${ICON.copy}</button>
+                        <button class="btn-icon btn-select ${sel ? 'checked' : ''}" title="Fixar / Manter este jogo na próxima geração" data-slug="${g.slug}" data-idx="${idx}">${sel ? ICON.check : ICON.pin}</button>
                     </div>
                 </div>
-                <div class="game-numbers">${game.map(n => renderBall(n, g.slug)).join('')}</div>
-                <div class="game-bottom" style="flex-direction: column; gap: 8px;">
-                    <div style="display:flex; justify-content:space-between; gap:4px;">
-                        <span class="game-stat" title="Distribuição: Pares e Ímpares">P/I: <strong>${stats.evens} / ${stats.odds}</strong></span>
-                        <span class="game-stat" title="Soma total dos números (ideal evitar extremos)">Soma: <strong>${stats.sum}</strong></span>
-                        <span class="game-stat" title="Maior cadeia de números vizinhos (ex: 1,2,3 = 3)">Seq Máx: <strong>${stats.consec}</strong></span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; gap:4px;">
-                        <span class="game-stat" title="Distribuição por dezenas (0-9, 10-19, etc)">Faixas: <strong>${stats.rStr}</strong></span>
-                        <span class="game-stat" title="Distância média (gap) entre os números sorteados">Gap Méd: <strong>${stats.avgG}</strong></span>
-                    </div>
-                </div>
-                <div class="score-row" title="Score de qualidade baseado no balanço estatístico">
+                <div class="game-numbers" style="margin-top: 12px; margin-bottom: 12px;">${game.map(n => renderBall(n, g.slug)).join('')}</div>
+                <div class="score-row" title="Score geral de qualidade baseado no balanço estatístico">
                     <span class="score-tag ${stats.sClass}">${stats.sLabel}</span>
                     <div class="score-bar-wrap"><div class="score-bar" style="width:${stats.score}%"></div></div>
                     <span class="score-label ${stats.sClass}">${stats.score}/100</span>
                 </div>
             </div>`;
+        }).join('');
         }).join('');
     });
 
