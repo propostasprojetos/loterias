@@ -91,7 +91,7 @@ async function loadAvailableGames() {
 
         currentGamesData = {};
         activeGames.forEach(g => {
-            currentGamesData[g.slug] = { games: [], selected: new Set() };
+            currentGamesData[g.slug] = { games: [], selected: new Set(), page: 0 };
         });
 
         renderDynamicGameUI();
@@ -267,6 +267,7 @@ async function generateAll() {
             }
             
             state.games = [...kept, ...newGames];
+            state.page = 0;
             if(state.selected.size > 0) hasSelections = true;
             state.selected.clear();
         }
@@ -307,7 +308,22 @@ function renderGames() {
         const container = $(g.slug + '-games');
         if(!container || !state) return;
         
-        container.innerHTML = state.games.map((game, idx) => {
+        const itemsPerPage = 6;
+        const totalItems = state.games.length;
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        
+        if (state.page === undefined) state.page = 0;
+        if (state.page >= totalPages && totalPages > 0) {
+            state.page = totalPages - 1;
+        }
+        if (state.page < 0) state.page = 0;
+
+        const startIdx = state.page * itemsPerPage;
+        const endIdx = startIdx + itemsPerPage;
+        const paginatedGames = state.games.slice(startIdx, endIdx);
+
+        let html = paginatedGames.map((game, relativeIdx) => {
+            const idx = startIdx + relativeIdx;
             const sel = state.selected.has(idx);
             const stats = metricsCalculator.calculate(game, g.parametros);
             return `
@@ -334,6 +350,40 @@ function renderGames() {
                 </div>
             </div>`;
         }).join('');
+
+        if (totalPages > 1) {
+            html += `
+            <div class="pagination-control" style="display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 20px; padding: 10px 0;">
+                <button class="btn-sm prev-page-btn" data-slug="${g.slug}" ${state.page === 0 ? 'disabled' : ''}>Anterior</button>
+                <span style="font-size: 0.85rem; color: var(--text-2);">Página <strong>${state.page + 1}</strong> de <strong>${totalPages}</strong></span>
+                <button class="btn-sm next-page-btn" data-slug="${g.slug}" ${state.page === totalPages - 1 ? 'disabled' : ''}>Próxima</button>
+            </div>
+            `;
+        }
+
+        container.innerHTML = html;
+    });
+
+    $$('.prev-page-btn').forEach(b => {
+        b.addEventListener('click', (e) => {
+            const slug = e.currentTarget.dataset.slug;
+            if (currentGamesData[slug].page > 0) {
+                currentGamesData[slug].page--;
+                renderGames();
+            }
+        });
+    });
+
+    $$('.next-page-btn').forEach(b => {
+        b.addEventListener('click', (e) => {
+            const slug = e.currentTarget.dataset.slug;
+            const itemsPerPage = 6;
+            const totalPages = Math.ceil(currentGamesData[slug].games.length / itemsPerPage);
+            if (currentGamesData[slug].page < totalPages - 1) {
+                currentGamesData[slug].page++;
+                renderGames();
+            }
+        });
     });
 
     $$('.btn-select').forEach(b => {
@@ -460,7 +510,8 @@ function loadFromHistory(entry) {
         if(entry.gamesData[g.slug]) {
             currentGamesData[g.slug] = {
                 games: entry.gamesData[g.slug],
-                selected: new Set()
+                selected: new Set(),
+                page: 0
             };
         }
     });
