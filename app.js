@@ -334,7 +334,6 @@ function renderGames() {
                 </div>
             </div>`;
         }).join('');
-        }).join('');
     });
 
     $$('.btn-select').forEach(b => {
