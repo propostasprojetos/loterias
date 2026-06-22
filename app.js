@@ -835,6 +835,7 @@ async function logAudit(action, targetId = '', details = {}) {
         console.error('Audit log failed:', e);
     }
 }
+window.logAudit = logAudit;
 
 
 

@@ -280,7 +280,7 @@ async function saveUser(e) {
 
     try {
         if (!id) {
-            // CriaÃ§Ã£o
+            // Criação
             const { data, error } = await window.supabaseClient.rpc('create_user_by_admin', {
                 p_name: name,
                 p_email: email,
@@ -290,9 +290,10 @@ async function saveUser(e) {
                 p_password: password
             });
             if (error) throw error;
-            window.toast('UsuÃ¡rio criado com sucesso!');
+            await window.logAudit('create_user', email, { name, email, cpf, celular, plano_id });
+            window.toast('Usuário criado com sucesso!');
         } else {
-            // EdiÃ§Ã£o
+            // Edição
             const modulos = {};
             document.querySelectorAll('.override-select').forEach(sel => {
                 const val = sel.value;
@@ -305,14 +306,15 @@ async function saveUser(e) {
             }).eq('id', id);
             
             if (error) throw error;
-            window.toast('UsuÃ¡rio atualizado com sucesso!');
+            await window.logAudit('edit_user', id, { name, email, cpf, celular, ativo, plano_id, modulos });
+            window.toast('Usuário atualizado com sucesso!');
         }
         
         document.getElementById('modal-admin-user').classList.add('hidden');
         await refreshAdminData();
     } catch (err) {
         console.error(err);
-        alert('Erro ao salvar usuÃ¡rio: ' + err.message);
+        alert('Erro ao salvar usuário: ' + err.message);
     }
 }
 
@@ -369,18 +371,24 @@ async function savePlan(e) {
             const { data, error } = await window.supabaseClient.from('planos').insert({ nome, status }).select('id').single();
             if (error) throw error;
             planId = data.id;
+            // Insert bindings
+            if (gameIds.length > 0) {
+                const bindings = gameIds.map(gid => ({ plano_id: planId, jogo_id: gid }));
+                await window.supabaseClient.from('plano_jogos').insert(bindings);
+            }
+            await window.logAudit('create_plan', planId, { nome, status, gameIds });
         } else {
             const { error } = await window.supabaseClient.from('planos').update({ nome, status }).eq('id', id);
             if (error) throw error;
             
             // Delete old bindings
             await window.supabaseClient.from('plano_jogos').delete().eq('plano_id', planId);
-        }
-
-        // Insert new bindings
-        if (gameIds.length > 0) {
-            const bindings = gameIds.map(gid => ({ plano_id: planId, jogo_id: gid }));
-            await window.supabaseClient.from('plano_jogos').insert(bindings);
+            // Insert new bindings
+            if (gameIds.length > 0) {
+                const bindings = gameIds.map(gid => ({ plano_id: planId, jogo_id: gid }));
+                await window.supabaseClient.from('plano_jogos').insert(bindings);
+            }
+            await window.logAudit('edit_plan', planId, { nome, status, gameIds });
         }
 
         window.toast('Plano salvo!');
@@ -423,6 +431,7 @@ window.deleteGame = async function(id, name) {
         try {
             const { error } = await window.supabaseClient.from('jogos').delete().eq('id', id);
             if (error) throw error;
+            await window.logAudit('delete_game_type', id, { slug: name });
             window.toast('Tipo de jogo excluído com sucesso!');
             await refreshAdminData();
         } catch (err) {
@@ -453,9 +462,11 @@ async function saveGame(e) {
         if (!id) {
             const { error } = await window.supabaseClient.from('jogos').insert(payload);
             if (error) throw error;
+            await window.logAudit('create_game_type', payload.slug, payload);
         } else {
             const { error } = await window.supabaseClient.from('jogos').update(payload).eq('id', id);
             if (error) throw error;
+            await window.logAudit('edit_game_type', payload.slug, payload);
         }
 
         window.toast('Jogo salvo!');
