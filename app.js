@@ -1359,55 +1359,80 @@ function registerBetFromGenerator() {
 }
 
 async function enqueueBetsForAutomation() {
-    const qtys = updateSummary();
-    const today = new Date().toISOString().slice(0, 10);
-    let enqueued = 0;
+    try {
+        const btn = $('btn-automation-gen');
+        if (btn) {
+            btn.classList.add('loading');
+            btn.textContent = 'Processando...';
+        }
 
-    for (const g of activeGames) {
-        const qty = qtys[g.slug];
-        if (qty > 0) {
-            const cost = parseFloat($('qty-'+g.slug)?.dataset.cost) || 0;
-            const total = qty * cost;
-            const strategy = $('strategy-selector')?.value || 'statistical';
-            
-            // 1. Insert into bets with queued status
-            const betData = {
-                bet_date: today,
-                lottery_type: g.slug,
-                game_count: qty,
-                total_cost: total,
-                contest_number: null,
-                notes: `Automação LotoSmart`,
-                games: currentGamesData[g.slug]?.games || [],
-                generation_mode: strategy,
-                automation_status: 'queued',
-                automation_requested_at: new Date().toISOString()
-            };
-            
-            const insertedBet = await addBet(betData);
-            
-            // 2. Insert into automation_queue if Supabase is available
-            if (insertedBet && insertedBet.id && sbReady && currentSession) {
-                try {
-                    const queueData = {
-                        bet_id: insertedBet.id,
-                        owner_id: currentSession.user.id,
-                        status: 'queued'
-                    };
-                    const { error } = await supabaseClient.from('automation_queue').insert(queueData);
-                    if (error) throw error;
-                    enqueued++;
-                } catch (e) {
-                    console.error('Failed to enqueue bet:', e);
+        const qtys = updateSummary();
+        const today = new Date().toISOString().slice(0, 10);
+        let enqueued = 0;
+
+        for (const g of activeGames) {
+            const qty = qtys[g.slug];
+            if (qty > 0) {
+                const el = $('qty-'+g.slug);
+                const cost = el && el.dataset ? parseFloat(el.dataset.cost) : 0;
+                const total = qty * (isNaN(cost) ? 0 : cost);
+                const strategy = $('strategy-selector')?.value || 'statistical';
+                
+                // 1. Insert into bets with queued status
+                const betData = {
+                    bet_date: today,
+                    lottery_type: g.slug,
+                    game_count: qty,
+                    total_cost: total,
+                    contest_number: null,
+                    notes: `Automação LotoSmart`,
+                    games: currentGamesData[g.slug]?.games || [],
+                    generation_mode: strategy,
+                    automation_status: 'queued',
+                    automation_requested_at: new Date().toISOString()
+                };
+                
+                const insertedBet = await addBet(betData);
+                
+                // 2. Insert into automation_queue if Supabase is available
+                if (insertedBet && insertedBet.id && window.sbReady && window.currentSession) {
+                    try {
+                        const queueData = {
+                            bet_id: insertedBet.id,
+                            owner_id: window.currentSession.user.id,
+                            status: 'queued'
+                        };
+                        const { error } = await window.supabaseClient.from('automation_queue').insert(queueData);
+                        if (error) throw error;
+                        enqueued++;
+                    } catch (e) {
+                        console.error('Failed to enqueue bet:', e);
+                        alert('Erro ao enviar para a fila de automação: ' + e.message);
+                    }
+                } else if (!window.sbReady || !window.currentSession) {
+                    console.warn('Banco offline ou usuário não logado. Aposta salva apenas localmente sem automação.');
                 }
             }
         }
-    }
 
-    if (enqueued > 0) {
-        toast(`🎰 ${enqueued} aposta(s) enviada(s) para fila de automação!`);
-    } else {
-        toast('⚠️ Nenhuma aposta processada. Erro ou banco offline.');
+        if (btn) {
+            btn.classList.remove('loading');
+            btn.textContent = '🎰 Fazer Jogos';
+        }
+
+        if (enqueued > 0) {
+            toast(`🎰 ${enqueued} aposta(s) enviada(s) para fila de automação!`);
+        } else {
+            toast('⚠️ Nenhuma aposta enfileirada. Banco offline ou sem jogos gerados.');
+        }
+    } catch (err) {
+        console.error("Erro fatal em enqueueBetsForAutomation:", err);
+        alert("Erro no botão Fazer Jogos: " + err.message);
+        const btn = $('btn-automation-gen');
+        if (btn) {
+            btn.classList.remove('loading');
+            btn.textContent = '🎰 Fazer Jogos';
+        }
     }
 }
 
