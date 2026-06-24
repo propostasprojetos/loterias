@@ -330,6 +330,7 @@
                         <button class="admin-tab-btn" data-tab="admin-usuarios">Usuários</button>
                         <button class="admin-tab-btn" data-tab="admin-planos">Planos</button>
                         <button class="admin-tab-btn" data-tab="admin-jogos">Tipos de Jogos</button>
+                        <button class="admin-tab-btn" data-tab="admin-automacao">Automação</button>
                     </div>
                 </div>
 
@@ -438,6 +439,30 @@
                                </tr>
                            </thead>
                            <tbody id="admin-games-table">
+                           </tbody>
+                       </table>
+                    </div>
+                </div>
+
+                <!-- Tab: Automação -->
+                <div id="admin-automacao" class="admin-tab-content hidden">
+                    <div class="fin-table-header">
+                        <h3>Fila de Automação de Apostas</h3>
+                        <button class="btn-sm btn-secondary" id="btn-refresh-automation">🔄 Atualizar Fila</button>
+                    </div>
+                    <div class="fin-table-wrap">
+                       <table class="fin-table">
+                           <thead>
+                               <tr>
+                                   <th>Data/Hora</th>
+                                   <th>Usuário</th>
+                                   <th>Aposta (ID)</th>
+                                   <th>Status</th>
+                                   <th>Tentativas</th>
+                                   <th>Último Erro</th>
+                               </tr>
+                           </thead>
+                           <tbody id="admin-automation-table">
                            </tbody>
                        </table>
                     </div>

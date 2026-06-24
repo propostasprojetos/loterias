@@ -53,6 +53,10 @@ document.addEventListener('DOMContentLoaded', () => {
             await window.handleResetUserPassword(id);
         }
     });
+
+    document.getElementById('btn-refresh-automation')?.addEventListener('click', () => {
+        if (typeof loadAutomationQueue === 'function') loadAutomationQueue();
+    });
 });
 
 async function refreshAdminData() {
@@ -71,7 +75,8 @@ async function refreshAdminData() {
             loadUsersAdmin(),
             loadPlansAdmin(),
             loadGamesAdmin(),
-            loadAuditAdmin()
+            loadAuditAdmin(),
+            loadAutomationQueue()
         ]);
     } catch (e) {
         console.error('Erro ao carregar dados do admin:', e);
@@ -477,6 +482,61 @@ async function saveGame(e) {
         alert('Erro ao salvar jogo: ' + err.message);
     }
 }
+
+// ===== AUTOMATION QUEUE =====
+async function loadAutomationQueue() {
+    const tbody = document.getElementById('admin-automation-table');
+    if (!tbody || !window.supabaseClient) return;
+
+    try {
+        const { data: queue, error } = await window.supabaseClient
+            .from('automation_queue')
+            .select(`
+                *,
+                profiles:owner_id(name, email)
+            `)
+            .order('scheduled_at', { ascending: false })
+            .limit(50);
+            
+        if (error) throw error;
+
+        tbody.innerHTML = '';
+        if (!queue || queue.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-3);">Fila vazia</td></tr>';
+            return;
+        }
+
+        queue.forEach(job => {
+            const tr = document.createElement('tr');
+            
+            let statusBadge = '';
+            switch(job.status) {
+                case 'queued': statusBadge = '<span class="type-badge" style="background: var(--surface-3); color: var(--text-2);">Aguardando</span>'; break;
+                case 'processing': statusBadge = '<span class="type-badge" style="background: var(--gold-dim); color: var(--gold);">Processando</span>'; break;
+                case 'completed': statusBadge = '<span class="type-badge badge-prize">Concluído</span>'; break;
+                case 'failed': statusBadge = '<span class="type-badge badge-bet">Falha</span>'; break;
+                default: statusBadge = `<span class="type-badge">${job.status}</span>`;
+            }
+
+            const dataHora = new Date(job.scheduled_at).toLocaleString('pt-BR');
+            const userNome = job.profiles ? job.profiles.name || job.profiles.email : job.owner_id;
+
+            tr.innerHTML = `
+                <td>${dataHora}</td>
+                <td><div style="font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;" title="${userNome}">${userNome}</div></td>
+                <td><div style="font-size: 0.65rem; color: var(--text-3); font-family: monospace;">${job.bet_id}</div></td>
+                <td>${statusBadge}</td>
+                <td><div style="text-align: center;">${job.retry_count} / ${job.max_retries}</div></td>
+                <td><div style="font-size: 0.7rem; color: var(--red); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${job.last_error || ''}">${job.last_error || '-'}</div></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        console.error('Erro ao carregar fila de automação:', e);
+        tbody.innerHTML = `<tr><td colspan="6" style="color: var(--red); text-align: center;">Erro ao carregar dados</td></tr>`;
+    }
+}
+
 
 // Global hooks para o app.js
 window.refreshAdminData = refreshAdminData;

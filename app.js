@@ -292,6 +292,13 @@ async function generateAll() {
             regBtn.textContent = '💰 Registrar aposta no Financeiro';
             regBtn.addEventListener('click', registerBetFromGenerator);
             btn.parentNode.insertBefore(regBtn, btn.nextSibling);
+            
+            let autoBtn = document.createElement('button');
+            autoBtn.id = 'btn-automation-gen';
+            autoBtn.className = 'btn-primary';
+            autoBtn.textContent = '🎰 Fazer Jogos';
+            autoBtn.addEventListener('click', enqueueBetsForAutomation);
+            btn.parentNode.insertBefore(autoBtn, btn.nextSibling);
         }
     } catch (e) {
         console.error("Error generating games:", e);
@@ -857,23 +864,28 @@ function saveLocalPrizes(data) { localStorage.setItem(FIN_PRIZES_KEY, JSON.strin
 
 // ===== FINANCIAL CRUD =====
 async function addBet(betData) {
+    let insertedBet = null;
     if (sbReady && currentSession) {
         try {
             const dataWithOwner = { ...betData, owner_id: currentSession.user.id };
-            const { error } = await supabaseClient.from('bets').insert(dataWithOwner);
+            const { data, error } = await supabaseClient.from('bets').insert(dataWithOwner).select();
             if (error) throw error;
+            insertedBet = data?.[0];
         } catch (e) {
             console.error('Supabase create bet failed, using localStorage:', e);
             const bets = loadLocalBets();
-            bets.unshift({ ...betData, id: Date.now().toString(), created: new Date().toISOString() });
+            insertedBet = { ...betData, id: Date.now().toString(), created: new Date().toISOString() };
+            bets.unshift(insertedBet);
             saveLocalBets(bets);
         }
     } else {
         const bets = loadLocalBets();
-        bets.unshift({ ...betData, id: Date.now().toString(), created: new Date().toISOString() });
+        insertedBet = { ...betData, id: Date.now().toString(), created: new Date().toISOString() };
+        bets.unshift(insertedBet);
         saveLocalBets(bets);
     }
     await refreshFinancialData();
+    return insertedBet;
 }
 
 async function addPrize(prizeData) {
@@ -1329,6 +1341,7 @@ function registerBetFromGenerator() {
         if (qty > 0) {
             const cost = parseFloat($('qty-'+g.slug)?.dataset.cost) || 0;
             const total = qty * cost;
+            const strategy = $('strategy-selector')?.value || 'statistical';
             addBet({
                 bet_date: today,
                 lottery_type: g.slug,
@@ -1336,12 +1349,66 @@ function registerBetFromGenerator() {
                 total_cost: total,
                 contest_number: null,
                 notes: `Gerado no LotoSmart`,
-                games: JSON.stringify(currentGamesData[g.slug]?.games || [])
+                games: currentGamesData[g.slug]?.games || [],
+                generation_mode: strategy
             });
         }
     });
 
     toast('💰 Apostas registradas no financeiro!');
+}
+
+async function enqueueBetsForAutomation() {
+    const qtys = updateSummary();
+    const today = new Date().toISOString().slice(0, 10);
+    let enqueued = 0;
+
+    for (const g of activeGames) {
+        const qty = qtys[g.slug];
+        if (qty > 0) {
+            const cost = parseFloat($('qty-'+g.slug)?.dataset.cost) || 0;
+            const total = qty * cost;
+            const strategy = $('strategy-selector')?.value || 'statistical';
+            
+            // 1. Insert into bets with queued status
+            const betData = {
+                bet_date: today,
+                lottery_type: g.slug,
+                game_count: qty,
+                total_cost: total,
+                contest_number: null,
+                notes: `Automação LotoSmart`,
+                games: currentGamesData[g.slug]?.games || [],
+                generation_mode: strategy,
+                automation_status: 'queued',
+                automation_requested_at: new Date().toISOString()
+            };
+            
+            const insertedBet = await addBet(betData);
+            
+            // 2. Insert into automation_queue if Supabase is available
+            if (insertedBet && insertedBet.id && sbReady && currentSession) {
+                try {
+                    const queueData = {
+                        bet_id: insertedBet.id,
+                        owner_id: currentSession.user.id,
+                        status: 'queued'
+                    };
+                    const { error } = await supabaseClient.from('automation_queue').insert(queueData);
+                    if (error) throw error;
+                    enqueued++;
+                } catch (e) {
+                    console.error('Failed to enqueue bet:', e);
+                }
+            }
+        }
+    }
+
+    if (enqueued > 0) {
+        toast(`🎰 ${enqueued} aposta(s) enviada(s) para fila de automação!`);
+    } else {
+        toast('⚠️ Nenhuma aposta processada. Erro ou banco offline.');
+    }
 }
 
 // ===== INIT =====
