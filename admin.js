@@ -491,10 +491,7 @@ async function loadAutomationQueue() {
     try {
         const { data: queue, error } = await window.supabaseClient
             .from('automation_queue')
-            .select(`
-                *,
-                profiles:owner_id(name, email)
-            `)
+            .select('*')
             .order('scheduled_at', { ascending: false })
             .limit(50);
             
@@ -504,6 +501,18 @@ async function loadAutomationQueue() {
         if (!queue || queue.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-3);">Fila vazia</td></tr>';
             return;
+        }
+
+        // Fetch profiles separately to avoid PostgREST foreign key relationship errors
+        const ownerIds = [...new Set(queue.map(q => q.owner_id))];
+        const { data: profiles } = await window.supabaseClient
+            .from('profiles')
+            .select('id, name')
+            .in('id', ownerIds);
+            
+        const profileMap = {};
+        if (profiles) {
+            profiles.forEach(p => profileMap[p.id] = p);
         }
 
         queue.forEach(job => {
@@ -519,7 +528,8 @@ async function loadAutomationQueue() {
             }
 
             const dataHora = new Date(job.scheduled_at).toLocaleString('pt-BR');
-            const userNome = job.profiles ? job.profiles.name || job.profiles.email : job.owner_id;
+            const profile = profileMap[job.owner_id];
+            const userNome = profile && profile.name ? profile.name : job.owner_id;
 
             tr.innerHTML = `
                 <td>${dataHora}</td>
