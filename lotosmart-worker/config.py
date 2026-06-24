@@ -29,9 +29,7 @@ def _require(var_name: str) -> str:
 SUPABASE_URL: str = _require("SUPABASE_URL")
 SUPABASE_SERVICE_KEY: str = _require("SUPABASE_SERVICE_KEY")
 
-# ── Caixa Loterias ────────────────────────────────────────
-CAIXA_CPF: str = _require("CAIXA_CPF")
-CAIXA_PASSWORD: str = _require("CAIXA_PASSWORD")
+# ── Caixa Loterias (Removido CPF/Senha para login manual) ──
 
 # ── Worker ────────────────────────────────────────────────
 WORKER_ID: str = os.getenv("WORKER_ID", "worker-local-1")

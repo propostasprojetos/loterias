@@ -79,66 +79,50 @@ class LotteryBot(ABC):
             logger.info(f"Screenshot salva: {filepath}")
         return str(filepath)
 
-    # ── Login ─────────────────────────────────────────────
+    # ── Login Manual Interativo ───────────────────────────
 
-    def login(self) -> bool:
+    def wait_for_user_login(self, timeout_seconds: int = 300) -> bool:
         """
-        Executa login na plataforma da Caixa.
-        Retorna True se login bem-sucedido.
+        Navega para a página de login e aguarda o usuário se autenticar manualmente.
+        O bot monitora a página até detectar o logged_indicator.
         """
-        logger.info("Iniciando login na plataforma da Caixa...")
+        logger.info("Navegando para o portal de Loterias da Caixa...")
         self.page.goto(config.CAIXA_LOGIN_URL, wait_until="networkidle", timeout=30000)
         self.take_screenshot("01_login_page")
 
-        # Preenche CPF
-        cpf_input = self.page.locator(selectors.LOGIN["cpf_input"]).first
-        cpf_input.wait_for(state="visible", timeout=10000)
-        cpf_input.fill(config.CAIXA_CPF)
+        logger.info(
+            "============================================================\n"
+            "   👉 ATENÇÃO: POR FAVOR REALIZE O LOGIN MANUALMENTE NO NAVEGADOR.\n"
+            f"   Aguardando login por até {timeout_seconds} segundos...\n"
+            "============================================================"
+        )
 
-        # Preenche Senha
-        pwd_input = self.page.locator(selectors.LOGIN["password_input"]).first
-        pwd_input.fill(config.CAIXA_PASSWORD)
+        start_time = datetime.now()
+        indicator = self.page.locator(selectors.LOGIN["logged_indicator"])
 
-        # Clica no botão de login
-        submit_btn = self.page.locator(selectors.LOGIN["submit_button"]).first
-        submit_btn.click()
+        while (datetime.now() - start_time).total_seconds() < timeout_seconds:
+            try:
+                # Se o indicador de logado estiver visível na página
+                if indicator.count() > 0 and any(el.is_visible() for el in indicator.all()):
+                    logger.info("Sessão ativa / Login detectado com sucesso!")
+                    self.take_screenshot("03_logged_in")
+                    return True
+            except Exception:
+                pass
 
-        # Aguarda resposta (login ou verificação por email)
-        self.page.wait_for_timeout(3000)
-        self.take_screenshot("02_after_login_click")
+            # Também verifica se já foi redirecionado para alguma página interna
+            current_url = self.page.url
+            if "login" not in current_url.lower() and "silce-web" in current_url.lower() and not current_url.endswith("/index"):
+                # Se mudou de página e está em um contexto interno da caixa
+                logger.info(f"Redirecionamento detectado para {current_url}. Considerando usuário logado.")
+                self.take_screenshot("03_logged_in_redirect")
+                return True
 
-        # Verifica se precisa de verificação por email
-        email_modal = self.page.locator(selectors.LOGIN["email_verification_modal"])
-        if email_modal.count() > 0 and email_modal.first.is_visible():
-            logger.warning("Verificação por email detectada! Intervenção manual necessária.")
-            self.take_screenshot("02b_email_verification")
-            # Aguarda até 120 segundos para o usuário inserir o código manualmente
-            # (apenas em modo headed)
-            if not config.HEADLESS:
-                logger.info("Aguardando inserção manual do código de verificação (120s)...")
-                try:
-                    self.page.locator(selectors.LOGIN["logged_indicator"]).wait_for(
-                        state="visible", timeout=120000
-                    )
-                except Exception:
-                    logger.error("Timeout na verificação por email")
-                    return False
-            else:
-                logger.error("Verificação por email requerida mas bot está em modo headless")
-                return False
+            self.page.wait_for_timeout(2000)  # Checa a cada 2 segundos
 
-        # Confirma que está logado
-        try:
-            self.page.locator(selectors.LOGIN["logged_indicator"]).first.wait_for(
-                state="visible", timeout=15000
-            )
-            logger.info("Login realizado com sucesso!")
-            self.take_screenshot("03_logged_in")
-            return True
-        except Exception:
-            logger.error("Falha no login — indicador de usuário logado não encontrado")
-            self.take_screenshot("03_login_failed")
-            return False
+        logger.error("Timeout aguardando login manual do usuário.")
+        self.take_screenshot("03_login_failed_timeout")
+        return False
 
     # ── Métodos abstratos (cada jogo implementa) ──────────
 
@@ -218,9 +202,9 @@ class LotteryBot(ABC):
         try:
             self.start_browser()
 
-            # 1. Login
-            if not self.login():
-                raise RuntimeError("Falha no login na plataforma da Caixa")
+            # 1. Login Manual
+            if not self.wait_for_user_login():
+                raise RuntimeError("Falha ou timeout no login manual na plataforma da Caixa")
 
             # 2. Navegar até o jogo
             if not self.navigate_to_game():
