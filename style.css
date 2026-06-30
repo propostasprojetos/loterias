@@ -562,7 +562,26 @@ select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim);
 select option { background: var(--surface-solid); color: var(--text); }
 
 /* Responsive adjustments */
+/* ===== PENDENTES DE LANÇAMENTO ===== */
+.pending-summary{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 0 14px;border-bottom:1px solid var(--border);margin-bottom:12px;font-size:.85rem;color:var(--text-2)}
+.pending-group{margin-bottom:14px}
+.pending-group-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-3);margin:0 0 8px}
+.pending-game-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:.82rem;flex-wrap:wrap}
+.pending-lottery{font-weight:600;color:var(--text);min-width:80px;text-transform:capitalize}
+.pending-numbers{color:var(--text-2);font-family:var(--font-num);letter-spacing:.3px}
+
+/* ===== STATUS BADGES ===== */
+.status-badge,.bet-game-status-badge{display:inline-flex;align-items:center;font-size:.68rem;font-weight:700;padding:3px 9px;border-radius:5px;white-space:nowrap}
+.status-pendente{background:rgba(160,165,184,.12);color:var(--text-2)}
+.status-processando{background:rgba(232,180,77,.15);color:var(--gold);animation:pulse-badge 1.2s ease-in-out infinite}
+.status-sucesso{background:var(--green-dim);color:var(--green)}
+.status-erro{background:rgba(232,93,93,.14);color:var(--red)}
+.status-pendente-lancamento{background:var(--teal-dim);color:var(--teal)}
+.status-lancado{background:var(--lavender-dim);color:var(--lavender)}
+@keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:.5}}
+
 @media(max-width:768px){
+
     main{padding:24px 16px 80px}
     .config-grid, .fin-dashboard, .admin-stats-grid { grid-template-columns: 1fr 1fr; }
     .summary-bar { grid-template-columns: 1fr 1fr; }

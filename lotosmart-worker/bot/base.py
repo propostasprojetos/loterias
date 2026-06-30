@@ -13,6 +13,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, Browser, BrowserContext, Page
 
 import config
+import queue_manager
 from bot import selectors
 
 logger = logging.getLogger("lotosmart.bot")
@@ -33,12 +34,16 @@ class LotteryBot(ABC):
 
     def start_browser(self):
         """Inicia Playwright e abre o browser."""
+        import os
         self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(
+        
+        user_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "playwright_profile"))
+        
+        # Usa contexto persistente para salvar login e cookies
+        self.context = self.playwright.chromium.launch_persistent_context(
+            user_data_dir=user_data_dir,
             headless=config.HEADLESS,
             slow_mo=300,  # 300ms entre ações — mais seguro contra detecção
-        )
-        self.context = self.browser.new_context(
             viewport={"width": 1280, "height": 800},
             user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -46,8 +51,11 @@ class LotteryBot(ABC):
                 "Chrome/120.0.0.0 Safari/537.36"
             ),
         )
-        self.page = self.context.new_page()
-        logger.info(f"Browser iniciado (headless={config.HEADLESS})")
+        
+        # O contexto persistente já vem com uma página padrão
+        self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
+        self.browser = None # Não temos self.browser em contexto persistente
+        logger.info(f"Browser iniciado (headless={config.HEADLESS}, profile={user_data_dir})")
 
     def stop_browser(self):
         """Fecha tudo de forma segura."""
@@ -92,8 +100,8 @@ class LotteryBot(ABC):
 
         logger.info(
             "============================================================\n"
-            "   👉 ATENÇÃO: POR FAVOR REALIZE O LOGIN MANUALMENTE NO NAVEGADOR.\n"
-            f"   Aguardando login por até {timeout_seconds} segundos...\n"
+            "   ATENCAO: POR FAVOR REALIZE O LOGIN MANUALMENTE NO NAVEGADOR.\n"
+            f"   Aguardando login por ate {timeout_seconds} segundos...\n"
             "============================================================"
         )
 
@@ -102,25 +110,24 @@ class LotteryBot(ABC):
 
         while (datetime.now() - start_time).total_seconds() < timeout_seconds:
             try:
+                # Tenta fechar cookies e popup +18
+                if self.page.locator('button:has-text("Aceitar")').count() > 0 and self.page.locator('button:has-text("Aceitar")').first.is_visible():
+                    self.page.locator('button:has-text("Aceitar")').first.click()
+                
+                if self.page.locator('button:has-text("Sim")').count() > 0 and self.page.locator('button:has-text("Sim")').first.is_visible():
+                    self.page.locator('button:has-text("Sim")').first.click()
+                
                 # Se o indicador de logado estiver visível na página
                 if indicator.count() > 0 and any(el.is_visible() for el in indicator.all()):
-                    logger.info("Sessão ativa / Login detectado com sucesso!")
+                    logger.info("Sessao ativa / Login detectado com sucesso!")
                     self.take_screenshot("03_logged_in")
                     return True
             except Exception:
                 pass
 
-            # Também verifica se já foi redirecionado para alguma página interna
-            current_url = self.page.url
-            if "login" not in current_url.lower() and "silce-web" in current_url.lower() and not current_url.endswith("/index"):
-                # Se mudou de página e está em um contexto interno da caixa
-                logger.info(f"Redirecionamento detectado para {current_url}. Considerando usuário logado.")
-                self.take_screenshot("03_logged_in_redirect")
-                return True
-
             self.page.wait_for_timeout(2000)  # Checa a cada 2 segundos
 
-        logger.error("Timeout aguardando login manual do usuário.")
+        logger.error("Timeout aguardando login manual do usuario.")
         self.take_screenshot("03_login_failed_timeout")
         return False
 
@@ -187,16 +194,22 @@ class LotteryBot(ABC):
             protocol = protocol_el.inner_text().strip()
             logger.info(f"Protocolo capturado: {protocol}")
         except Exception:
-            logger.warning("Protocolo não encontrado automaticamente")
+            logger.warning("Protocolo nao encontrado automaticamente")
 
         self.take_screenshot("09_payment_confirmation")
         return protocol
 
-    # ── Execução completa de uma aposta ───────────────────
+    # ── Execução completa de uma aposta (nova arquitetura) ─
 
-    def execute_bet(self, games: list[list[int]], lottery_type: str) -> str:
+    def execute_bet(self, bet_games: list[dict], lottery_type: str) -> str:
         """
         Executa o fluxo completo: login → navegar → preencher jogos → checkout.
+        
+        Args:
+            bet_games: Lista de dicts com {'id': uuid, 'numbers': [int, ...], 'game_index': int}
+                       vinda da tabela bet_games (já filtrada por status='pendente').
+            lottery_type: Slug do tipo de loteria (ex: 'lotofacil', 'quina').
+        
         Retorna o protocolo ou levanta exceção.
         """
         try:
@@ -211,15 +224,25 @@ class LotteryBot(ABC):
                 raise RuntimeError(f"Falha ao navegar para {lottery_type}")
 
             # 3. Preencher cada jogo e adicionar ao carrinho
-            for i, numbers in enumerate(games):
-                logger.info(f"Preenchendo jogo {i+1}/{len(games)}: {numbers}")
+            for i, bg in enumerate(bet_games):
+                game_id = bg["id"]
+                numbers = bg["numbers"]
+
+                logger.info(f"Preenchendo jogo {i+1}/{len(bet_games)} (id={game_id}): {numbers}")
+
+                # Atualiza status para "processando" em tempo real
+                queue_manager.update_game_status(game_id, "processando")
 
                 if not self.fill_single_game(numbers):
+                    queue_manager.update_game_status(game_id, "erro", f"Falha ao preencher jogo {i+1}: {numbers}")
                     raise RuntimeError(f"Falha ao preencher jogo {i+1}: {numbers}")
 
                 if not self.add_to_cart():
+                    queue_manager.update_game_status(game_id, "erro", f"Falha ao adicionar jogo {i+1} ao carrinho")
                     raise RuntimeError(f"Falha ao adicionar jogo {i+1} ao carrinho")
 
+                # Sucesso individual — move para "pendente_lancamento"
+                queue_manager.update_game_status(game_id, "pendente_lancamento")
                 self.take_screenshot(f"05_game_{i+1}_added")
                 self.page.wait_for_timeout(1000)  # Pausa entre jogos
 

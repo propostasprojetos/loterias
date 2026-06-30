@@ -299,6 +299,14 @@ async function generateAll() {
             autoBtn.textContent = '🎰 Fazer Jogos';
             autoBtn.addEventListener('click', enqueueBetsForAutomation);
             btn.parentNode.insertBefore(autoBtn, btn.nextSibling);
+
+            let clearBtn = document.createElement('button');
+            clearBtn.id = 'btn-clear-queue-gen';
+            clearBtn.className = 'btn-danger';
+            clearBtn.title = 'Cancela todos os jobs pendentes na fila do robô';
+            clearBtn.textContent = '🗑️ Limpar Fila';
+            clearBtn.addEventListener('click', clearAutomationQueue);
+            btn.parentNode.insertBefore(clearBtn, btn.nextSibling);
         }
     } catch (e) {
         console.error("Error generating games:", e);
@@ -1377,63 +1385,402 @@ async function enqueueBetsForAutomation() {
                 const cost = el && el.dataset ? parseFloat(el.dataset.cost) : 0;
                 const total = qty * (isNaN(cost) ? 0 : cost);
                 const strategy = $('strategy-selector')?.value || 'statistical';
-                
-                // 1. Insert into bets with queued status
+                const gamesArr = currentGamesData[g.slug]?.games || [];
+
+                if (gamesArr.length === 0) continue;
+
+                // 1. Cria a aposta (bet) com status de automação
                 const betData = {
                     bet_date: today,
                     lottery_type: g.slug,
-                    game_count: qty,
+                    game_count: gamesArr.length,
                     total_cost: total,
                     contest_number: null,
-                    notes: `Automação LotoSmart`,
-                    games: currentGamesData[g.slug]?.games || [],
+                    notes: `Automacao LotoSmart`,
+                    games: [],           // campo legado vazio — dados estao em bet_games
                     generation_mode: strategy,
                     automation_status: 'queued',
                     automation_requested_at: new Date().toISOString()
                 };
-                
+
                 const insertedBet = await addBet(betData);
-                
-                // 2. Insert into automation_queue if Supabase is available
-                if (insertedBet && insertedBet.id && window.sbReady && window.currentSession) {
+
+                if (!insertedBet || !insertedBet.id) {
+                    toast('Erro ao criar a aposta no banco.');
+                    continue;
+                }
+
+                // 2. Cria um bet_game por jogo gerado
+                if (window.sbReady && window.currentSession) {
+                    const betGamesPayload = gamesArr.map((numbers, idx) => ({
+                        bet_id: insertedBet.id,
+                        owner_id: window.currentSession.user.id,
+                        lottery_type: g.slug,
+                        numbers: numbers,
+                        game_index: idx,
+                        status: 'pendente'
+                    }));
+
                     try {
-                        const queueData = {
-                            bet_id: insertedBet.id,
-                            owner_id: window.currentSession.user.id,
-                            status: 'queued'
-                        };
-                        const { error } = await window.supabaseClient.from('automation_queue').insert(queueData);
+                        const { error: bgErr } = await window.supabaseClient
+                            .from('bet_games')
+                            .insert(betGamesPayload);
+                        if (bgErr) throw bgErr;
+                    } catch (e) {
+                        console.error('Erro ao criar bet_games:', e);
+                        toast('Erro ao registrar jogos individuais: ' + e.message);
+                    }
+
+                    // 3. Enfileira na automation_queue
+                    try {
+                        const { error } = await window.supabaseClient
+                            .from('automation_queue')
+                            .insert({ bet_id: insertedBet.id, owner_id: window.currentSession.user.id, status: 'queued' });
                         if (error) throw error;
                         enqueued++;
                     } catch (e) {
-                        console.error('Failed to enqueue bet:', e);
-                        alert('Erro ao enviar para a fila de automação: ' + e.message);
+                        console.error('Erro ao enfileirar:', e);
+                        alert('Erro ao enviar para a fila de automacao: ' + e.message);
                     }
-                } else if (!window.sbReady || !window.currentSession) {
-                    console.warn('Banco offline ou usuário não logado. Aposta salva apenas localmente sem automação.');
                 }
             }
         }
 
         if (btn) {
             btn.classList.remove('loading');
-            btn.textContent = '🎰 Fazer Jogos';
+            btn.textContent = 'Fazer Jogos';
         }
 
         if (enqueued > 0) {
-            toast(`🎰 ${enqueued} aposta(s) enviada(s) para fila de automação!`);
+            toast(`${enqueued} aposta(s) enviada(s) para fila! Acompanhe abaixo.`);
+            // Atualiza o painel de pendentes
+            await refreshPendingPanel();
         } else {
-            toast('⚠️ Nenhuma aposta enfileirada. Banco offline ou sem jogos gerados.');
+            toast('Nenhuma aposta enfileirada. Banco offline ou sem jogos gerados.');
         }
     } catch (err) {
-        console.error("Erro fatal em enqueueBetsForAutomation:", err);
-        alert("Erro no botão Fazer Jogos: " + err.message);
+        console.error('Erro fatal em enqueueBetsForAutomation:', err);
+        alert('Erro no botao Fazer Jogos: ' + err.message);
         const btn = $('btn-automation-gen');
         if (btn) {
             btn.classList.remove('loading');
-            btn.textContent = '🎰 Fazer Jogos';
+            btn.textContent = 'Fazer Jogos';
         }
     }
+}
+
+// ===== LIMPAR FILA DE AUTOMAÇÃO =====
+async function clearAutomationQueue() {
+    if (!sbReady || !currentSession) {
+        toast('Você precisa estar conectado para limpar a fila.');
+        return;
+    }
+
+    const confirmed = confirm(
+        'Limpar a fila cancela todos os jobs pendentes e em processamento.\n' +
+        'O robô vai parar de pegar novas tarefas.\n\n' +
+        'Confirmar?'
+    );
+    if (!confirmed) return;
+
+    const btn = $('btn-clear-queue-gen');
+    const btnPanel = $('btn-clear-queue-panel');
+    [btn, btnPanel].forEach(b => { if (b) { b.disabled = true; b.textContent = 'Limpando...'; } });
+
+    try {
+        // 1. Remove todos os jobs da fila deste usuário
+        const { error: qErr } = await supabaseClient
+            .from('automation_queue')
+            .delete()
+            .eq('owner_id', currentSession.user.id)
+            .in('status', ['queued', 'processing']);
+        if (qErr) throw qErr;
+
+        // 2. Reseta os bets para status 'none'
+        const { error: bErr } = await supabaseClient
+            .from('bets')
+            .update({ automation_status: 'none' })
+            .eq('owner_id', currentSession.user.id)
+            .in('automation_status', ['queued', 'processing']);
+        if (bErr) throw bErr;
+
+        // 3. Reseta os bet_games pendentes para 'pendente' (cancelando processando)
+        const { error: bgErr } = await supabaseClient
+            .from('bet_games')
+            .update({ status: 'pendente', error_message: 'Cancelado pelo usuário' })
+            .eq('owner_id', currentSession.user.id)
+            .eq('status', 'processando');
+        if (bgErr) throw bgErr;
+
+        toast('Fila limpa! O robô não processará mais nenhum job pendente.');
+        await refreshPendingPanel();
+    } catch (e) {
+        console.error('Erro ao limpar fila:', e);
+        toast('Erro ao limpar fila: ' + e.message);
+    } finally {
+        [btn, btnPanel].forEach(b => {
+            if (b) { b.disabled = false; b.textContent = b.id === 'btn-clear-queue-panel' ? 'Limpar Fila' : '🗑️ Limpar Fila'; }
+        });
+    }
+}
+window.clearAutomationQueue = clearAutomationQueue;
+
+// ===== RESET TOTAL (HOMOLOGAÇÃO) =====
+async function resetAllFinancialData() {
+    if (!sbReady || !currentSession) {
+        toast('Você precisa estar conectado.');
+        return;
+    }
+
+    const confirmed = confirm(
+        '⚠️  ATENÇÃO — MODO HOMOLOGAÇÃO\n\n' +
+        'Isso vai apagar PERMANENTEMENTE:\n' +
+        '  • Todas as apostas (bets)\n' +
+        '  • Todos os prêmios (prizes)\n' +
+        '  • Todos os jogos individuais (bet_games)\n' +
+        '  • Toda a fila de automação\n' +
+        '  • Todo o histórico local\n\n' +
+        'Tem certeza absoluta?'
+    );
+    if (!confirmed) return;
+
+    const btn = $('btn-reset-all-data');
+    if (btn) { btn.disabled = true; btn.textContent = 'Limpando...'; }
+
+    const uid = currentSession.user.id;
+
+    try {
+        // 1. Fila de automação
+        await supabaseClient.from('automation_queue')
+            .delete().eq('owner_id', uid);
+
+        // 2. Jogos individuais
+        await supabaseClient.from('bet_games')
+            .delete().eq('owner_id', uid);
+
+        // 3. Apostas
+        await supabaseClient.from('bets')
+            .delete().eq('owner_id', uid);
+
+        // 4. Prêmios
+        await supabaseClient.from('prizes')
+            .delete().eq('owner_id', uid);
+
+        // 5. localStorage
+        localStorage.removeItem('lotosmart_bets');
+        localStorage.removeItem('lotosmart_prizes');
+        localStorage.removeItem('lotosmart_history');
+
+        toast('Todos os dados de teste foram apagados!');
+        await refreshFinancialData();
+        await refreshPendingPanel();
+
+    } catch (e) {
+        console.error('Erro ao resetar dados:', e);
+        toast('Erro ao limpar: ' + (e.message || e));
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🗑️ Limpar todos os dados de teste'; }
+    }
+}
+window.resetAllFinancialData = resetAllFinancialData;
+
+
+// ===== PENDENTES DE LANCAMENTO (bet_games com status pendente_lancamento) =====
+
+
+// Cache local dos bet_games em tempo real
+window._betGamesCache = {};
+
+const STATUS_LABELS = {
+    pendente:             { label: 'Pendente',           cls: 'status-pendente' },
+    processando:          { label: 'Processando...',     cls: 'status-processando' },
+    sucesso:              { label: 'Registrado',         cls: 'status-sucesso' },
+    erro:                 { label: 'Erro',               cls: 'status-erro' },
+    pendente_lancamento:  { label: 'Aguard. Lancamento', cls: 'status-pendente-lancamento' },
+    lancado:              { label: 'Lancado',            cls: 'status-lancado' },
+};
+
+function getStatusInfo(status) {
+    return STATUS_LABELS[status] || { label: status, cls: '' };
+}
+
+async function refreshPendingPanel() {
+    if (!sbReady || !currentSession) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('bet_games')
+            .select('*')
+            .eq('owner_id', currentSession.user.id)
+            .in('status', ['pendente', 'processando', 'pendente_lancamento'])
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        // Atualiza o cache
+        (data || []).forEach(bg => { window._betGamesCache[bg.id] = bg; });
+        renderPendingPanel(data || []);
+    } catch (e) {
+        console.error('Erro ao carregar pendentes:', e);
+    }
+}
+
+function renderPendingPanel(items) {
+    const panel = $('pending-launch-panel');
+    if (!panel) return;
+
+    const pendLaunch = items.filter(i => i.status === 'pendente_lancamento');
+    const inProgress = items.filter(i => ['pendente', 'processando'].includes(i.status));
+
+    // Badge de contagem no nav/header
+    const badge = $('pending-launch-badge');
+    if (badge) {
+        badge.textContent = pendLaunch.length;
+        badge.classList.toggle('hidden', pendLaunch.length === 0);
+    }
+
+    if (items.length === 0) {
+        panel.innerHTML = '<p class="fin-empty-state">Nenhum jogo aguardando lancamento.</p>';
+        return;
+    }
+
+    const totalPend = pendLaunch.reduce((acc, bg) => {
+        const g = activeGames.find(x => x.slug === bg.lottery_type);
+        return acc + (g?.parametros?.cost || 3.00);
+    }, 0);
+
+    let html = '';
+
+    // Resumo
+    html += `<div class="pending-summary">
+        <span>${pendLaunch.length} jogo(s) prontos p/ lancamento &mdash; <strong>${fmt(totalPend)}</strong></span>
+        ${pendLaunch.length > 0 ? `<button class="btn-primary" id="btn-confirm-launch" style="margin-left:12px;padding:8px 16px;font-size:.82rem">Confirmar Lancamento Financeiro</button>` : ''}
+    </div>`;
+
+    // Processando
+    if (inProgress.length > 0) {
+        html += `<div class="pending-group"><p class="pending-group-title">Em andamento (${inProgress.length})</p>`;
+        inProgress.forEach(bg => {
+            const info = getStatusInfo(bg.status);
+            const nums = (bg.numbers || []).map(n => pad(n)).join(', ');
+            html += `<div class="pending-game-item">
+                <span class="status-badge ${info.cls}">${info.label}</span>
+                <span class="pending-lottery">${bg.lottery_type}</span>
+                <span class="pending-numbers">${nums}</span>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    // Prontos para lancamento
+    if (pendLaunch.length > 0) {
+        html += `<div class="pending-group"><p class="pending-group-title">Prontos para lancamento (${pendLaunch.length})</p>`;
+        pendLaunch.forEach(bg => {
+            const info = getStatusInfo(bg.status);
+            const nums = (bg.numbers || []).map(n => pad(n)).join(', ');
+            html += `<div class="pending-game-item" data-bgid="${bg.id}">
+                <span class="status-badge ${info.cls}">${info.label}</span>
+                <span class="pending-lottery">${bg.lottery_type}</span>
+                <span class="pending-numbers">${nums}</span>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    panel.innerHTML = html;
+
+    // Handler do botao de confirmacao
+    $('btn-confirm-launch')?.addEventListener('click', () => confirmFinancialLaunch(pendLaunch));
+}
+
+async function confirmFinancialLaunch(pendItems) {
+    if (!pendItems || pendItems.length === 0) return;
+    if (!confirm(`Confirmar lancamento de ${pendItems.length} jogo(s) no Financeiro?`)) return;
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Agrupa por bet_id para criar um unico registro financeiro por lote
+    const grouped = {};
+    pendItems.forEach(bg => {
+        if (!grouped[bg.bet_id]) {
+            grouped[bg.bet_id] = { lottery_type: bg.lottery_type, games: [], ids: [] };
+        }
+        grouped[bg.bet_id].games.push(bg.numbers);
+        grouped[bg.bet_id].ids.push(bg.id);
+    });
+
+    for (const [bet_id, grp] of Object.entries(grouped)) {
+        const g = activeGames.find(x => x.slug === grp.lottery_type);
+        const costUnit = g?.parametros?.cost || 3.00;
+        const total = grp.games.length * costUnit;
+
+        // Registra no financeiro
+        await addBet({
+            bet_date: today,
+            lottery_type: grp.lottery_type,
+            game_count: grp.games.length,
+            total_cost: total,
+            notes: `Lancamento automatico via robo`,
+            games: grp.games,
+        });
+
+        // Marca os bet_games como lancados
+        if (sbReady && currentSession) {
+            await supabaseClient
+                .from('bet_games')
+                .update({ status: 'lancado' })
+                .in('id', grp.ids);
+        }
+    }
+
+    toast(`${pendItems.length} jogo(s) lancados no Financeiro!`);
+    await refreshPendingPanel();
+}
+
+// ===== SUPABASE REALTIME: escuta bet_games =====
+let _realtimeChannel = null;
+
+function initBetGamesRealtime() {
+    if (!sbReady || !currentSession || !supabaseClient) return;
+
+    // Evita inscrição duplicada
+    if (_realtimeChannel) {
+        supabaseClient.removeChannel(_realtimeChannel);
+        _realtimeChannel = null;
+    }
+
+    _realtimeChannel = supabaseClient
+        .channel('bet_games_realtime')
+        .on(
+            'postgres_changes',
+            {
+                event: '*',
+                schema: 'public',
+                table: 'bet_games',
+                filter: `owner_id=eq.${currentSession.user.id}`,
+            },
+            async (payload) => {
+                console.log('[Realtime] bet_games update:', payload);
+                const updated = payload.new;
+                if (!updated) return;
+
+                // Atualiza cache
+                window._betGamesCache[updated.id] = updated;
+
+                // Atualiza badge de status no card do jogo (se estiver visivel)
+                const statusEl = document.querySelector(`[data-bgstatus="${updated.id}"]`);
+                if (statusEl) {
+                    const info = getStatusInfo(updated.status);
+                    statusEl.className = `bet-game-status-badge ${info.cls}`;
+                    statusEl.textContent = info.label;
+                }
+
+                // Recarrega o painel de pendentes quando um jogo muda de status relevante
+                if (['pendente_lancamento', 'erro', 'sucesso'].includes(updated.status)) {
+                    await refreshPendingPanel();
+                }
+            }
+        )
+        .subscribe();
+
+    console.log('[Realtime] Inscrito em bet_games para owner_id =', currentSession.user.id);
 }
 
 // ===== INIT =====
@@ -1538,14 +1885,13 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSummary();
     updateModeUI();
 
-    // Initialize Supabase and check session
+    // Initialize Supabase, check session, then start Realtime
     initSupabase().then(async () => {
         await checkAuthState();
         if (currentSession && (!currentProfile || !currentProfile.must_change_password)) {
             refreshFinancialData();
+            initBetGamesRealtime();    // Inicia escuta Realtime
+            await refreshPendingPanel(); // Carrega pendentes salvos
         }
     });
 });
-
-
-

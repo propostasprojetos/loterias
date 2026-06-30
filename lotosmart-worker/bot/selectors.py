@@ -10,8 +10,8 @@ Nenhum outro módulo deve conter seletores hardcoded.
 # ═══════════════════════════════════════════════════
 LOGIN = {
     # Indicador de login bem-sucedido (elemento ou botão que só aparece quando logado, ex: botão de Sair/Logout ou menu da conta)
-    # A Caixa Loterias exibe uma barra superior com link contendo 'sair' ou o nome do usuário quando logado.
-    "logged_indicator": 'a:has-text("Sair"), a[href*="logout"], .logout, #usuario-logado, .nome-usuario, button:has-text("Sair")',
+    # A Caixa Loterias exibe uma barra superior com link contendo 'Minha Conta' ou 'Olá, ' quando logado.
+    "logged_indicator": 'a:has-text("Sair"), a:has-text("Minha Conta"), span:has-text("Olá,"), a[href*="logout"], .logout, #usuario-logado, .nome-usuario',
 }
 
 # ═══════════════════════════════════════════════════

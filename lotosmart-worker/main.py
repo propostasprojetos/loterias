@@ -80,35 +80,36 @@ def process_job(job: dict, logger: logging.Logger):
     # 1. Buscar dados da aposta
     bet = queue_manager.fetch_bet_data(bet_id)
     if not bet:
-        queue_manager.fail_job(job_id, bet_id, "Aposta não encontrada no banco", retry_count, max_retries)
+        queue_manager.fail_job(job_id, bet_id, "Aposta nao encontrada no banco", retry_count, max_retries)
         return
 
     lottery_type = bet.get("lottery_type", "")
-    games = bet.get("games", [])
+    bet_games = bet.get("bet_games", [])  # Lista de dicts com id, numbers, game_index
 
-    # Validação: games deve ser uma lista de listas de inteiros
-    if not games or not isinstance(games, list):
-        queue_manager.fail_job(job_id, bet_id, f"Dados de jogos inválidos: {type(games)}", retry_count, max_retries)
-        return
-
-    # Se games é string (legado com bug de serialização dupla), tenta parsear
-    if isinstance(games, str):
-        import json
-        try:
-            games = json.loads(games)
-        except Exception:
-            queue_manager.fail_job(job_id, bet_id, "Games é string e não pode ser parseado", retry_count, max_retries)
+    # Validacao: precisa ter jogos pendentes na tabela bet_games
+    if not bet_games:
+        # Fallback legado: se ainda houver games no JSON antigo, cria registros na nova tabela
+        legacy_games = bet.get("games", [])
+        if legacy_games and isinstance(legacy_games, list):
+            logger.warning(f"bet {bet_id} sem bet_games filhos — usando games JSON legado")
+            bet_games = [
+                {"id": None, "numbers": g, "game_index": i}
+                for i, g in enumerate(legacy_games)
+                if isinstance(g, list)
+            ]
+        else:
+            queue_manager.fail_job(job_id, bet_id, "Sem jogos pendentes em bet_games", retry_count, max_retries)
             return
 
     logger.info(f"  lottery_type: {lottery_type}")
-    logger.info(f"  total_jogos:  {len(games)}")
+    logger.info(f"  total_jogos:  {len(bet_games)}")
 
     # 2. Selecionar o bot correto
     BotClass = BOT_REGISTRY.get(lottery_type)
     if not BotClass:
         queue_manager.fail_job(
             job_id, bet_id,
-            f"Tipo de loteria não suportado: '{lottery_type}'. Suportados: {list(BOT_REGISTRY.keys())}",
+            f"Tipo de loteria nao suportado: '{lottery_type}'. Suportados: {list(BOT_REGISTRY.keys())}",
             retry_count, max_retries
         )
         return
@@ -116,15 +117,15 @@ def process_job(job: dict, logger: logging.Logger):
     # 3. Executar a aposta
     try:
         bot = BotClass()
-        protocol = bot.execute_bet(games, lottery_type)
+        protocol = bot.execute_bet(bet_games, lottery_type)
 
         # 4. Sucesso
         queue_manager.complete_job(job_id, bet_id, protocol)
-        logger.info(f"✅ Job {job_id} concluído com sucesso!")
+        logger.info(f"Job {job_id} concluido com sucesso!")
 
     except Exception as e:
         error_msg = f"{type(e).__name__}: {str(e)}"
-        logger.error(f"❌ Job {job_id} falhou: {error_msg}")
+        logger.error(f"Job {job_id} falhou: {error_msg}")
         queue_manager.fail_job(job_id, bet_id, error_msg, retry_count, max_retries)
 
 

@@ -39,11 +39,11 @@ LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
 SCREENSHOTS_DIR: str = os.getenv("SCREENSHOTS_DIR", "./screenshots")
 
 # ── URLs da Caixa ─────────────────────────────────────────
-CAIXA_BASE_URL = "https://loteriasonline.caixa.gov.br"
-CAIXA_LOGIN_URL = f"{CAIXA_BASE_URL}/silce-web/index"
-CAIXA_LOTOFACIL_URL = f"{CAIXA_BASE_URL}/silce-web/lotofacil/aposta"
-CAIXA_QUINA_URL = f"{CAIXA_BASE_URL}/silce-web/quina/aposta"
-CAIXA_CART_URL = f"{CAIXA_BASE_URL}/silce-web/carrinho"
+CAIXA_BASE_URL = "https://www.loteriasonline.caixa.gov.br"
+CAIXA_LOGIN_URL = f"{CAIXA_BASE_URL}/silce-web/#/home"
+CAIXA_LOTOFACIL_URL = f"{CAIXA_BASE_URL}/silce-web/#/lotofacil"
+CAIXA_QUINA_URL = f"{CAIXA_BASE_URL}/silce-web/#/quina"
+CAIXA_CART_URL = f"{CAIXA_BASE_URL}/silce-web/#/carrinho"
 
 # Mapeamento slug → URL de aposta
 GAME_URLS: dict[str, str] = {

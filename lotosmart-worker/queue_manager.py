@@ -3,9 +3,9 @@ queue_manager.py — Comunicação com o Supabase para gerenciar a fila de autom
 
 Responsabilidades:
   - Capturar o próximo job da fila (claim_next_job RPC)
-  - Buscar os dados da aposta (bets.games)
+  - Buscar os dados da aposta e seus bet_games filhos
+  - Atualizar status individual de cada bet_game
   - Marcar job como concluído ou falho
-  - Atualizar status da aposta em bets
 """
 import logging
 from datetime import datetime, timezone
@@ -47,21 +47,66 @@ def claim_next_job() -> dict | None:
 
 def fetch_bet_data(bet_id: str) -> dict | None:
     """
-    Busca os dados completos da aposta (games, lottery_type, etc).
+    Busca os dados completos da aposta e seus jogos filhos (bet_games) com status 'pendente'.
+    Retorna um dict com os dados da aposta + lista de bet_games.
     """
     client = get_client()
     try:
-        result = (
+        # Busca a aposta
+        bet_result = (
             client.table("bets")
             .select("*")
             .eq("id", bet_id)
             .single()
             .execute()
         )
-        return result.data
+        bet = bet_result.data
+        if not bet:
+            return None
+
+        # Busca os jogos filhos pendentes (ordenados pelo índice)
+        games_result = (
+            client.table("bet_games")
+            .select("*")
+            .eq("bet_id", bet_id)
+            .eq("status", "pendente")
+            .order("game_index")
+            .execute()
+        )
+        bet["bet_games"] = games_result.data or []
+        logger.info(f"Aposta {bet_id}: {len(bet['bet_games'])} jogo(s) pendente(s) encontrado(s)")
+        return bet
+
     except Exception as e:
         logger.error(f"Erro ao buscar bet {bet_id}: {e}")
         return None
+
+
+def update_game_status(
+    game_id: str,
+    status: str,
+    error_message: str | None = None,
+) -> bool:
+    """
+    Atualiza o status de um único bet_game no banco.
+    Usado pelo robô para informar o progresso em tempo real.
+    """
+    client = get_client()
+    now = datetime.now(timezone.utc).isoformat()
+
+    update_data: dict = {"status": status}
+    if error_message:
+        update_data["error_message"] = error_message[:500]
+    if status in ("sucesso", "erro"):
+        update_data["completed_at"] = now
+
+    try:
+        client.table("bet_games").update(update_data).eq("id", game_id).execute()
+        logger.info(f"bet_game {game_id} → status={status}")
+        return True
+    except Exception as e:
+        logger.error(f"Erro ao atualizar status do bet_game {game_id}: {e}")
+        return False
 
 
 def complete_job(job_id: str, bet_id: str, protocol: str = "") -> bool:
@@ -104,7 +149,7 @@ def fail_job(job_id: str, bet_id: str, error_msg: str, retry_count: int, max_ret
         new_status = "queued" if should_requeue else "failed"
         update_data = {
             "status": new_status,
-            "last_error": error_msg[:500],  # Limita tamanho do erro
+            "last_error": error_msg[:500],
             "retry_count": new_retry,
         }
         if not should_requeue:
