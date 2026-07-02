@@ -14,6 +14,10 @@ logger = logging.getLogger("lotosmart.bot.quina")
 
 class QuinaBot(LotteryBot):
     """Bot específico para apostas na Quina."""
+    
+    def __init__(self, page):
+        super().__init__(page)
+
 
     def navigate_to_game(self) -> bool:
         """

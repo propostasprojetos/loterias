@@ -1,21 +1,24 @@
 """
-main.py — Loop principal do worker LotoSmart.
+main.py — Loop principal do worker LotoSmart (Nova Arquitetura).
 
 Responsabilidades:
   1. Inicializa logging
-  2. Entra em loop de polling
-  3. A cada iteração: captura job → busca aposta → executa bot → atualiza status
-  4. Trata erros com retry automático
+  2. Fica em poll aguardando novas apostas.
+  3. Quando detecta trabalho, abre o navegador, faz login e processa tudo na mesma janela.
+  4. Quando finaliza todos os jogos pendentes, avisa o usuário e finaliza o worker.
 """
 import logging
 import sys
 import time
+import tkinter as tk
+from tkinter import messagebox
 from pathlib import Path
 
 import config
 import queue_manager
 from bot.lotofacil import LotofacilBot
 from bot.quina import QuinaBot
+from bot.browser_manager import BrowserManager
 
 
 # ── Logging ───────────────────────────────────────────────
@@ -30,11 +33,9 @@ def setup_logging():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # Console
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
 
-    # Arquivo
     file_handler = logging.FileHandler(
         logs_dir / "worker.log", encoding="utf-8"
     )
@@ -56,15 +57,11 @@ BOT_REGISTRY: dict[str, type] = {
 }
 
 
-# ── Processamento de um job ───────────────────────────────
+# ── Processamento de um job individual ────────────────────
 
-def process_job(job: dict, logger: logging.Logger):
+def process_job(job: dict, browser: BrowserManager, logger: logging.Logger):
     """
-    Processa um único job da fila:
-      1. Busca os dados da aposta
-      2. Instancia o bot correto
-      3. Executa a aposta
-      4. Atualiza status
+    Processa um único job (usando o browser já aberto e logado).
     """
     job_id = job["id"]
     bet_id = job["bet_id"]
@@ -77,49 +74,39 @@ def process_job(job: dict, logger: logging.Logger):
     logger.info(f"  tentativa:   {retry_count + 1}/{max_retries}")
     logger.info(f"{'='*60}")
 
-    # 1. Buscar dados da aposta
     bet = queue_manager.fetch_bet_data(bet_id)
     if not bet:
         queue_manager.fail_job(job_id, bet_id, "Aposta nao encontrada no banco", retry_count, max_retries)
         return
 
     lottery_type = bet.get("lottery_type", "")
-    bet_games = bet.get("bet_games", [])  # Lista de dicts com id, numbers, game_index
+    bet_games = bet.get("bet_games", [])
 
-    # Validacao: precisa ter jogos pendentes na tabela bet_games
     if not bet_games:
-        # Fallback legado: se ainda houver games no JSON antigo, cria registros na nova tabela
-        legacy_games = bet.get("games", [])
-        if legacy_games and isinstance(legacy_games, list):
-            logger.warning(f"bet {bet_id} sem bet_games filhos — usando games JSON legado")
-            bet_games = [
-                {"id": None, "numbers": g, "game_index": i}
-                for i, g in enumerate(legacy_games)
-                if isinstance(g, list)
-            ]
-        else:
-            queue_manager.fail_job(job_id, bet_id, "Sem jogos pendentes em bet_games", retry_count, max_retries)
-            return
+        logger.warning(f"Sem jogos em bet_games para bet {bet_id}.")
+        queue_manager.fail_job(job_id, bet_id, "Sem jogos pendentes em bet_games", retry_count, max_retries)
+        return
 
     logger.info(f"  lottery_type: {lottery_type}")
     logger.info(f"  total_jogos:  {len(bet_games)}")
 
-    # 2. Selecionar o bot correto
     BotClass = BOT_REGISTRY.get(lottery_type)
     if not BotClass:
         queue_manager.fail_job(
             job_id, bet_id,
-            f"Tipo de loteria nao suportado: '{lottery_type}'. Suportados: {list(BOT_REGISTRY.keys())}",
+            f"Tipo de loteria nao suportado: '{lottery_type}'.",
             retry_count, max_retries
         )
         return
 
-    # 3. Executar a aposta
     try:
-        bot = BotClass()
+        # Instancia o bot injetando a página já logada
+        bot = BotClass(page=browser.page)
+        
+        # Executa o preenchimento dos jogos e adição ao carrinho (sem checkout automático)
         protocol = bot.execute_bet(bet_games, lottery_type)
 
-        # 4. Sucesso
+        # Sucesso
         queue_manager.complete_job(job_id, bet_id, protocol)
         logger.info(f"Job {job_id} concluido com sucesso!")
 
@@ -135,33 +122,78 @@ def main():
     logger = setup_logging()
 
     logger.info("=" * 60)
-    logger.info("LotoSmart Worker iniciado")
+    logger.info("LotoSmart Worker iniciado (Modo Lote Contínuo)")
     logger.info(f"  Worker ID:      {config.WORKER_ID}")
     logger.info(f"  Poll interval:  {config.POLL_INTERVAL}s")
-    logger.info(f"  Headless:       {config.HEADLESS}")
     logger.info(f"  Supabase URL:   {config.SUPABASE_URL[:40]}...")
     logger.info("=" * 60)
 
-    while True:
-        try:
-            # Tenta capturar o próximo job
-            job = queue_manager.claim_next_job()
+    try:
+        while True:
+            # 1. Verifica se há pelomenos UM job para iniciar o lote
+            primeiro_job = queue_manager.claim_next_job()
 
-            if job:
-                process_job(job, logger)
+            if primeiro_job:
+                logger.info("Iniciando processamento em lote. Abrindo navegador...")
+                
+                # 2. Iniciar navegador e garantir login
+                browser = BrowserManager()
+                browser.start()
+                
+                if not browser.ensure_login():
+                    logger.error("Falha no login. Abortando este lote...")
+                    browser.stop()
+                    queue_manager.fail_job(primeiro_job["id"], primeiro_job["bet_id"], "Falha no login", 0, 3)
+                    time.sleep(config.POLL_INTERVAL)
+                    continue
+
+                # 3. Processar o primeiro job
+                process_job(primeiro_job, browser, logger)
+
+                # 4. Loop consumindo o resto da fila até esvaziar
+                while True:
+                    next_job = queue_manager.claim_next_job()
+                    if not next_job:
+                        break  # Fila esvaziou!
+                    process_job(next_job, browser, logger)
+
+                # 5. Fim do lote (Fila vazia)
+                logger.info("Todas as apostas foram processadas!")
+                logger.info("Navegando para o carrinho e alertando usuário...")
+
+                if browser.page:
+                    try:
+                        browser.page.goto(config.CAIXA_CART_URL, timeout=30000)
+                        browser.take_screenshot("06_cart_final")
+                    except Exception as e:
+                        logger.warning(f"Erro ao navegar pro carrinho: {e}")
+
+                # Mostra o popup nativo avisando para pagar
+                root = tk.Tk()
+                root.withdraw() # Oculta a janela principal do tkinter
+                root.attributes("-topmost", True) # Mantém popup sempre na frente
+                
+                messagebox.showinfo(
+                    "LotoSmart Worker",
+                    "✅ TODAS as apostas foram geradas e estão no Carrinho!\n\n"
+                    "O robô fará uma pausa agora. Prossiga com o pagamento manualmente "
+                    "no navegador.\n\n"
+                    "Ao clicar em OK o robô será fechado."
+                )
+
+                # Fecha o worker após o popup
+                logger.info("Finalizando o Worker a pedido do usuário.")
+                browser.stop()
+                sys.exit(0)
+
             else:
                 logger.debug(f"Fila vazia. Aguardando {config.POLL_INTERVAL}s...")
+                time.sleep(config.POLL_INTERVAL)
 
-        except KeyboardInterrupt:
-            logger.info("Worker encerrado pelo usuário (Ctrl+C)")
-            break
-        except Exception as e:
-            logger.error(f"Erro inesperado no loop principal: {e}", exc_info=True)
-
-        # Aguarda antes de próximo polling
-        time.sleep(config.POLL_INTERVAL)
-
-    logger.info("Worker finalizado.")
+    except KeyboardInterrupt:
+        logger.info("Worker encerrado pelo usuário (Ctrl+C)")
+    except Exception as e:
+        logger.error(f"Erro inesperado no loop principal: {e}", exc_info=True)
 
 
 if __name__ == "__main__":

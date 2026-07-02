@@ -9,9 +9,8 @@ Nenhum outro módulo deve conter seletores hardcoded.
 # LOGIN MANUAL E MONITORAMENTO
 # ═══════════════════════════════════════════════════
 LOGIN = {
-    # Indicador de login bem-sucedido (elemento ou botão que só aparece quando logado, ex: botão de Sair/Logout ou menu da conta)
-    # A Caixa Loterias exibe uma barra superior com link contendo 'Minha Conta' ou 'Olá, ' quando logado.
-    "logged_indicator": 'a:has-text("Sair"), a:has-text("Minha Conta"), span:has-text("Olá,"), a[href*="logout"], .logout, #usuario-logado, .nome-usuario',
+    # Indicador de login bem-sucedido
+    "logged_indicator": 'text="Sair", text="Bem-vindo", text="Bem vindo", a:has-text("Minha Conta"), span:has-text("Olá,"), text="Olá,", a[href*="logout"], a[ng-click*="logout"], .logout, #usuario-logado, .nome-usuario',
 }
 
 # ═══════════════════════════════════════════════════

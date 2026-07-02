@@ -13,7 +13,10 @@ logger = logging.getLogger("lotosmart.bot.lotofacil")
 
 
 class LotofacilBot(LotteryBot):
-    """Bot específico para apostas na Lotofácil."""
+    """Implementação específica para Lotofácil."""
+
+    def __init__(self, page):
+        super().__init__(page)
 
     def navigate_to_game(self) -> bool:
         """
