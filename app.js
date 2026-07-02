@@ -241,9 +241,9 @@ async function generateAll() {
     btn.classList.add('loading');
     btn.textContent = 'Gerando...';
 
-    // Get selected strategy (defaulting to statistical if UI not updated yet)
-    const strategySelect = $('strategy-selector');
-    const strategyName = strategySelect ? strategySelect.value : 'statistical';
+    // Get selected strategy from radio buttons
+    const strategyRadio = document.querySelector('input[name="strategy"]:checked');
+    const strategyName = strategyRadio ? strategyRadio.value : 'statistical';
     
     try {
         let hasSelections = false;
@@ -277,37 +277,16 @@ async function generateAll() {
         const resArea = $('results-area');
         if(resArea) {
             resArea.classList.remove('hidden');
-            resArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         saveToHistory();
-        if (!hasSelections) toast('Jogos gerados e salvos no histórico!');
-        else toast('Jogos complementados e salvos!');
+        if (!hasSelections) toast('Jogos gerados e salvos no histórico!', 'success', 'top-right');
+        else toast('Jogos complementados e salvos!', 'success', 'top-right');
 
-        let regBtn = $('btn-register-bet-gen');
-        if (!regBtn) {
-            regBtn = document.createElement('button');
-            regBtn.id = 'btn-register-bet-gen';
-            regBtn.className = 'btn-secondary';
-            regBtn.textContent = '💰 Registrar aposta no Financeiro';
-            regBtn.addEventListener('click', registerBetFromGenerator);
-            btn.parentNode.insertBefore(regBtn, btn.nextSibling);
-            
-            let autoBtn = document.createElement('button');
-            autoBtn.id = 'btn-automation-gen';
-            autoBtn.className = 'btn-primary';
-            autoBtn.textContent = '🎰 Fazer Jogos';
-            autoBtn.addEventListener('click', enqueueBetsForAutomation);
-            btn.parentNode.insertBefore(autoBtn, btn.nextSibling);
-
-            let clearBtn = document.createElement('button');
-            clearBtn.id = 'btn-clear-queue-gen';
-            clearBtn.className = 'btn-danger';
-            clearBtn.title = 'Cancela todos os jobs pendentes na fila do robô';
-            clearBtn.textContent = '🗑️ Limpar Fila';
-            clearBtn.addEventListener('click', clearAutomationQueue);
-            btn.parentNode.insertBefore(clearBtn, btn.nextSibling);
-        }
+        // Exibe os botões de ação e controle da fila
+        $('btn-register-bet-gen')?.classList.remove('hidden');
+        $('btn-automation-gen')?.classList.remove('hidden');
+        $('btn-clear-queue-gen')?.classList.remove('hidden');
     } catch (e) {
         console.error("Error generating games:", e);
         toast('Erro ao gerar: ' + e.message);
@@ -585,12 +564,15 @@ function renderHistory() {
 }
 
 // ===== TOAST =====
-function toast(msg) {
+function toast(msg, type = 'info', pos = 'bottom') {
     const el = $('toast');
     if(!el) return;
+    el.className = 'toast'; // Reset classes
+    if (type === 'success') el.classList.add('success');
+    if (pos === 'top-right') el.classList.add('top-right');
     $('toast-msg').textContent = msg;
     el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), 3000);
+    setTimeout(() => el.classList.remove('show'), 3500);
 }
 window.toast = toast;
 
@@ -1786,6 +1768,9 @@ function initBetGamesRealtime() {
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
     $('btn-generate')?.addEventListener('click', generateAll);
+    $('btn-register-bet-gen')?.addEventListener('click', registerBetFromGenerator);
+    $('btn-automation-gen')?.addEventListener('click', enqueueBetsForAutomation);
+    $('btn-clear-queue-gen')?.addEventListener('click', clearAutomationQueue);
     $('btn-clear-history')?.addEventListener('click', clearHistory);
     $$('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
     $$('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));

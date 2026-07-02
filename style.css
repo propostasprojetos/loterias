@@ -660,3 +660,130 @@ select option { background: var(--surface-solid); color: var(--text); }
     backdrop-filter: blur(10px);
 }
 .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+/* VARIANTES DO TOAST */
+.toast.top-right {
+    top: 30px; right: 30px; bottom: auto; left: auto;
+    transform: translateY(-20px);
+}
+.toast.top-right.show {
+    transform: translateY(0);
+}
+.toast.success {
+    border-color: rgba(109,213,117,.3);
+    background: rgba(13, 27, 20, 0.95);
+    color: var(--green);
+    box-shadow: 0 4px 20px rgba(109, 213, 117, 0.15);
+}
+
+/* CONTAINER DOS BOTÕES EM LINHA */
+.actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 20px;
+    width: 100%;
+}
+.actions-row button {
+    flex: 1;
+    min-width: 160px;
+    margin: 0 !important;
+}
+
+/* BOTÃO DE SUCESSO PREMIUM (VERDE) */
+.btn-success {
+    background: linear-gradient(135deg, var(--green), #10b981);
+    color: #0e1015;
+    border: 1px solid rgba(109,213,117,.4);
+    padding: 12px 24px;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(109,213,117,.15);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.btn-success:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(109,213,117,.35);
+    filter: brightness(1.1);
+}
+.btn-success:active {
+    transform: translateY(1px);
+}
+
+/* SELETORES DE ESTRATÉGIA PREMIUM (RADIO CARDS) */
+.strategy-radio-group {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 10px;
+    width: 100%;
+}
+.strategy-radio-card {
+    position: relative;
+    cursor: pointer;
+}
+.strategy-radio-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.strategy-card-content {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 6px;
+    height: 100%;
+    box-sizing: border-box;
+}
+.strategy-card-content:hover {
+    border-color: var(--border-h);
+    background: var(--surface-3);
+}
+.strategy-radio-card input[type="radio"]:checked + .strategy-card-content {
+    border-color: var(--gold);
+    background: rgba(232, 180, 77, 0.04);
+    box-shadow: 0 0 14px rgba(232, 180, 77, 0.08);
+}
+.strategy-radio-card input[type="radio"]:checked + .strategy-card-content .strategy-title {
+    color: var(--gold);
+}
+.strategy-icon {
+    font-size: 1.4rem;
+}
+.strategy-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text);
+    transition: color 0.2s;
+}
+.strategy-desc {
+    font-size: 0.72rem;
+    color: var(--text-3);
+    line-height: 1.2;
+}
+
+@media (max-width: 680px) {
+    .strategy-radio-group {
+        grid-template-columns: 1fr;
+    }
+    .actions-row {
+        flex-direction: column;
+    }
+    .actions-row button {
+        width: 100%;
+    }
+}
+

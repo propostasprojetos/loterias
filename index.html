@@ -39,18 +39,36 @@
                     <!-- Configurações dinâmicas (orçamento, quantidades) injetadas via JS -->
                 </div>
 
-                <div class="field" style="margin-bottom: 20px;">
-                    <label for="strategy-selector" style="color: var(--gold); display: flex; align-items: center; gap: 8px;">
+                <div class="field" style="margin-bottom: 24px;">
+                    <label style="color: var(--gold); display: flex; align-items: center; gap: 8px; font-weight: 600;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                        Motor Estratégico (Engine)
+                        Estratégia de Seleção
                     </label>
-                    <div class="input-row">
-                        <select id="strategy-selector" style="width: 100%; padding: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: var(--font);">
-                            <option value="statistical">📊 Estatístico (Equilíbrio e Distribuição)</option>
-                            <option value="frequent">🔥 Frequentes (Dezenas mais Sorteadas)</option>
-                            <option value="delayed">❄️ Atrasadas (Dezenas Frias)</option>
-                            <!-- <option value="hybrid">⚙️ Híbrido (Misto)</option> -->
-                        </select>
+                    <div class="strategy-radio-group">
+                        <label class="strategy-radio-card">
+                            <input type="radio" name="strategy" value="statistical" checked>
+                            <div class="strategy-card-content">
+                                <span class="strategy-icon">📊</span>
+                                <span class="strategy-title">Estatístico</span>
+                                <span class="strategy-desc">Equilíbrio e Distribuição</span>
+                            </div>
+                        </label>
+                        <label class="strategy-radio-card">
+                            <input type="radio" name="strategy" value="frequent">
+                            <div class="strategy-card-content">
+                                <span class="strategy-icon">🔥</span>
+                                <span class="strategy-title">Frequentes</span>
+                                <span class="strategy-desc">Mais Sorteadas</span>
+                            </div>
+                        </label>
+                        <label class="strategy-radio-card">
+                            <input type="radio" name="strategy" value="delayed">
+                            <div class="strategy-card-content">
+                                <span class="strategy-icon">❄️</span>
+                                <span class="strategy-title">Atrasadas</span>
+                                <span class="strategy-desc">Dezenas Frias</span>
+                            </div>
+                        </label>
                     </div>
                 </div>
 
@@ -58,7 +76,12 @@
                     <!-- Resumo dinâmico injetado via JS -->
                 </div>
 
-                <button id="btn-generate" class="btn-primary">Gerar Jogos</button>
+                <div class="actions-row">
+                    <button id="btn-generate" class="btn-primary">Gerar Jogos</button>
+                    <button id="btn-automation-gen" class="btn-success hidden">🎰 Fazer Jogos</button>
+                    <button id="btn-register-bet-gen" class="btn-secondary hidden">💰 Registrar Aposta</button>
+                    <button id="btn-clear-queue-gen" class="btn-danger hidden" title="Cancela todos os jobs pendentes na fila do robô">🗑️ Limpar Fila</button>
+                </div>
             </div>
 
             <!-- Tabs de resultado -->
