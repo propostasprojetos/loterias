@@ -97,14 +97,22 @@ class BrowserManager:
 
         while (datetime.now() - start_time).total_seconds() < timeout_seconds:
             try:
-                # Tenta fechar cookies e popup +18 (Pode ser <a>, <button> ou <span>)
+                # Tenta fechar cookies se o aviso de cookies estiver na tela
                 btn_aceitar = self.page.locator('text="Aceitar"').first
                 if btn_aceitar.count() > 0 and btn_aceitar.is_visible():
-                    btn_aceitar.click(force=True)
+                    # Para garantir, só clica se for sobre cookies/privacidade
+                    cookie_context = self.page.locator('text="cookies", text="Cookies", text="privacidade"').first
+                    if cookie_context.count() > 0:
+                        btn_aceitar.click(force=True)
+                        logger.info("Aviso de cookies aceito automaticamente.")
                 
-                btn_sim = self.page.locator('text="Sim"').first
-                if btn_sim.count() > 0 and btn_sim.is_visible():
-                    btn_sim.click(force=True)
+                # Só clica em "Sim" se o aviso de maioridade (+18) estiver visível na tela
+                popup_18 = self.page.locator('text="Você tem mais de 18 anos?"').first
+                if popup_18.count() > 0 and popup_18.is_visible():
+                    btn_sim = self.page.locator('text="Sim"').first
+                    if btn_sim.count() > 0 and btn_sim.is_visible():
+                        btn_sim.click(force=True)
+                        logger.info("Aviso de maioridade (+18) aceito automaticamente.")
                 
                 # Se o indicador de logado estiver visível na página
                 if indicator.count() > 0 and any(el.is_visible() for el in indicator.all()):
