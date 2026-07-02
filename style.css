@@ -676,6 +676,21 @@ select option { background: var(--surface-solid); color: var(--text); }
     box-shadow: 0 4px 20px rgba(109, 213, 117, 0.15);
 }
 
+/* VARIANTES DO TOAST */
+.toast.top-right {
+    top: 30px; right: 30px; bottom: auto; left: auto;
+    transform: translateY(-20px) translateX(0);
+}
+.toast.top-right.show {
+    transform: translateY(0) translateX(0);
+}
+.toast.success {
+    border-color: rgba(109,213,117,.4);
+    background: rgba(13, 31, 21, 0.95);
+    color: var(--green);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 15px rgba(109, 213, 117, 0.15);
+}
+
 /* CONTAINER DOS BOTÕES EM LINHA */
 .actions-row {
     display: flex;
@@ -688,32 +703,70 @@ select option { background: var(--surface-solid); color: var(--text); }
     flex: 1;
     min-width: 160px;
     margin: 0 !important;
+    padding: 14px 24px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: .95rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    box-sizing: border-box;
+}
+.actions-row button:hover {
+    transform: translateY(-2px) scale(1.01);
+}
+.actions-row button:active {
+    transform: translateY(1px) scale(0.98);
 }
 
 /* BOTÃO DE SUCESSO PREMIUM (VERDE) */
 .btn-success {
-    background: linear-gradient(135deg, var(--green), #10b981);
+    background: linear-gradient(135deg, var(--green), #059669);
     color: #0e1015;
-    border: 1px solid rgba(109,213,117,.4);
-    padding: 12px 24px;
-    border-radius: var(--radius-sm);
-    font-weight: 700;
-    cursor: pointer;
-    font-family: var(--font);
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(109,213,117,.15);
+    border: none;
+    box-shadow: 0 4px 15px rgba(109,213,117,.3);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
 }
 .btn-success:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 15px rgba(109,213,117,.35);
-    filter: brightness(1.1);
+    box-shadow: 0 8px 25px rgba(109,213,117,.4);
 }
-.btn-success:active {
-    transform: translateY(1px);
+
+/* BOTÃO DE ALERTA/PERIGO PREMIUM (VERMELHO) */
+.actions-row .btn-danger {
+    background: linear-gradient(135deg, var(--red), #dc2626);
+    color: #fff;
+    border: none;
+    box-shadow: 0 4px 15px rgba(239,68,68,.3);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.actions-row .btn-danger:hover {
+    box-shadow: 0 8px 25px rgba(239,68,68,.4);
+}
+
+/* AJUSTE DO BOTÃO SECUNDÁRIO NA LINHA DE AÇÕES */
+.actions-row .btn-secondary {
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+    color: var(--text-2);
+    box-shadow: none;
+    margin-top: 0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.actions-row .btn-secondary:hover {
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+    border-color: var(--border-h);
 }
 
 /* SELETORES DE ESTRATÉGIA PREMIUM (RADIO CARDS) */

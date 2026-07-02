@@ -128,24 +128,29 @@ def main():
     logger.info(f"  Supabase URL:   {config.SUPABASE_URL[:40]}...")
     logger.info("=" * 60)
 
+    browser = None
+
     try:
         while True:
-            # 1. Verifica se há pelomenos UM job para iniciar o lote
+            # 1. Verifica se há pelo menos um job para iniciar o lote
             primeiro_job = queue_manager.claim_next_job()
 
             if primeiro_job:
-                logger.info("Iniciando processamento em lote. Abrindo navegador...")
-                
-                # 2. Iniciar navegador e garantir login
-                browser = BrowserManager()
-                browser.start()
-                
-                if not browser.ensure_login():
-                    logger.error("Falha no login. Abortando este lote...")
-                    browser.stop()
-                    queue_manager.fail_job(primeiro_job["id"], primeiro_job["bet_id"], "Falha no login", 0, 3)
-                    time.sleep(config.POLL_INTERVAL)
-                    continue
+                # 2. Iniciar navegador (se não estiver ativo)
+                if browser is None or browser.page is None:
+                    logger.info("Iniciando navegador...")
+                    browser = BrowserManager()
+                    browser.start()
+                    
+                    if not browser.ensure_login():
+                        logger.error("Falha no login. Abortando este lote...")
+                        browser.stop()
+                        browser = None
+                        queue_manager.fail_job(primeiro_job["id"], primeiro_job["bet_id"], "Falha no login", 0, 3)
+                        time.sleep(config.POLL_INTERVAL)
+                        continue
+                else:
+                    logger.info("Reutilizando navegador já aberto.")
 
                 # 3. Processar o primeiro job
                 process_job(primeiro_job, browser, logger)
@@ -176,15 +181,11 @@ def main():
                 messagebox.showinfo(
                     "LotoSmart Worker",
                     "✅ TODAS as apostas foram geradas e estão no Carrinho!\n\n"
-                    "O robô fará uma pausa agora. Prossiga com o pagamento manualmente "
-                    "no navegador.\n\n"
-                    "Ao clicar em OK o robô será fechado."
+                    "Prossiga com o pagamento manualmente no navegador.\n\n"
+                    "Ao clicar em OK, o robô continuará ativo em segundo plano esperando novas apostas e reutilizará esta mesma janela!"
                 )
-
-                # Fecha o worker após o popup
-                logger.info("Finalizando o Worker a pedido do usuário.")
-                browser.stop()
-                sys.exit(0)
+                root.destroy()
+                logger.info("Voltando ao monitoramento da fila. Janela ativa mantida.")
 
             else:
                 logger.debug(f"Fila vazia. Aguardando {config.POLL_INTERVAL}s...")
@@ -192,8 +193,12 @@ def main():
 
     except KeyboardInterrupt:
         logger.info("Worker encerrado pelo usuário (Ctrl+C)")
+        if browser:
+            browser.stop()
     except Exception as e:
         logger.error(f"Erro inesperado no loop principal: {e}", exc_info=True)
+        if browser:
+            browser.stop()
 
 
 if __name__ == "__main__":
