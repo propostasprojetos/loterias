@@ -494,9 +494,11 @@ function deleteHistoryEntry(id) {
 }
 
 function clearHistory() {
-    if (!confirm('Limpar todo o histórico?')) return;
-    saveHistoryData([]);
-    renderHistory();
+    showConfirm('Limpar Histórico', 'Deseja realmente apagar todo o histórico de jogos gerados localmente?', () => {
+        saveHistoryData([]);
+        renderHistory();
+        toast('Histórico limpo!', 'success');
+    });
 }
 
 function loadFromHistory(entry) {
@@ -558,7 +560,14 @@ function renderHistory() {
     $$('.btn-del-hist').forEach(btn => {
         btn.addEventListener('click', () => {
             const id = parseInt(btn.closest('.history-entry').dataset.id);
-            deleteHistoryEntry(id);
+            showConfirm(
+                'Excluir Histórico',
+                'Deseja realmente excluir este lote de jogos do histórico?',
+                () => {
+                    deleteHistoryEntry(id);
+                    toast('Lote excluído!', 'success');
+                }
+            );
         });
     });
 }
@@ -575,6 +584,43 @@ function toast(msg, type = 'info', pos = 'bottom') {
     setTimeout(() => el.classList.remove('show'), 3500);
 }
 window.toast = toast;
+
+// ===== PREMIUM CONFIRM DIALOG =====
+function showConfirm(title, message, onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.opacity = '0';
+    overlay.style.transition = 'opacity 0.25s ease';
+    overlay.style.zIndex = '99999';
+    overlay.innerHTML = `
+        <div class="modal-content" style="max-width: 420px; text-align: center; border-color: var(--border-active);">
+            <div class="modal-header" style="justify-content: center; margin-bottom: 14px;">
+                <h2 style="font-size: 1.2rem; color: var(--gold); margin: 0;">${title}</h2>
+            </div>
+            <p style="color: var(--text-2); font-size: 0.85rem; margin-bottom: 24px; line-height: 1.5; white-space: pre-line;">
+                ${message}
+            </p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button id="confirm-cancel-btn" class="btn-secondary" style="margin: 0; padding: 10px 20px; flex: 1;">Cancelar</button>
+                <button id="confirm-ok-btn" class="btn-primary" style="margin: 0; padding: 10px 20px; flex: 1;">Confirmar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.style.opacity = '1', 20);
+
+    const cleanup = () => {
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 250);
+    };
+
+    overlay.querySelector('#confirm-cancel-btn').onclick = cleanup;
+    overlay.querySelector('#confirm-ok-btn').onclick = () => {
+        cleanup();
+        onConfirm();
+    };
+}
+window.showConfirm = showConfirm;
 
 function switchView(view) {
     const isValid = !!currentSession;
@@ -1104,12 +1150,17 @@ function renderTransactions() {
 
     // Bind delete buttons
     tbody.querySelectorAll('.btn-del-transaction').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            if (!confirm('Excluir esta transação?')) return;
+        btn.addEventListener('click', () => {
             const id = btn.dataset.id;
             const source = btn.dataset.source;
-            if (source === 'bets') await deleteBet(id);
-            else await deletePrize(id);
+            showConfirm(
+                'Excluir Transação',
+                'Deseja realmente excluir esta transação do financeiro? Esta ação não pode ser desfeita.',
+                async () => {
+                    if (source === 'bets') await deleteBet(id);
+                    else await deletePrize(id);
+                }
+            );
         });
     });
 }
@@ -1458,52 +1509,54 @@ async function clearAutomationQueue() {
         return;
     }
 
-    const confirmed = confirm(
-        'Limpar a fila cancela todos os jobs pendentes e em processamento.\n' +
-        'O robô vai parar de pegar novas tarefas.\n\n' +
-        'Confirmar?'
+    showConfirm(
+        'Limpar Fila de Automação',
+        'Limpar a fila cancela todos os jobs pendentes e em processamento.\nO robô vai parar de pegar novas tarefas.\n\nDeseja confirmar?',
+        async () => {
+            const btn = $('btn-clear-queue-gen');
+            const btnPanel = $('btn-clear-queue-panel');
+            [btn, btnPanel].forEach(b => { if (b) { b.disabled = true; b.textContent = 'Limpando...'; } });
+
+            try {
+                // 1. Remove todos os jobs da fila deste usuário
+                const { error: qErr } = await supabaseClient
+                    .from('automation_queue')
+                    .delete()
+                    .eq('owner_id', currentSession.user.id)
+                    .in('status', ['queued', 'processing']);
+                if (qErr) throw qErr;
+
+                // 2. Reseta os bets para status 'none'
+                const { error: bErr } = await supabaseClient
+                    .from('bets')
+                    .update({ automation_status: 'none' })
+                    .eq('owner_id', currentSession.user.id)
+                    .in('automation_status', ['queued', 'processing']);
+                if (bErr) throw bErr;
+
+                // 3. Reseta os bet_games pendentes para 'pendente' (cancelando processando)
+                const { error: bgErr } = await supabaseClient
+                    .from('bet_games')
+                    .update({ status: 'pendente', error_message: 'Cancelado pelo usuário' })
+                    .eq('owner_id', currentSession.user.id)
+                    .eq('status', 'processando');
+                if (bgErr) throw bgErr;
+
+                toast('Fila limpa! O robô não processará mais nenhum job pendente.', 'success');
+                await refreshPendingPanel();
+            } catch (e) {
+                console.error('Erro ao limpar fila:', e);
+                toast('Erro ao limpar fila: ' + e.message);
+            } finally {
+                [btn, btnPanel].forEach(b => {
+                    if (b) {
+                        b.disabled = false;
+                        b.textContent = b.id === 'btn-clear-queue-panel' ? 'Limpar Fila' : '🗑️ Limpar Fila';
+                    }
+                });
+            }
+        }
     );
-    if (!confirmed) return;
-
-    const btn = $('btn-clear-queue-gen');
-    const btnPanel = $('btn-clear-queue-panel');
-    [btn, btnPanel].forEach(b => { if (b) { b.disabled = true; b.textContent = 'Limpando...'; } });
-
-    try {
-        // 1. Remove todos os jobs da fila deste usuário
-        const { error: qErr } = await supabaseClient
-            .from('automation_queue')
-            .delete()
-            .eq('owner_id', currentSession.user.id)
-            .in('status', ['queued', 'processing']);
-        if (qErr) throw qErr;
-
-        // 2. Reseta os bets para status 'none'
-        const { error: bErr } = await supabaseClient
-            .from('bets')
-            .update({ automation_status: 'none' })
-            .eq('owner_id', currentSession.user.id)
-            .in('automation_status', ['queued', 'processing']);
-        if (bErr) throw bErr;
-
-        // 3. Reseta os bet_games pendentes para 'pendente' (cancelando processando)
-        const { error: bgErr } = await supabaseClient
-            .from('bet_games')
-            .update({ status: 'pendente', error_message: 'Cancelado pelo usuário' })
-            .eq('owner_id', currentSession.user.id)
-            .eq('status', 'processando');
-        if (bgErr) throw bgErr;
-
-        toast('Fila limpa! O robô não processará mais nenhum job pendente.');
-        await refreshPendingPanel();
-    } catch (e) {
-        console.error('Erro ao limpar fila:', e);
-        toast('Erro ao limpar fila: ' + e.message);
-    } finally {
-        [btn, btnPanel].forEach(b => {
-            if (b) { b.disabled = false; b.textContent = b.id === 'btn-clear-queue-panel' ? 'Limpar Fila' : '🗑️ Limpar Fila'; }
-        });
-    }
 }
 window.clearAutomationQueue = clearAutomationQueue;
 
@@ -1514,55 +1567,49 @@ async function resetAllFinancialData() {
         return;
     }
 
-    const confirmed = confirm(
-        '⚠️  ATENÇÃO — MODO HOMOLOGAÇÃO\n\n' +
-        'Isso vai apagar PERMANENTEMENTE:\n' +
-        '  • Todas as apostas (bets)\n' +
-        '  • Todos os prêmios (prizes)\n' +
-        '  • Todos os jogos individuais (bet_games)\n' +
-        '  • Toda a fila de automação\n' +
-        '  • Todo o histórico local\n\n' +
-        'Tem certeza absoluta?'
+    showConfirm(
+        '⚠️ MODO HOMOLOGAÇÃO',
+        'Isso vai apagar PERMANENTEMENTE:\n• Todas as apostas (bets)\n• Todos os prêmios (prizes)\n• Todos os jogos individuais (bet_games)\n• Toda a fila de automação\n• Todo o histórico local\n\nTem certeza absoluta?',
+        async () => {
+            const btn = $('btn-reset-all-data');
+            if (btn) { btn.disabled = true; btn.textContent = 'Limpando...'; }
+
+            const uid = currentSession.user.id;
+
+            try {
+                // 1. Fila de automação
+                await supabaseClient.from('automation_queue')
+                    .delete().eq('owner_id', uid);
+
+                // 2. Jogos individuais
+                await supabaseClient.from('bet_games')
+                    .delete().eq('owner_id', uid);
+
+                // 3. Apostas
+                await supabaseClient.from('bets')
+                    .delete().eq('owner_id', uid);
+
+                // 4. Prêmios
+                await supabaseClient.from('prizes')
+                    .delete().eq('owner_id', uid);
+
+                // 5. localStorage
+                localStorage.removeItem('lotosmart_bets');
+                localStorage.removeItem('lotosmart_prizes');
+                localStorage.removeItem('lotosmart_history');
+
+                toast('Todos os dados de teste foram apagados!', 'success');
+                await refreshFinancialData();
+                await refreshPendingPanel();
+
+            } catch (e) {
+                console.error('Erro ao resetar dados:', e);
+                toast('Erro ao limpar: ' + (e.message || e));
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = '🗑️ Limpar todos os dados de teste'; }
+            }
+        }
     );
-    if (!confirmed) return;
-
-    const btn = $('btn-reset-all-data');
-    if (btn) { btn.disabled = true; btn.textContent = 'Limpando...'; }
-
-    const uid = currentSession.user.id;
-
-    try {
-        // 1. Fila de automação
-        await supabaseClient.from('automation_queue')
-            .delete().eq('owner_id', uid);
-
-        // 2. Jogos individuais
-        await supabaseClient.from('bet_games')
-            .delete().eq('owner_id', uid);
-
-        // 3. Apostas
-        await supabaseClient.from('bets')
-            .delete().eq('owner_id', uid);
-
-        // 4. Prêmios
-        await supabaseClient.from('prizes')
-            .delete().eq('owner_id', uid);
-
-        // 5. localStorage
-        localStorage.removeItem('lotosmart_bets');
-        localStorage.removeItem('lotosmart_prizes');
-        localStorage.removeItem('lotosmart_history');
-
-        toast('Todos os dados de teste foram apagados!');
-        await refreshFinancialData();
-        await refreshPendingPanel();
-
-    } catch (e) {
-        console.error('Erro ao resetar dados:', e);
-        toast('Erro ao limpar: ' + (e.message || e));
-    } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '🗑️ Limpar todos os dados de teste'; }
-    }
 }
 window.resetAllFinancialData = resetAllFinancialData;
 
@@ -1674,46 +1721,51 @@ function renderPendingPanel(items) {
 
 async function confirmFinancialLaunch(pendItems) {
     if (!pendItems || pendItems.length === 0) return;
-    if (!confirm(`Confirmar lancamento de ${pendItems.length} jogo(s) no Financeiro?`)) return;
 
-    const today = new Date().toISOString().slice(0, 10);
+    showConfirm(
+        'Confirmar Lançamento Financeiro',
+        `Deseja registrar o lançamento de ${pendItems.length} jogo(s) no módulo Financeiro? Isso debitará o custo contábil dos jogos do seu saldo.`,
+        async () => {
+            const today = new Date().toISOString().slice(0, 10);
 
-    // Agrupa por bet_id para criar um unico registro financeiro por lote
-    const grouped = {};
-    pendItems.forEach(bg => {
-        if (!grouped[bg.bet_id]) {
-            grouped[bg.bet_id] = { lottery_type: bg.lottery_type, games: [], ids: [] };
+            // Agrupa por bet_id para criar um unico registro financeiro por lote
+            const grouped = {};
+            pendItems.forEach(bg => {
+                if (!grouped[bg.bet_id]) {
+                    grouped[bg.bet_id] = { lottery_type: bg.lottery_type, games: [], ids: [] };
+                }
+                grouped[bg.bet_id].games.push(bg.numbers);
+                grouped[bg.bet_id].ids.push(bg.id);
+            });
+
+            for (const [bet_id, grp] of Object.entries(grouped)) {
+                const g = activeGames.find(x => x.slug === grp.lottery_type);
+                const costUnit = g?.parametros?.cost || 3.00;
+                const total = grp.games.length * costUnit;
+
+                // Registra no financeiro
+                await addBet({
+                    bet_date: today,
+                    lottery_type: grp.lottery_type,
+                    game_count: grp.games.length,
+                    total_cost: total,
+                    notes: `Lancamento automatico via robo`,
+                    games: grp.games,
+                });
+
+                // Marca os bet_games como lancados
+                if (sbReady && currentSession) {
+                    await supabaseClient
+                        .from('bet_games')
+                        .update({ status: 'lancado' })
+                        .in('id', grp.ids);
+                }
+            }
+
+            toast(`${pendItems.length} jogo(s) lancados no Financeiro!`, 'success');
+            await refreshPendingPanel();
         }
-        grouped[bg.bet_id].games.push(bg.numbers);
-        grouped[bg.bet_id].ids.push(bg.id);
-    });
-
-    for (const [bet_id, grp] of Object.entries(grouped)) {
-        const g = activeGames.find(x => x.slug === grp.lottery_type);
-        const costUnit = g?.parametros?.cost || 3.00;
-        const total = grp.games.length * costUnit;
-
-        // Registra no financeiro
-        await addBet({
-            bet_date: today,
-            lottery_type: grp.lottery_type,
-            game_count: grp.games.length,
-            total_cost: total,
-            notes: `Lancamento automatico via robo`,
-            games: grp.games,
-        });
-
-        // Marca os bet_games como lancados
-        if (sbReady && currentSession) {
-            await supabaseClient
-                .from('bet_games')
-                .update({ status: 'lancado' })
-                .in('id', grp.ids);
-        }
-    }
-
-    toast(`${pendItems.length} jogo(s) lancados no Financeiro!`);
-    await refreshPendingPanel();
+    );
 }
 
 // ===== SUPABASE REALTIME: escuta bet_games =====
