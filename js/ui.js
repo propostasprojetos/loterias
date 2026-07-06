@@ -5,7 +5,7 @@
 import { $ } from './utils.js';
 
 export function switchView(viewId) {
-    document.querySelectorAll('.view-container').forEach(v => {
+    document.querySelectorAll('section[id^="view-"]').forEach(v => {
         v.classList.add('hidden');
         v.style.display = 'none';
     });
