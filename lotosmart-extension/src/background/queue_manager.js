@@ -7,7 +7,7 @@
 
 import { createLogger } from '../shared/logger.js';
 import * as db from './supabase.js';
-import { POLL_INTERVAL_SECONDS } from '../shared/config.js';
+import { POLL_INTERVAL_SECONDS, GAME_URLS } from '../shared/config.js';
 
 const log = createLogger('QueueManager');
 
@@ -84,24 +84,66 @@ async function processNextJob() {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // FASE 4/5: Aqui a extensão abrirá a aba da Caixa e enviará os 
-    // jogos para o Content Script executar os cliques.
-    //
-    // Por enquanto (Fase 3), vamos apenas simular o sucesso para 
-    // testar o fluxo de banco.
+    // FASE 4: Integração real com o Content Script
     // ─────────────────────────────────────────────────────────────
-    log.debug(`Enviando ${games.length} jogos para o Content Script (SIMULAÇÃO)`);
+    log.debug(`Buscando aba da Caixa para enviar ${games.length} jogos...`);
+    
+    // Busca abas da Caixa
+    const tabs = await chrome.tabs.query({ url: "*://*.loteriasonline.caixa.gov.br/*" });
+    if (tabs.length === 0) {
+      throw new Error("Nenhuma aba da Caixa Econômica encontrada. Por favor, abra o site da Caixa e faça login.");
+    }
+    
+    let targetTab = tabs[0];
+    
+    // Envia o job para a aba
+    const sendJobToTab = (tabId) => {
+      return new Promise((resolve) => {
+        chrome.tabs.sendMessage(tabId, { type: 'EXECUTE_JOB', bet, games }, (response) => {
+          if (chrome.runtime.lastError) {
+            resolve({ status: 'error', message: chrome.runtime.lastError.message });
+          } else {
+            resolve(response || { status: 'error', message: 'Sem resposta' });
+          }
+        });
+      });
+    };
 
-    // SIMULAÇÃO: Atualiza os jogos para sucesso
-    for (const game of games) {
-      await db.updateGameStatus(game.id, 'processando');
-      // simulate delay
-      await new Promise(r => setTimeout(r, 500));
-      await db.updateGameStatus(game.id, 'pendente_lancamento');
+    let response = await sendJobToTab(targetTab.id);
+
+    // Se estiver na página errada, redireciona e tenta de novo
+    if (response.status === 'error' && response.message === 'wrong_page') {
+      log.info('Redirecionando aba para a página correta do jogo...');
+      const targetUrl = GAME_URLS[bet.lottery_type];
+      
+      await chrome.tabs.update(targetTab.id, { url: targetUrl });
+      
+      // Aguarda 5 segundos para a página carregar
+      await new Promise(r => setTimeout(r, 5000));
+      
+      // Tenta enviar de novo
+      response = await sendJobToTab(targetTab.id);
     }
 
-    // Conclui o job
-    await db.completeJob(job.id, bet.id);
+    if (response.status === 'success') {
+      // Atualiza os jogos baseados nos resultados do Content Script
+      const { success, failed } = response.results;
+      
+      for (const gameId of success) {
+        await db.updateGameStatus(gameId, 'sucesso');
+      }
+      
+      for (const fail of failed) {
+        await db.updateGameStatus(fail.id, 'erro', fail.error);
+      }
+      
+      // Conclui o job
+      await db.completeJob(job.id, bet.id);
+      log.info(`Job ${job.id} processado. Sucesso: ${success.length}, Falhas: ${failed.length}`);
+      
+    } else {
+      throw new Error(`Erro do Content Script: ${response.message}`);
+    }
 
   } catch (error) {
     log.error('Erro no ciclo de processamento', error);
