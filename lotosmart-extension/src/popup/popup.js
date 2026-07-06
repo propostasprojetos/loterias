@@ -100,6 +100,15 @@ function setupListeners() {
     els.toggleHint.textContent = enabled 
       ? 'O robô está processando a fila...' 
       : 'O robô está pausado.';
+    
+    // Atualizar UI na hora
+    if (enabled) {
+      els.statusDot.className = 'status-dot';
+      els.statusText.textContent = 'Online';
+    } else {
+      els.statusDot.className = 'status-dot offline';
+      els.statusText.textContent = 'Offline';
+    }
   });
 
   // Link do Dashboard (abre nova aba)
