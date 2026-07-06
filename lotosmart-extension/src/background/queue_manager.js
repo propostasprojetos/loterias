@@ -155,25 +155,10 @@ async function processNextJob() {
       
       await chrome.tabs.update(targetTab.id, { url: targetUrl });
       
-      // Sincronização: Espera a aba carregar completamente via evento do Chrome
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          chrome.tabs.onUpdated.removeListener(listener);
-          reject(new Error("Timeout aguardando carregamento da aba da Caixa"));
-        }, 30000);
-
-        const listener = (tabId, info) => {
-          if (tabId === targetTab.id && info.status === 'complete') {
-            chrome.tabs.onUpdated.removeListener(listener);
-            clearTimeout(timeout);
-            resolve();
-          }
-        };
-        chrome.tabs.onUpdated.addListener(listener);
-      });
-      
-      // Pequena pausa para os scripts da página (Angular/React) renderizarem os componentes
-      await new Promise(r => setTimeout(r, 1500));
+      // Sincronização: Por ser um SPA (Angular), a mudança de jogo altera apenas o hash (/#/home -> /#/lotofacil).
+      // Isso não dispara um reload real da página (status = complete), então o evento onUpdated ficaria preso.
+      // Apenas aguardamos 3 segundos para o Angular renderizar o novo componente de loteria na tela.
+      await new Promise(r => setTimeout(r, 3000));
       
       // Tenta enviar de novo
       response = await sendJobToTab(targetTab.id);
