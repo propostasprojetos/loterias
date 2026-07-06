@@ -2,6 +2,12 @@
 // store.js - Global App State
 // ==========================================
 
+export const API_URL = 'https://lotofacil-api-production.up.railway.app';
+
+// ID da Extensão LotoSmart Worker (para comunicação via chrome.runtime.sendMessage)
+export const EXTENSION_ID = 'eddeaonolckbobhneoegfbjpoggikkmk';
+
+// ===== ESTADO GLOBAL =====
 export const state = {
     currentSession: null,
     currentProfile: null,

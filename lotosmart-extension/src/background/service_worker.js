@@ -10,6 +10,7 @@
 
 import { createLogger } from '../shared/logger.js';
 import { WORKER_VERSION } from '../shared/config.js';
+import * as db from './supabase.js';
 
 const log = createLogger('ServiceWorker');
 
@@ -28,8 +29,6 @@ chrome.runtime.onStartup.addListener(() => {
 // ═══════════════════════════════════════════════════
 // MENSAGENS EXTERNAS (Dashboard Web → Extensão)
 // ═══════════════════════════════════════════════════
-// O Dashboard enviará a sessão do Supabase via chrome.runtime.sendMessage(extensionId, ...)
-// Isso será implementado na Fase 2.
 
 chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
   log.info('Mensagem externa recebida', { type: message?.type, origin: sender?.origin });
@@ -39,7 +38,26 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
     return;
   }
 
-  // Placeholder para Fase 2 (receber sessão)
+  // Recebe e armazena a sessão (Fase 2)
+  if (message?.type === 'LOTOSMART_SESSION_SYNC') {
+    log.info('Sessão recebida do Dashboard Web');
+    
+    // Armazena no chrome.storage local
+    chrome.storage.local.set({ supabaseSession: message.session }, () => {
+      // Passa para o SDK do Supabase inicializar
+      db.setSessionFromWeb(message.session)
+        .then(() => {
+          log.info('Sessão aplicada ao SDK Supabase');
+          sendResponse({ status: 'session_stored' });
+        })
+        .catch(err => {
+          log.error('Erro ao aplicar sessão no SDK', err);
+          sendResponse({ status: 'error', message: err.message });
+        });
+    });
+    return true; // Keep channel open for async
+  }
+
   sendResponse({ status: 'unknown_message' });
 });
 
@@ -49,13 +67,27 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'GET_STATUS') {
-    sendResponse({
-      version: WORKER_VERSION,
-      workerActive: true,
-      authenticated: false,   // Será dinâmico na Fase 3
-      queueLength: 0,         // Será dinâmico na Fase 3
+    // Check auth directly via SDK
+    db.isAuthenticated().then(isAuthenticated => {
+      sendResponse({
+        version: WORKER_VERSION,
+        workerActive: true, // TODO: sync with queue_manager state
+        authenticated: isAuthenticated,
+        queueLength: 0, // Será dinâmico quando integrarmos a fila
+      });
     });
     return true; // keep channel open for async
+  }
+
+  if (message?.type === 'SET_WORKER_ENABLED') {
+    import('./queue_manager.js').then(queue => {
+      if (message.enabled) {
+        queue.startWorker();
+      } else {
+        queue.stopWorker();
+      }
+    });
+    sendResponse({ status: 'ok' });
   }
 });
 

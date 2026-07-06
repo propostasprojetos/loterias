@@ -105,7 +105,7 @@ function setupListeners() {
   // Link do Dashboard (abre nova aba)
   els.linkDashboard.addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: 'http://localhost:5500' }); // Ajustar URL em produção
+    chrome.tabs.create({ url: 'https://loterias-six.vercel.app/' });
   });
 
   // Link de Logs (abre a página de extensões)

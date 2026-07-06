@@ -3,7 +3,7 @@
 // ==========================================
 
 import { supabaseClient, sbReady } from './supabase.js';
-import { state } from './store.js';
+import { state, EXTENSION_ID } from './store.js';
 import { toast, $ } from './utils.js';
 import { switchView } from './ui.js';
 import { loadAvailableGames } from './gerador.js';
@@ -176,7 +176,35 @@ export async function checkAuthState() {
                 }
             }
         }
+        // Sincroniza com a extensão, se houver
+        if (EXTENSION_ID) {
+            syncSessionWithExtension(state.currentSession);
+        }
+
     } finally {
         isAuthChecking = false;
+    }
+}
+
+/**
+ * Envia a sessão atual para a Extensão Chrome do LotoSmart.
+ * Requer que o ID da extensão esteja configurado no store.js e a permissão externally_connectable no manifest.json
+ */
+function syncSessionWithExtension(session) {
+    if (!window.chrome || !chrome.runtime) return;
+
+    try {
+        chrome.runtime.sendMessage(EXTENSION_ID, {
+            type: 'LOTOSMART_SESSION_SYNC',
+            session: session
+        }, (response) => {
+            if (chrome.runtime.lastError) {
+                console.warn('🎲 Não foi possível comunicar com a Extensão. Ela está instalada e o ID está correto?');
+            } else {
+                console.log('🎲 Sessão sincronizada com a extensão do Worker!');
+            }
+        });
+    } catch (e) {
+        console.warn('Erro ao sincronizar com a extensão:', e);
     }
 }
