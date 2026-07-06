@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "LotoSmart Worker",
+  "version": "1.0.0",
+  "description": "Worker de automação para o LotoSmart — registra apostas automaticamente no site Loterias Online da Caixa.",
+
+  "icons": {
+    "16":  "assets/icon_16.png",
+    "48":  "assets/icon_48.png",
+    "128": "assets/icon_128.png"
+  },
+
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16":  "assets/icon_16.png",
+      "48":  "assets/icon_48.png",
+      "128": "assets/icon_128.png"
+    }
+  },
+
+  "background": {
+    "service_worker": "src/background/service_worker.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["*://*.loteriasonline.caixa.gov.br/*"],
+      "js": ["src/content/injector.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "permissions": [
+    "storage",
+    "alarms",
+    "tabs",
+    "scripting"
+  ],
+
+  "host_permissions": [
+    "*://*.loteriasonline.caixa.gov.br/*",
+    "*://*.caixa.gov.br/*"
+  ],
+
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:*/*",
+      "http://127.0.0.1:*/*",
+      "https://*.lotosmart.com/*"
+    ]
+  }
+}
