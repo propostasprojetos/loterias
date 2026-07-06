@@ -121,6 +121,33 @@ async function processNextJob() {
 
     let response = await sendJobToTab(targetTab.id);
 
+    // ─────────────────────────────────────────────────────────────
+    // Tratamento de aba "Órfã" (Quando a extensão foi atualizada mas a aba da Caixa não)
+    // ─────────────────────────────────────────────────────────────
+    if (response.status === 'error' && response.message.includes('Receiving end does not exist')) {
+      log.warn('Content Script ausente. A aba deve estar obsoleta. Recarregando...');
+      await chrome.tabs.reload(targetTab.id);
+      
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          chrome.tabs.onUpdated.removeListener(listener);
+          reject(new Error("Timeout aguardando refresh da aba da Caixa"));
+        }, 30000);
+
+        const listener = (tabId, info) => {
+          if (tabId === targetTab.id && info.status === 'complete') {
+            chrome.tabs.onUpdated.removeListener(listener);
+            clearTimeout(timeout);
+            resolve();
+          }
+        };
+        chrome.tabs.onUpdated.addListener(listener);
+      });
+      
+      await new Promise(r => setTimeout(r, 1500));
+      response = await sendJobToTab(targetTab.id);
+    }
+
     // Se estiver na página errada, redireciona e tenta de novo
     if (response.status === 'error' && response.message === 'wrong_page') {
       log.info('Redirecionando aba para a página correta do jogo...');
