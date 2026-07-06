@@ -16,6 +16,10 @@ let isProcessing = false;
 let pollingInterval = null;
 let currentWorkerId = 'worker_ext_' + Math.random().toString(36).substring(2, 9); // ID único para este worker
 
+export function isActive() {
+  return isWorkerActive;
+}
+
 /**
  * Inicia o processamento da fila.
  */

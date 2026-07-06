@@ -11,6 +11,7 @@
 import { createLogger } from '../shared/logger.js';
 import { WORKER_VERSION } from '../shared/config.js';
 import * as db from './supabase.js';
+import * as queue from './queue_manager.js';
 
 const log = createLogger('ServiceWorker');
 
@@ -71,7 +72,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     db.isAuthenticated().then(isAuthenticated => {
       sendResponse({
         version: WORKER_VERSION,
-        workerActive: true, // TODO: sync with queue_manager state
+        workerActive: queue.isActive(),
         authenticated: isAuthenticated,
         queueLength: 0, // Será dinâmico quando integrarmos a fila
       });
@@ -80,13 +81,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === 'SET_WORKER_ENABLED') {
-    import('./queue_manager.js').then(queue => {
-      if (message.enabled) {
-        queue.startWorker();
-      } else {
-        queue.stopWorker();
-      }
-    });
+    if (message.enabled) {
+      queue.startWorker();
+    } else {
+      queue.stopWorker();
+    }
     sendResponse({ status: 'ok' });
   }
 });
