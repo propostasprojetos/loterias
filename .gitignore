@@ -3,3 +3,31 @@ data.json
 create_user.ps1
 supabase/.temp/
 .temp/
+
+# Environment
+.env
+lotosmart-worker/.env
+
+# Python
+venv/
+lotosmart-worker/venv/
+__pycache__/
+lotosmart-worker/__pycache__/
+lotosmart-worker/bot/__pycache__/
+
+# Worker runtime artifacts
+lotosmart-worker/logs/
+lotosmart-worker/screenshots/
+lotosmart-worker/playwright_profile/
+lotosmart-worker/diag_full_page.html
+lotosmart-worker/logged_in.html
+
+# Extension build artifacts
+lotosmart-extension/node_modules/
+
+# Backup
+app.js.backup
+
+# OS
+.DS_Store
+Thumbs.db
