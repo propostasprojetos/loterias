@@ -98,10 +98,18 @@ async function processNextJob() {
     
     let targetTab = tabs[0];
     
-    // Envia o job para a aba
+    // Envia o job para a aba (com Timeout de segurança)
     const sendJobToTab = (tabId) => {
       return new Promise((resolve) => {
+        // Timeout de segurança: 1 minuto por jogo + 1 minuto extra
+        const maxTime = (games.length * 60000) + 60000;
+        
+        const timeoutId = setTimeout(() => {
+          resolve({ status: 'error', message: 'Timeout: O Content Script não respondeu no tempo limite.' });
+        }, maxTime);
+
         chrome.tabs.sendMessage(tabId, { type: 'EXECUTE_JOB', bet, games }, (response) => {
+          clearTimeout(timeoutId);
           if (chrome.runtime.lastError) {
             resolve({ status: 'error', message: chrome.runtime.lastError.message });
           } else {
