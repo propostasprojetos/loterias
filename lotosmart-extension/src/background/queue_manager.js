@@ -64,22 +64,24 @@ async function processNextJob() {
   if (!isWorkerActive || isProcessing) return;
   isProcessing = true;
 
+  let currentJob = null;
+
   try {
-    const job = await db.claimNextJob(currentWorkerId);
+    currentJob = await db.claimNextJob(currentWorkerId);
     
-    if (!job) {
+    if (!currentJob) {
       log.debug('Nenhum job na fila.');
       return;
     }
 
-    log.info(`Job ${job.id} assumido! Iniciando automação para aposta ${job.bet_id}...`);
+    log.info(`Job ${currentJob.id} assumido! Iniciando automação para aposta ${currentJob.bet_id}...`);
 
     // Busca dados detalhados
-    const { bet, games } = await db.fetchBetAndGames(job.bet_id);
+    const { bet, games } = await db.fetchBetAndGames(currentJob.bet_id);
 
     if (!games || games.length === 0) {
       log.warn(`Aposta ${bet.id} não tem jogos pendentes.`);
-      await db.failJob(job.id, bet.id, 'Sem jogos pendentes', job.retry_count, job.max_retries);
+      await db.failJob(currentJob.id, bet.id, 'Sem jogos pendentes', currentJob.retry_count, currentJob.max_retries);
       return;
     }
 
@@ -118,8 +120,25 @@ async function processNextJob() {
       
       await chrome.tabs.update(targetTab.id, { url: targetUrl });
       
-      // Aguarda 5 segundos para a página carregar
-      await new Promise(r => setTimeout(r, 5000));
+      // Sincronização: Espera a aba carregar completamente via evento do Chrome
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          chrome.tabs.onUpdated.removeListener(listener);
+          reject(new Error("Timeout aguardando carregamento da aba da Caixa"));
+        }, 30000);
+
+        const listener = (tabId, info) => {
+          if (tabId === targetTab.id && info.status === 'complete') {
+            chrome.tabs.onUpdated.removeListener(listener);
+            clearTimeout(timeout);
+            resolve();
+          }
+        };
+        chrome.tabs.onUpdated.addListener(listener);
+      });
+      
+      // Pequena pausa para os scripts da página (Angular/React) renderizarem os componentes
+      await new Promise(r => setTimeout(r, 1500));
       
       // Tenta enviar de novo
       response = await sendJobToTab(targetTab.id);
@@ -138,8 +157,8 @@ async function processNextJob() {
       }
       
       // Conclui o job
-      await db.completeJob(job.id, bet.id);
-      log.info(`Job ${job.id} processado. Sucesso: ${success.length}, Falhas: ${failed.length}`);
+      await db.completeJob(currentJob.id, bet.id);
+      log.info(`Job ${currentJob.id} processado. Sucesso: ${success.length}, Falhas: ${failed.length}`);
       
     } else {
       throw new Error(`Erro do Content Script: ${response.message}`);
@@ -147,6 +166,23 @@ async function processNextJob() {
 
   } catch (error) {
     log.error('Erro no ciclo de processamento', error);
+    
+    // Tratamento robusto: se falhou após fazer o claim, devolve o job para a fila ou falha
+    if (currentJob) {
+      log.warn(`Tentando registrar falha para o Job ${currentJob.id}...`);
+      try {
+        await db.failJob(
+          currentJob.id, 
+          currentJob.bet_id, 
+          error.message || 'Erro inesperado na automação', 
+          currentJob.retry_count || 0, 
+          currentJob.max_retries || 3
+        );
+      } catch (errFallback) {
+        log.error('Erro fatal ao falhar o job', errFallback);
+      }
+    }
+
   } finally {
     isProcessing = false;
 

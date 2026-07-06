@@ -5,7 +5,7 @@
  * da Caixa Econômica Federal (/#/lotofacil).
  */
 
-import { waitForSelector, findElementByText, simulateClick, sleep } from './dom_utils.js';
+import { waitForSelector, findElementByText, simulateClick, sleep, waitForFunction } from './dom_utils.js';
 import { TIMEOUT_BETWEEN_CLICKS, TIMEOUT_ADD_CART, TIMEOUT_BETWEEN_GAMES } from '../shared/config.js';
 
 /**
@@ -73,14 +73,23 @@ async function clickAddToCart() {
 }
 
 /**
- * Verifica se a aposta já foi incluída com sucesso (usualmente olhando pro carrinho atualizado ou toast).
+ * Verifica se a aposta já foi incluída com sucesso (olhando pro carrinho ou toast).
  */
 async function verifySuccess() {
-    // Na caixa, um toast/snackbar pode aparecer, ou o total de itens no carrinho muda.
-    // Vamos apenas esperar um pequeno tempo e assumir sucesso, deixando
-    // verificações mais rígidas para futuras melhorias (Fase 5) caso a Caixa mude.
-    await sleep(2000);
-    return true;
+    try {
+        await waitForFunction(() => {
+            const bodyText = document.body.innerText.toLowerCase();
+            // A Caixa pode apresentar uma mensagem de sucesso ou 
+            // no mínimo o botão de "Ir para pagamento" fica disponível/atualizado
+            return bodyText.includes('aposta adicionada') || 
+                   bodyText.includes('sucesso') ||
+                   bodyText.includes('ir para pagamento') ||
+                   document.querySelector('.badge'); // Ícone de contador do carrinho
+        }, 5000, 250);
+        return true;
+    } catch (err) {
+        throw new Error('Falha ao confirmar adição ao carrinho (timeout visual). O botão pode não ter funcionado.');
+    }
 }
 
 /**
@@ -135,12 +144,19 @@ export async function executeAllGames(games) {
         failed: []
     };
 
-    // Confirmar que o volante da Lotofácil está na tela esperando pelo título
+    // Confirmar que o volante da Lotofácil está na tela de fato
     try {
-        await waitForSelector('h2, h3', 10000); // Wait for page generic content
-        // Aguarda um número estar na tela
-        const isReady = await waitForSelector('a, li', 5000).then(() => true).catch(() => false);
-        if (!isReady) throw new Error("A página não parece estar carregada.");
+        // Aguarda a renderização básica
+        await waitForSelector('h2, h3', 10000); 
+        
+        // Sincronização Estrita: Aguarda até que o texto de aposta OU os números existam
+        const isReady = await waitForFunction(() => {
+            const hasTitle = !!findElementByText('h2, h3, span', 'Preencha sua aposta');
+            const hasNumber = !!document.querySelector('[data-numero="01"]');
+            return hasTitle || hasNumber;
+        }, 15000, 250).then(() => true).catch(() => false);
+
+        if (!isReady) throw new Error("A página da Lotofácil não carregou completamente os números ou o volante.");
     } catch(err) {
         console.error("🎲 Lotofácil: Erro ao aguardar o carregamento da página.", err);
         throw err;
