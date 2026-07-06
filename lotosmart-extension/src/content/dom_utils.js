@@ -86,16 +86,23 @@ export function sleep(ms) {
 export function simulateClick(element) {
     if (!element) return false;
     
-    // Dispara mousedown, mouseup e click para simular ação real
-    const events = ['mousedown', 'mouseup', 'click'];
+    try {
+        // Tenta clique nativo primeiro (mais seguro se for um botão normal)
+        element.click();
+    } catch (e) {}
+    
+    // Dispara eventos artificiais como fallback (garantia para Angular/React/Vue)
+    const events = ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'];
     events.forEach(eventType => {
-        const event = new MouseEvent(eventType, {
-            view: window,
-            bubbles: true,
-            cancelable: true,
-            buttons: 1
-        });
-        element.dispatchEvent(event);
+        try {
+            const event = new MouseEvent(eventType, {
+                view: window,
+                bubbles: true,
+                cancelable: true,
+                buttons: 1
+            });
+            element.dispatchEvent(event);
+        } catch(e){}
     });
     
     return true;

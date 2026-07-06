@@ -27,18 +27,29 @@ function clickNumber(num) {
 
     for (const selector of attrSelectors) {
         const el = document.querySelector(selector);
-        if (el && el.offsetParent !== null) { // isVisible aproximado
+        // Verifica se elemento existe e tem tamanho na tela
+        if (el && (el.offsetWidth > 0 || el.offsetHeight > 0 || el.offsetParent !== null)) {
             simulateClick(el);
             return true;
         }
     }
 
-    // Estratégia 2: Busca todos os 'a' ou 'li' e varre o texto
-    const elements = document.querySelectorAll('a, button, li');
+    // Estratégia 2: Busca todos os elementos possivelmente clicáveis e varre o texto exato
+    const elements = document.querySelectorAll('a, button, li, span, div.dezena, label');
     for (const el of elements) {
-        const text = el.textContent.trim();
+        // Usa o innerText ou textContent removendo todos os espaços em branco extras (caso tenham quebras de linha ou zeros ocultos)
+        const text = (el.innerText || el.textContent || '').trim();
         if (text === numStr || text === String(num)) {
             simulateClick(el);
+            return true;
+        }
+    }
+
+    // Estratégia 3 (Fallback): Percorre recursivamente buscando apenas o nó de texto
+    const allSpans = document.querySelectorAll('span');
+    for (const span of allSpans) {
+        if (span.textContent.trim() === numStr) {
+            simulateClick(span);
             return true;
         }
     }
