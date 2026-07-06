@@ -87,25 +87,15 @@ export function simulateClick(element) {
     if (!element) return false;
     
     try {
-        // Tenta clique nativo primeiro (mais seguro se for um botão normal)
+        // Na Caixa (AngularJS), o element.click() nativo é perfeito.
+        // Se dispararmos MouseEvents artificiais logo depois, ocorre um "duplo clique",
+        // o que faz a dezena ser selecionada e imediatamente desmarcada.
         element.click();
-    } catch (e) {}
-    
-    // Dispara eventos artificiais como fallback (garantia para Angular/React/Vue)
-    const events = ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'];
-    events.forEach(eventType => {
-        try {
-            const event = new MouseEvent(eventType, {
-                view: window,
-                bubbles: true,
-                cancelable: true,
-                buttons: 1
-            });
-            element.dispatchEvent(event);
-        } catch(e){}
-    });
-    
-    return true;
+        return true;
+    } catch (e) {
+        console.error('🎲 LotoSmart: Erro ao clicar', e);
+        return false;
+    }
 }
 
 /**
