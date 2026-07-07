@@ -163,6 +163,17 @@ function addValidGames() {
     // Re-renderiza a tela de resultados
     renderGames();
     
+    // Atualiza o input de quantidade para refletir a soma manual + gerada
+    const qtyInput = document.getElementById(`qty-${slug}`);
+    if (qtyInput) {
+        qtyInput.value = (parseInt(qtyInput.value) || 0) + newGames.length;
+    }
+    
+    // Atualiza o resumo financeiro com a nova quantidade e dispara a prop de total
+    import('./gerador.js').then(module => {
+        if (module.updateSummary) module.updateSummary();
+    });
+    
     // Força a ativação da aba do jogo recém inserido
     setTimeout(() => {
         const tabBtn = document.querySelector(`button[data-tab="tab-${slug}"]`);
