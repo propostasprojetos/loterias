@@ -1,5 +1,5 @@
 import { state } from './store.js';
-import { renderGameTabs } from './gerador.js';
+import { renderGames } from './gerador.js';
 
 // DOM Elements
 const btnManualEntry = document.getElementById('btn-manual-entry');
@@ -162,7 +162,7 @@ function addValidGames() {
     state.currentGamesData[slug].games.push(...newGames);
 
     // Re-renderiza a tela de resultados
-    renderGameTabs();
+    renderGames();
     
     // Força a ativação da aba do jogo recém inserido
     setTimeout(() => {
