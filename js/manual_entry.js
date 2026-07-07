@@ -10,7 +10,7 @@ const btnAddManual = document.getElementById('btn-add-manual');
 const textarea = document.getElementById('manual-textarea');
 const validationList = document.getElementById('manual-validation-list');
 const statsLabel = document.getElementById('manual-stats');
-const gameNameLabel = document.getElementById('manual-game-name');
+const gameSelect = document.getElementById('manual-game-select');
 
 let validGamesQueue = [];
 
@@ -25,12 +25,21 @@ if (btnAddManual) btnAddManual.addEventListener('click', addValidGames);
 if (textarea) {
     textarea.addEventListener('input', debounce(validateInput, 300));
 }
+if (gameSelect) {
+    gameSelect.addEventListener('change', validateInput);
+}
 
 function openModal() {
-    if (!state.currentGame) return;
+    if (!state.activeGames || state.activeGames.length === 0) {
+        alert('Nenhum jogo ativo encontrado. Peça para o administrador liberar os jogos para você.');
+        return;
+    }
     
-    // Configura os textos do modal
-    gameNameLabel.textContent = state.currentGame.name;
+    // Preenche o seletor de jogos
+    if (gameSelect) {
+        gameSelect.innerHTML = state.activeGames.map(g => `<option value="${g.slug}">${g.nome}</option>`).join('');
+    }
+    
     textarea.value = '';
     validGamesQueue = [];
     updateValidationUI();
@@ -41,6 +50,14 @@ function openModal() {
 
 function closeModal() {
     modalManual.classList.add('hidden');
+}
+
+/**
+ * Retorna o objeto do jogo selecionado no momento
+ */
+function getSelectedGame() {
+    const slug = gameSelect.value;
+    return state.activeGames.find(g => g.slug === slug);
 }
 
 /**
@@ -58,11 +75,13 @@ function validateInput() {
         return;
     }
 
-    const game = state.currentGame;
-    // Pega a quantidade selecionada no seletor de dezenas do painel principal (se existir), senão pega o padrão
-    const requiredSize = state.budget[game.slug]?.pick || game.pick;
-    const maxNum = game.range_max;
-    const minNum = game.range_min;
+    const game = getSelectedGame();
+    if (!game) return;
+
+    // A quantidade exigida é a parametrizada no jogo base (pick)
+    const requiredSize = game.parametros?.pick_size || 15; // fallback
+    const maxNum = game.parametros?.range_max || 25;
+    const minNum = game.parametros?.range_min || 1;
 
     let validCount = 0;
 
@@ -123,7 +142,9 @@ function updateValidationUI() {
 function addValidGames() {
     if (validGamesQueue.length === 0) return;
     
-    const slug = state.currentGame.slug;
+    const game = getSelectedGame();
+    if (!game) return;
+    const slug = game.slug;
     
     // Garante que o objeto do jogo existe no state
     if (!state.currentGamesData[slug]) {
@@ -143,10 +164,21 @@ function addValidGames() {
     // Re-renderiza a tela de resultados
     renderGameTabs();
     
+    // Força a ativação da aba do jogo recém inserido
+    setTimeout(() => {
+        const tabBtn = document.querySelector(`button[data-tab="tab-${slug}"]`);
+        if (tabBtn) tabBtn.click();
+    }, 50);
+    
     // Mostra as abas e paineis se estavam escondidos (primeira geração)
-    document.getElementById('results-area').classList.remove('hidden');
-    document.getElementById('btn-automation-gen').classList.remove('hidden');
-    document.getElementById('btn-register-bet-gen').classList.remove('hidden');
+    const resultsArea = document.getElementById('results-area');
+    if (resultsArea) resultsArea.classList.remove('hidden');
+    
+    const btnAuto = document.getElementById('btn-automation-gen');
+    if (btnAuto) btnAuto.classList.remove('hidden');
+    
+    const btnReg = document.getElementById('btn-register-bet-gen');
+    if (btnReg) btnReg.classList.remove('hidden');
 
     // Fecha o modal
     closeModal();
@@ -172,3 +204,4 @@ function debounce(func, wait) {
         timeout = setTimeout(later, wait);
     };
 }
+
