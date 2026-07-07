@@ -151,12 +151,11 @@ function addValidGames() {
         state.currentGamesData[slug] = { games: [], selected: new Set(), page: 0 };
     }
 
-    // Cria o objeto no mesmo formato do gerador
-    const newGames = validGamesQueue.map(arr => ({
-        numbers: arr,
-        id: crypto.randomUUID(),
-        isManual: true // tag útil para diferenciar visualmente (opcional)
-    }));
+    // Cria o objeto no mesmo formato do gerador (arrays de inteiros)
+    const newGames = validGamesQueue.map(arr => {
+        arr.isManual = true; // tag útil para diferenciar visualmente, mantendo a estrutura de Array
+        return arr;
+    });
 
     // Adiciona no final
     state.currentGamesData[slug].games.push(...newGames);
