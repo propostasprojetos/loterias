@@ -620,6 +620,10 @@ select option { background: var(--surface-solid); color: var(--text); }
     .header-inner { flex-direction: column; height: auto; gap: 12px; padding: 12px 0; }
     nav { justify-content: center; gap: 8px; }
     .config-grid, .fin-dashboard, .admin-stats-grid { grid-template-columns: 1fr; }
+    .auth-card { margin: 40px 16px; padding: 24px; width: auto; }
+    .manual-layout { flex-direction: column !important; gap: 16px !important; }
+    .manual-input-area, .manual-validation-area { flex: none !important; width: 100% !important; min-width: 0 !important; }
+    .history-table-wrapper, .admin-table-wrapper { overflow-x: auto; }
     .summary-bar { grid-template-columns: 1fr 1fr; gap: 8px;}
     .split-controls { flex-wrap: wrap; }
     .split-range { order: -1; flex-basis: 100%; }
