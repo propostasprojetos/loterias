@@ -185,8 +185,8 @@
                 <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
                     <div class="modal-stats" id="manual-stats" style="color: var(--text-2); font-size: 0.85rem;">0 jogos válidos encontrados</div>
                     <div style="display: flex; gap: 10px;">
-                        <button class="btn-outline" id="btn-cancel-manual">Cancelar</button>
-                        <button class="btn-primary" id="btn-add-manual" disabled>Adicionar Jogos</button>
+                        <button class="btn-secondary" id="btn-cancel-manual" style="width: auto; padding: 10px 20px;">Cancelar</button>
+                        <button class="btn-primary" id="btn-add-manual" style="width: auto; padding: 10px 20px;" disabled>Adicionar Jogos</button>
                     </div>
                 </div>
             </div>
@@ -681,8 +681,8 @@
                         </div>
                     </div>
 
-                    <div class="modal-footer">
-                        <button type="button" class="btn-sm btn-danger hidden" id="btn-reset-user-pass">Forçar Reset de Senha</button>
+                    <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
+                        <button type="button" class="btn-danger hidden" id="btn-reset-user-pass" style="width: auto;">Reset Senha</button>
                         <button type="submit" class="btn-primary" style="width: auto;">Salvar Cliente</button>
                     </div>
                 </form>
@@ -718,7 +718,7 @@
                             <!-- Preenchido via JS -->
                         </div>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
                         <button type="submit" class="btn-primary" style="width: auto;">Salvar Plano</button>
                     </div>
                 </form>
@@ -777,7 +777,7 @@
                             <div class="input-row"><input type="number" id="game-cost" required value="5.00" step="0.50"></div>
                         </div>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
                         <button type="submit" class="btn-primary" style="width: auto;">Salvar Jogo</button>
                     </div>
                 </form>
