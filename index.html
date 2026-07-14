@@ -138,10 +138,13 @@
             <div class="modal-content" style="max-width: 780px;">
                 <div class="modal-header">
                     <h2>⌨️ Inserção Manual</h2>
-                    <select id="manual-game-select" style="padding: 6px 10px; border-radius: var(--radius-sm); background: rgba(0,0,0,0.3); color: var(--text); border: 1px solid var(--border); font-family: var(--font); font-size: 0.85rem;"></select>
-                    <button class="modal-close" id="btn-close-manual-modal">✕</button>
+                    <button class="btn-close-modal" id="btn-close-manual-modal">✕</button>
                 </div>
                 <div class="modal-body">
+                    <div class="field" style="margin-bottom: 16px;">
+                        <label>Loteria</label>
+                        <select id="manual-game-select"></select>
+                    </div>
                     <p style="color: var(--text-2); font-size: 0.85rem; margin-bottom: 16px;">
                         Digite um número por vez e aperte <strong>Enter</strong> ou <strong>Espaço</strong>. Ao colar vários números, eles serão processados automaticamente.
                     </p>
