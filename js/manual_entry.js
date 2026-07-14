@@ -11,6 +11,8 @@ const btnAddManual = document.getElementById('btn-add-manual');
 
 const gameSelect = document.getElementById('manual-game-select');
 const numberInput = document.getElementById('manual-number-input');
+const btnManualUpload = document.getElementById('btn-manual-upload');
+const manualFileInput = document.getElementById('manual-file-input');
 const feedbackLabel = document.getElementById('manual-feedback');
 const currentCountLabel = document.getElementById('manual-current-count');
 const targetCountLabel = document.getElementById('manual-target-count');
@@ -32,6 +34,8 @@ if (btnAddManual) btnAddManual.addEventListener('click', addValidGames);
 
 if (gameSelect) gameSelect.addEventListener('change', resetCurrentGame);
 if (btnClearDraft) btnClearDraft.addEventListener('click', () => { currentDraftGame = []; renderDraftUI(); });
+if (btnManualUpload) btnManualUpload.addEventListener('click', () => manualFileInput && manualFileInput.click());
+if (manualFileInput) manualFileInput.addEventListener('change', handleFileUpload);
 
 if (numberInput) {
     numberInput.addEventListener('keydown', (e) => {
@@ -132,6 +136,51 @@ function processInputText(text) {
     
     currentDraftGame.sort((a, b) => a - b);
     renderDraftUI();
+}
+
+function handleFileUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        const data = evt.target.result;
+        const name = file.name.toLowerCase();
+        
+        if (name.endsWith('.csv') || name.endsWith('.txt')) {
+            processInputText(data);
+        } else {
+            // Tentativa de leitura de Excel via SheetJS (XLSX) global
+            if (window.XLSX) {
+                try {
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    let fullText = '';
+                    workbook.SheetNames.forEach(sheetName => {
+                        const rowData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+                        rowData.forEach(row => {
+                            fullText += row.join(' ') + ' ';
+                        });
+                    });
+                    processInputText(fullText);
+                } catch (err) {
+                    showFeedback('Erro ao ler arquivo Excel.');
+                    console.error(err);
+                }
+            } else {
+                showFeedback('Biblioteca de Excel não carregada.');
+            }
+        }
+    };
+
+    const name = file.name.toLowerCase();
+    if (name.endsWith('.csv') || name.endsWith('.txt')) {
+        reader.readAsText(file);
+    } else {
+        reader.readAsBinaryString(file);
+    }
+    
+    // Limpar o input para permitir selecionar o mesmo arquivo novamente
+    manualFileInput.value = '';
 }
 
 function renderDraftUI() {
