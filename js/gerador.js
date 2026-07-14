@@ -199,7 +199,7 @@ export async function generateAll() {
             
             let newGames = [];
             if (needed > 0) {
-                newGames = strategyEngine.run(strategyName, needed, g.parametros, history, kept);
+                newGames = strategyEngine.run(strategyName, needed, { ...g.parametros, slug: g.slug }, history, kept);
             }
             
             st.games = [...kept, ...newGames];

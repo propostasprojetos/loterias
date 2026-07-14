@@ -3,6 +3,7 @@
 // ==========================================
 
 import { metricsCalculator } from '../MetricsCalculator.js';
+import { getRulesForGame } from '../GameRules.js';
 
 export class DelayedStrategy {
     constructor() {
@@ -13,53 +14,87 @@ export class DelayedStrategy {
         if (count <= 0) return [];
         if (!history || history.length === 0) return [];
 
+        const slug = params.slug || 'generic';
+        const rules = getRulesForGame(slug);
+
         const max = params.range_max || 60;
+        const min = params.range_min || 1;
         const pick = params.pick_size || 6;
 
         // Calculate delay (how many contests since last appearance)
-        const delays = new Array(max + 1).fill(history.length); // Initialize with max possible delay
-        
-        // Iterate from oldest to newest to find the last appearance
-        // Wait, history is ordered newest first (index 0 is newest).
-        // So we just iterate and the first time we see a number, its delay is the index.
+        const delays = new Array(max + 1).fill(history.length);
         const seen = new Set();
         for (let i = 0; i < history.length; i++) {
-            history[i].numbers.forEach(n => {
-                if (n <= max && !seen.has(n)) {
+            (history[i].numbers || []).forEach(n => {
+                if (n >= min && n <= max && !seen.has(n)) {
                     delays[n] = i;
                     seen.add(n);
                 }
             });
-            if (seen.size === max) break; // All numbers found
+            if (seen.size >= (max - min + 1)) break;
         }
 
-        // Create weighted pool based on delays (higher delay = more copies)
+        // Create weighted pool based on delays
         const weightedPool = [];
-        for (let i = 1; i <= max; i++) {
+        for (let i = min; i <= max; i++) {
             const delay = delays[i];
-            const copies = Math.max(1, delay); 
-            for(let c = 0; c < copies; c++) {
+            const copies = Math.max(1, delay);
+            for (let c = 0; c < copies; c++) {
                 weightedPool.push(i);
             }
         }
 
-        const result = [];
-        const poolSize = count * 10;
+        const poolSize = count * rules.poolMultiplier;
         const candidates = [];
 
-        for (let i = 0; i < poolSize * 5 && candidates.length < poolSize; i++) {
+        for (let i = 0; i < poolSize * 8 && candidates.length < poolSize; i++) {
             const g = new Set();
-            while(g.size < pick) {
+            while (g.size < pick) {
                 const rndIdx = Math.floor(Math.random() * weightedPool.length);
                 g.add(weightedPool[rndIdx]);
             }
-            const gameArr = Array.from(g).sort((a,b) => a-b);
-            if (metricsCalculator.maxConsec(gameArr) > 6) continue;
+            const gameArr = Array.from(g).sort((a, b) => a - b);
+
+            // Apply game-specific filters
+            if (metricsCalculator.maxConsec(gameArr) > rules.maxConsec) continue;
+
+            const evens = metricsCalculator.countEven(gameArr);
+            if (Math.abs(evens - (pick - evens)) > rules.balanceTolerance) continue;
+
+            const sum = gameArr.reduce((a, b) => a + b, 0);
+            if (sum < rules.sumRange[0] || sum > rules.sumRange[1]) continue;
+
             candidates.push(gameArr);
         }
 
-        for (let i = 0; i < count; i++) {
-            result.push(candidates[i]);
+        // Selection with diversity
+        const selected = [...keptGames];
+        const result = [];
+
+        for (let i = 0; i < count && candidates.length > 0; i++) {
+            let bestIdx = 0;
+            let bestScore = -Infinity;
+
+            for (let j = 0; j < candidates.length; j++) {
+                if (!candidates[j]) continue;
+                let penalty = 0;
+                for (const sel of selected) {
+                    const common = metricsCalculator.countIntersection(candidates[j], sel);
+                    if (common >= Math.floor(pick * 0.6)) penalty += rules.overlapPenalty;
+                    penalty += common * 10;
+                }
+                const metrics = metricsCalculator.calculate(candidates[j], params);
+                const score = metrics.score - penalty;
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestIdx = j;
+                }
+            }
+
+            if (!candidates[bestIdx]) break;
+            result.push(candidates[bestIdx]);
+            selected.push(candidates[bestIdx]);
+            candidates[bestIdx] = null;
         }
 
         return result;
