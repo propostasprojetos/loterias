@@ -14,12 +14,16 @@ import { refreshFinancialData, setFinFilter } from './financeiro.js';
 export async function loadAvailableGames() {
     if (!state.currentProfile) return;
     try {
-        const { data: allGames } = await supabaseClient.from('jogos').select('*').eq('status', 'ativo').order('ordem');
-        let planGameIds = [];
+        const gamesPromise = supabaseClient.from('jogos').select('*').eq('status', 'ativo').order('ordem');
+        let pjPromise = Promise.resolve({ data: [] });
+        
         if (state.currentProfile.plano_id) {
-            const { data: pj } = await supabaseClient.from('plano_jogos').select('jogo_id').eq('plano_id', state.currentProfile.plano_id);
-            if (pj) planGameIds = pj.map(p => p.jogo_id);
+            pjPromise = supabaseClient.from('plano_jogos').select('jogo_id').eq('plano_id', state.currentProfile.plano_id);
         }
+        
+        const [gamesRes, pjRes] = await Promise.all([gamesPromise, pjPromise]);
+        const allGames = gamesRes.data;
+        const planGameIds = (pjRes.data || []).map(p => p.jogo_id);
         
         const modulos = state.currentProfile.modulos_customizados || {};
         state.activeGames = (allGames || []).filter(g => {

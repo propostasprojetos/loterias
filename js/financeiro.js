@@ -137,8 +137,10 @@ export async function getAllPrizes() {
 }
 
 export async function refreshFinancialData() {
-    allBets = await getAllBets();
-    allPrizes = await getAllPrizes();
+    [allBets, allPrizes] = await Promise.all([
+        getAllBets(),
+        getAllPrizes()
+    ]);
     renderFinancialDashboard();
     renderTransactions();
     renderFinancialChart();
