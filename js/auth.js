@@ -14,12 +14,14 @@ export async function loginUser(email, password) {
         const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
         if (data.user) {
-            await supabaseClient.from('profiles').update({
-                ultimo_login: new Date().toISOString()
-            }).eq('id', data.user.id);
+            logAudit('login', data.user.id, { email }); // Fire-and-forget
             
-            await logAudit('login', data.user.id, { email });
-            await checkAuthState();
+            await Promise.all([
+                supabaseClient.from('profiles').update({
+                    ultimo_login: new Date().toISOString()
+                }).eq('id', data.user.id),
+                checkAuthState()
+            ]);
             return { success: true };
         }
     } catch (e) {
@@ -92,14 +94,17 @@ export async function checkAuthState() {
         window.currentProfile = null;
 
         if (session) {
-            const { data: profile, error } = await supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
-            if (!error && profile) {
-                state.currentProfile = profile;
-                window.currentProfile = profile;
+            const [profileRes, isSuperRes] = await Promise.all([
+                supabaseClient.from('profiles').select('*').eq('id', session.user.id).single(),
+                supabaseClient.rpc('is_super_admin', { _user_id: session.user.id })
+            ]);
+
+            if (!profileRes.error && profileRes.data) {
+                state.currentProfile = profileRes.data;
+                window.currentProfile = profileRes.data;
             }
             
-            const { data: isSuper } = await supabaseClient.rpc('is_super_admin', { _user_id: session.user.id });
-            window.isSuperAdmin = !!isSuper;
+            window.isSuperAdmin = !!isSuperRes.data;
         } else {
             window.isSuperAdmin = false;
         }
