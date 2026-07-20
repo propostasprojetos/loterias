@@ -319,7 +319,9 @@ async function saveUser(e) {
         await refreshAdminData();
     } catch (err) {
         console.error(err);
-        alert('Erro ao salvar usuário: ' + err.message);
+        let errorMsg = err.message || err.error_description || JSON.stringify(err);
+        if (err.details) errorMsg += ' - ' + err.details;
+        alert('Erro ao salvar usuário: ' + errorMsg);
     }
 }
 

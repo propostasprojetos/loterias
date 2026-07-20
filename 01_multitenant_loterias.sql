@@ -236,14 +236,23 @@ BEGIN
     INSERT INTO auth.users (
         id, instance_id, aud, role, email, encrypted_password, 
         email_confirmed_at, created_at, updated_at, 
-        confirmation_token, recovery_token, email_change_token_new, email_change,
-        raw_user_meta_data
+        raw_app_meta_data, raw_user_meta_data
     )
     VALUES (
         v_new_user_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', p_email, v_encrypted_pw, 
         now(), now(), now(), 
-        '', '', '', '',
+        '{"provider":"email","providers":["email"]}'::jsonb,
         json_build_object('name', p_name)
+    );
+
+    -- Insere a Identidade (Obrigatório nas versões recentes do Supabase para conseguir fazer login)
+    INSERT INTO auth.identities (
+        id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at
+    )
+    VALUES (
+        gen_random_uuid(), v_new_user_id, v_new_user_id::text, 
+        json_build_object('sub', v_new_user_id::text, 'email', p_email), 
+        'email', now(), now(), now()
     );
 
     -- O trigger on_auth_user_created vai disparar e criar o profile básico.
