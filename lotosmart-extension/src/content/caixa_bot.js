@@ -1,15 +1,15 @@
 /**
- * LotoSmart Worker — Robô Lotofácil (DOM)
+ * LotoSmart Worker — Robô Genérico (DOM)
  * 
  * Executa a lógica de preenchimento de jogos na página oficial
- * da Caixa Econômica Federal (/#/lotofacil).
+ * da Caixa Econômica Federal. Agnostico a loterias (suporta todas).
  */
 
 import { waitForSelector, findElementByText, simulateClick, sleep, waitForFunction } from './dom_utils.js';
 import { TIMEOUT_BETWEEN_CLICKS, TIMEOUT_ADD_CART, TIMEOUT_BETWEEN_GAMES } from '../shared/config.js';
 
 /**
- * Tenta clicar em um número no volante da Lotofácil.
+ * Tenta clicar em um número no volante.
  * Verifica Múltiplas estratégias para contornar variações do site da Caixa.
  * @param {number} num - O número a ser clicado (ex: 5, 25).
  * @returns {boolean} - Retorna true se conseguiu clicar, false se falhou.
@@ -111,13 +111,14 @@ async function verifySuccess() {
 }
 
 /**
- * Preenche e adiciona um único jogo da Lotofácil ao carrinho.
+ * Preenche e adiciona um único jogo ao carrinho.
  * @param {number[]} numbers - Array de números (ex: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15])
+ * @param {string} lotteryName - Nome da modalidade para os logs
  * @returns {Promise<boolean>}
  */
-export async function executeSingleGame(numbers) {
+export async function executeSingleGame(numbers, lotteryName = 'Loterias') {
     try {
-        console.log(`🎲 Lotofácil: Preenchendo jogo: ${numbers.join(',')}`);
+        console.log(`🎲 ${lotteryName}: Preenchendo jogo: ${numbers.join(',')}`);
 
         // 1. Limpar volante atual por segurança
         clickClearVolante();
@@ -128,7 +129,7 @@ export async function executeSingleGame(numbers) {
         for (const num of sorted) {
             const success = clickNumber(num);
             if (!success) {
-                console.error(`🎲 Lotofácil: Falha ao encontrar o número ${num}`);
+                console.error(`🎲 ${lotteryName}: Falha ao encontrar o número ${num}`);
                 return false;
             }
             await sleep(TIMEOUT_BETWEEN_CLICKS);
@@ -137,7 +138,7 @@ export async function executeSingleGame(numbers) {
         // 3. Colocar no carrinho
         const added = await clickAddToCart();
         if (!added) {
-            console.error('🎲 Lotofácil: Botão "Colocar no Carrinho" não encontrado!');
+            console.error(`🎲 ${lotteryName}: Botão "Colocar no Carrinho" não encontrado!`);
             return false;
         }
 
@@ -146,7 +147,7 @@ export async function executeSingleGame(numbers) {
         return verified;
 
     } catch (err) {
-        console.error('🎲 Lotofácil: Erro na execução do jogo', err);
+        console.error(`🎲 ${lotteryName}: Erro na execução do jogo`, err);
         return false;
     }
 }
@@ -154,15 +155,16 @@ export async function executeSingleGame(numbers) {
 /**
  * Loop principal que processa múltiplos jogos.
  * @param {Array<Object>} games - Array de jogos do Supabase { id, numbers: [...] }
+ * @param {string} lotteryName - Slug ou nome da loteria para logging
  * @returns {Promise<Object>} - Resultado com status de cada jogo
  */
-export async function executeAllGames(games) {
+export async function executeAllGames(games, lotteryName = 'Loterias') {
     const results = {
         success: [],
         failed: []
     };
 
-    // Confirmar que o volante da Lotofácil está na tela de fato
+    // Confirmar que o volante está na tela de fato
     try {
         // Aguarda a renderização básica
         await waitForSelector('h2, h3', 10000); 
@@ -174,9 +176,9 @@ export async function executeAllGames(games) {
             return hasTitle || hasNumber;
         }, 15000, 250).then(() => true).catch(() => false);
 
-        if (!isReady) throw new Error("A página da Lotofácil não carregou completamente os números ou o volante.");
+        if (!isReady) throw new Error(`A página da modalidade ${lotteryName} não carregou completamente os números ou o volante.`);
     } catch(err) {
-        console.error("🎲 Lotofácil: Erro ao aguardar o carregamento da página.", err);
+        console.error(`🎲 ${lotteryName}: Erro ao aguardar o carregamento da página.`, err);
         throw err;
     }
 
@@ -184,7 +186,7 @@ export async function executeAllGames(games) {
         const game = games[i];
         console.log(`🎲 Processando jogo ${i+1}/${games.length} (ID: ${game.id})`);
         
-        const success = await executeSingleGame(game.numbers);
+        const success = await executeSingleGame(game.numbers, lotteryName);
         
         if (success) {
             results.success.push(game.id);

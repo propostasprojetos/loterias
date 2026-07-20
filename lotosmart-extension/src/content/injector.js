@@ -7,13 +7,13 @@
 
 console.log('🎲 LotoSmart Worker: Content Script carregado na Caixa');
 
-let lotofacilModule = null;
+let botModule = null;
 
 // Inicializa os módulos ES6 usando importação dinâmica
 (async () => {
   try {
-    const url = chrome.runtime.getURL("src/content/lotofacil.js");
-    lotofacilModule = await import(url);
+    const url = chrome.runtime.getURL("src/content/caixa_bot.js");
+    botModule = await import(url);
     console.log('🎲 LotoSmart Worker: Módulos de automação carregados com sucesso');
   } catch (err) {
     console.error('🎲 LotoSmart Worker: Falha ao carregar módulos', err);
@@ -35,20 +35,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'EXECUTE_JOB') {
     const { bet, games } = message;
 
-    if (!lotofacilModule) {
+    if (!botModule) {
       sendResponse({ status: 'error', message: 'Módulos não carregados' });
       return;
     }
 
-    if (bet.lottery_type === 'lotofacil') {
-      // Verifica se a URL está correta
-      if (!window.location.hash.includes('#/lotofacil')) {
+    if (bet && bet.lottery_type) {
+      // Verifica se a URL atual contém a rota esperada (ex: #/megasena)
+      if (!window.location.hash.includes(`#/${bet.lottery_type}`)) {
         sendResponse({ status: 'error', message: 'wrong_page' });
         return;
       }
 
       // Executa assincronamente e retorna depois
-      lotofacilModule.executeAllGames(games).then(results => {
+      botModule.executeAllGames(games, bet.lottery_type.toUpperCase()).then(results => {
         sendResponse({ status: 'success', results });
       }).catch(err => {
         sendResponse({ status: 'error', message: err.message });
@@ -57,7 +57,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true; // Mantém o canal aberto para a resposta assíncrona
     }
 
-    sendResponse({ status: 'error', message: 'Loteria não suportada' });
+    sendResponse({ status: 'error', message: 'Tipo de loteria inválido ou ausente' });
     return;
   }
 });
