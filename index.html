@@ -645,6 +645,13 @@
                                     </select>
                                 </div>
                             </div>
+                            <div class="field">
+                                <label for="user-plano">Plano</label>
+                                <div class="input-row">
+                                    <select id="user-plano"></select>
+                                </div>
+                                <small style="color: var(--text-3); font-size: 0.8rem;">Define o acesso padrão aos jogos do usuário.</small>
+                            </div>
                             <div class="field" id="wrap-user-password">
                                 <label for="user-password">Senha (Apenas para novos)</label>
                                 <div class="input-row"><input type="password" id="user-password" placeholder="Mín 8 chars"></div>
@@ -652,16 +659,8 @@
                         </div>
                     </div>
 
-                    <!-- Aba Plano e Módulos -->
+                    <!-- Aba Módulos/Overrides -->
                     <div id="user-tab-modulos" class="modal-tab-content hidden">
-                        <div class="field">
-                            <label for="user-plano">Plano Principal</label>
-                            <div class="input-row">
-                                <select id="user-plano"></select>
-                            </div>
-                            <small style="color: var(--text-3); font-size: 0.8rem;">Alterar o plano recalcula o acesso padrão aos jogos.</small>
-                        </div>
-                        
                         <div class="module-overrides">
                             <h4 style="margin: 15px 0 10px; color: var(--gold); font-size: 0.9rem;">Exceções Individuais (Overrides)</h4>
                             <p style="font-size: 0.8rem; color: var(--text-2); margin-bottom: 12px;">Selecione explicitly se deseja forçar a liberação ou bloqueio de um jogo específico para este cliente, ignorando o plano atual.</p>
