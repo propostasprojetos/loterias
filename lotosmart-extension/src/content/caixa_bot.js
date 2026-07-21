@@ -252,43 +252,69 @@ async function selectMaisMilionariaTrevos(trevosEspecificos = null) {
 }
 
 /**
- * Ajusta o combobox "Quantidade de números da aposta" no site da Caixa.
+ * Ajusta "Quantidade de números da aposta" no site da Caixa.
  * @param {number} targetQty - Quantidade de dezenas que queremos jogar.
  */
 async function selectGameSize(targetQty) {
     try {
+        // 1. Nova Interface da Caixa: Botões de + e - 
+        // Ex: <div class="input-mais-menos"><span class="ng-binding">6</span> <a id="aumentarnumero">+</a>...
+        const containerMaisMenos = document.querySelector('.input-mais-menos');
+        if (containerMaisMenos) {
+            const spanQty = containerMaisMenos.querySelector('span.ng-binding, span');
+            const btnUp   = containerMaisMenos.querySelector('#aumentarnumero, a[ng-click*="true"]');
+            const btnDown = containerMaisMenos.querySelector('#diminuirnumero, a[ng-click*="false"]');
+
+            if (spanQty && btnUp && btnDown) {
+                let currentQty = parseInt(spanQty.innerText.trim(), 10);
+                // Prevenção de loop infinito limitando cliques
+                let attempts = 0; 
+
+                while (!isNaN(currentQty) && currentQty !== targetQty && attempts < 25) {
+                    if (currentQty < targetQty) {
+                        simulateClick(btnUp);
+                    } else {
+                        simulateClick(btnDown);
+                    }
+                    attempts++;
+                    await sleep(350); // Aguarda o Angular atualizar o número na tela
+                    currentQty = parseInt(spanQty.innerText.trim(), 10);
+                }
+
+                if (currentQty === targetQty) {
+                    console.log(`[selectGameSize] Ajustado para ${targetQty} dezenas via botões (+/-).`);
+                    await sleep(500); // Tempo para o DOM redesenhar o volante
+                    return true;
+                }
+            }
+        }
+
+        // 2. Fallback antigo: Interface com Combobox (Select)
         const selects = document.querySelectorAll('select');
         let targetSelect = null;
         let targetOption = null;
 
         for (const select of selects) {
             const options = Array.from(select.options);
-            // Procura a option cujo texto seja exatamente a quantidade desejada (ex: "7", "8")
             const opt = options.find(o => o.text.trim() === String(targetQty));
             if (opt) {
-                // Checagem de segurança para não pegar selects de mês (ex: Dia de Sorte)
                 const isMonthSelect = options.some(o => o.text.toLowerCase().includes('janeiro') || o.text.toLowerCase().includes('fevereiro'));
                 if (!isMonthSelect) {
                     targetSelect = select;
                     targetOption = opt;
-                    break; // Encontrou o select correto
+                    break; 
                 }
             }
         }
 
         if (targetSelect && targetOption) {
-            // Só dispara se o valor atual for diferente
             if (targetSelect.value !== targetOption.value) {
                 targetSelect.value = targetOption.value;
-                
-                // Dispara os eventos padrão do DOM
                 targetSelect.dispatchEvent(new Event('input', { bubbles: true }));
                 targetSelect.dispatchEvent(new Event('change', { bubbles: true }));
                 
-                // Atribui um ID temporário se não tiver, para achá-lo no script injetado
                 if (!targetSelect.id) targetSelect.id = 'lotosmart-qty-select';
                 
-                // Injeta script para forçar o Angular 1.x a atualizar o model e a tela
                 const script = document.createElement('script');
                 script.textContent = `
                     try {
@@ -297,19 +323,15 @@ async function selectGameSize(targetQty) {
                             const ngEl = angular.element(sel);
                             ngEl.triggerHandler('change');
                             const scope = ngEl.scope();
-                            if (scope && !scope.$$phase) {
-                                scope.$apply();
-                            }
+                            if (scope && !scope.$$phase) { scope.$apply(); }
                         }
-                    } catch(e) {
-                        console.error('Erro ao injetar scope apply:', e);
-                    }
+                    } catch(e) {}
                 `;
                 document.body.appendChild(script);
                 script.remove();
 
-                console.log(`[selectGameSize] Ajustado select para ${targetQty} números via Angular Injection.`);
-                await sleep(1000); // Aguarda a tela piscar/liberar os números extras
+                console.log(`[selectGameSize] Ajustado select para ${targetQty} números via Select Injection.`);
+                await sleep(1000); 
             }
             return true;
         }
