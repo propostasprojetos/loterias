@@ -79,6 +79,7 @@ export async function logAudit(action, userId, details = {}) {
         console.error('Audit log failed:', e);
     }
 }
+window.logAudit = logAudit;
 
 let isAuthChecking = false;
 export async function checkAuthState() {
