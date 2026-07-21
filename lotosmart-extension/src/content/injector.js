@@ -8,12 +8,17 @@
 console.log('🎲 LotoSmart Worker: Content Script carregado na Caixa');
 
 let botModule = null;
+let configModule = null;
 
 // Inicializa os módulos ES6 usando importação dinâmica
 (async () => {
   try {
     const url = chrome.runtime.getURL("src/content/caixa_bot.js");
     botModule = await import(url);
+    
+    const configUrl = chrome.runtime.getURL("src/shared/config.js");
+    configModule = await import(configUrl);
+    
     console.log('🎲 LotoSmart Worker: Módulos de automação carregados com sucesso');
   } catch (err) {
     console.error('🎲 LotoSmart Worker: Falha ao carregar módulos', err);
@@ -41,13 +46,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (bet && bet.lottery_type) {
-      // Normaliza o hash atual e a rota da loteria removendo hífens para permitir a correspondência correta
-      const currentHash = window.location.hash.replace(/-/g, '').toLowerCase();
-      const targetHash = `#/${bet.lottery_type.replace(/-/g, '').toLowerCase()}`;
-      
-      if (!currentHash.includes(targetHash)) {
-        sendResponse({ status: 'error', message: 'wrong_page' });
-        return;
+      // Verifica a URL da loteria com base nas configurações em config.js (GAME_URLS)
+      const expectedUrl = configModule?.GAME_URLS?.[bet.lottery_type];
+      if (expectedUrl) {
+        const hashIndex = expectedUrl.indexOf('#');
+        const expectedHash = hashIndex !== -1 ? expectedUrl.substring(hashIndex) : '';
+        
+        if (expectedHash && !window.location.hash.toLowerCase().includes(expectedHash.toLowerCase())) {
+          sendResponse({ status: 'error', message: 'wrong_page' });
+          return;
+        }
+      } else {
+        // Fallback: se não estiver no config, valida por aproximação sem hífens
+        const currentHash = window.location.hash.replace(/-/g, '').toLowerCase();
+        const targetHash = `#/${bet.lottery_type.replace(/-/g, '').toLowerCase()}`;
+        if (!currentHash.includes(targetHash)) {
+          sendResponse({ status: 'error', message: 'wrong_page' });
+          return;
+        }
       }
 
       // Executa assincronamente e retorna depois
