@@ -11,6 +11,19 @@ import { metricsCalculator } from './engine/MetricsCalculator.js';
 import { loadHistory, saveHistoryData } from './history.js';
 import { refreshFinancialData, setFinFilter } from './financeiro.js';
 
+const GAME_MAX_PICKS = {
+    'mega-sena': 20,
+    'lotofacil': 20,
+    'quina': 15,
+    'mais-milionaria': 12,
+    'dupla-sena': 15,
+    'dia-de-sorte': 15,
+    'super-sete': 21,
+    'timemania': 10,
+    'lotomania': 50,
+    'loteca': 14
+};
+
 export async function loadAvailableGames() {
     if (!state.currentProfile) return;
     try {
@@ -60,7 +73,12 @@ export function renderDynamicGameUI() {
         configGrid.innerHTML = state.activeGames.map(g => {
             const cost = g.parametros.cost || 3.00;
             const minSize = g.parametros.pick_size || 6;
-            const maxSize = g.parametros.range_max || 60;
+            const maxSize = GAME_MAX_PICKS[g.slug] || minSize;
+            
+            // Se min = max, não permite editar (Lotomania, Timemania)
+            const disabledAttr = (minSize === maxSize) ? 'disabled readonly' : '';
+            const sizeStyle = (minSize === maxSize) ? 'opacity: 0.5; cursor: not-allowed;' : '';
+
             return `
                 <div class="field">
                     <label title="Configure os jogos para ${g.nome} (Custo base: R$ ${cost.toFixed(2)})">${g.nome}</label>
@@ -69,9 +87,9 @@ export function renderDynamicGameUI() {
                             <span class="prefix" style="padding:0 6px;">Qtd</span>
                             <input type="number" id="qty-${g.slug}" min="0" data-cost="${cost}" placeholder="0" style="text-align: center; width:100%;">
                         </div>
-                        <div class="input-row" title="Qtd de dezenas por jogo (Vazio = Padrão: ${minSize})" style="flex:1;">
+                        <div class="input-row" title="Qtd de dezenas por jogo (Vazio = Padrão: ${minSize})" style="flex:1; ${sizeStyle}">
                             <span class="prefix" style="padding:0 6px;">Dez</span>
-                            <input type="number" id="size-${g.slug}" min="${minSize}" max="${maxSize}" placeholder="${minSize}" style="text-align: center; width:100%;">
+                            <input type="number" id="size-${g.slug}" min="${minSize}" max="${maxSize}" placeholder="${minSize}" ${disabledAttr} style="text-align: center; width:100%;">
                         </div>
                     </div>
                 </div>
@@ -197,9 +215,17 @@ export function updateSummary() {
         
         const sizeEl = $('size-'+g.slug);
         const defaultSize = g.parametros.pick_size || 6;
+        const maxAllowed = GAME_MAX_PICKS[g.slug] || defaultSize;
+        
         let customSize = sizeEl && sizeEl.value ? parseInt(sizeEl.value, 10) : defaultSize;
         if (customSize < defaultSize) customSize = defaultSize;
+        if (customSize > maxAllowed) customSize = maxAllowed;
         
+        // Atualiza visualmente se estiver fora dos limites (opcional)
+        if (sizeEl && sizeEl.value && customSize !== parseInt(sizeEl.value, 10)) {
+            sizeEl.value = customSize;
+        }
+
         // Usa o preço novo ou fallback
         const baseCost = BASE_PRICES[g.slug] || parseFloat(el?.dataset.cost) || 0;
         
@@ -260,9 +286,12 @@ export async function generateAll() {
             if (needed > 0) {
                 // Lê a quantidade personalizada de dezenas do input
                 const sizeEl = $(`size-${g.slug}`);
-                let customSize = sizeEl && sizeEl.value ? parseInt(sizeEl.value, 10) : g.parametros.pick_size;
-                if (customSize < g.parametros.pick_size) customSize = g.parametros.pick_size;
-                if (customSize > g.parametros.range_max) customSize = g.parametros.range_max;
+                const defaultSize = g.parametros.pick_size || 6;
+                const maxAllowed = GAME_MAX_PICKS[g.slug] || defaultSize;
+
+                let customSize = sizeEl && sizeEl.value ? parseInt(sizeEl.value, 10) : defaultSize;
+                if (customSize < defaultSize) customSize = defaultSize;
+                if (customSize > maxAllowed) customSize = maxAllowed;
 
                 newGames = strategyEngine.run(strategyName, needed, { ...g.parametros, slug: g.slug, pick_size: customSize }, history, kept);
             }
