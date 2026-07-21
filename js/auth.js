@@ -72,8 +72,7 @@ export async function logAudit(action, userId, details = {}) {
         await supabaseClient.from('audit_logs').insert({
             user_id: userId,
             action: action,
-            details: details,
-            ip_address: null 
+            details: details
         });
     } catch (e) {
         console.error('Audit log failed:', e);
