@@ -17,8 +17,11 @@ import { TIMEOUT_BETWEEN_CLICKS, TIMEOUT_ADD_CART, TIMEOUT_BETWEEN_GAMES } from 
 function clickNumber(num) {
     const numStr = String(num).padStart(2, '0');
 
-    // Estratégia 0: O ID nativo exato da Caixa (ex: #n01, #n25)
-    const exactIdEl = document.getElementById(`n${numStr}`);
+    // Estratégia 0: O ID nativo exato da Caixa (ex: #n01, #n25) ou sem o zero à esquerda (#n1)
+    let exactIdEl = document.getElementById(`n${numStr}`);
+    if (!exactIdEl) {
+        exactIdEl = document.getElementById(`n${num}`);
+    }
     if (exactIdEl) {
         simulateClick(exactIdEl);
         return true;
