@@ -19,13 +19,13 @@ export const CAIXA_LOGIN_URL = `${CAIXA_BASE_URL}/silce-web/#/home`;
 export const CAIXA_CART_URL = `${CAIXA_BASE_URL}/silce-web/#/carrinho`;
 
 export const GAME_URLS = {
-  megasena:       `${CAIXA_BASE_URL}/silce-web/#/megasena`,
+  megasena:       `${CAIXA_BASE_URL}/silce-web/#/mega-sena`,
   lotofacil:      `${CAIXA_BASE_URL}/silce-web/#/lotofacil`,
   quina:          `${CAIXA_BASE_URL}/silce-web/#/quina`,
-  maismilionaria: `${CAIXA_BASE_URL}/silce-web/#/maismilionaria`,
-  diadesorte:     `${CAIXA_BASE_URL}/silce-web/#/diadesorte`,
-  duplasena:      `${CAIXA_BASE_URL}/silce-web/#/duplasena`,
-  supersete:      `${CAIXA_BASE_URL}/silce-web/#/supersete`,
+  maismilionaria: `${CAIXA_BASE_URL}/silce-web/#/mais-milionaria`,
+  diadesorte:     `${CAIXA_BASE_URL}/silce-web/#/dia-de-sorte`,
+  duplasena:      `${CAIXA_BASE_URL}/silce-web/#/dupla-sena`,
+  supersete:      `${CAIXA_BASE_URL}/silce-web/#/super-sete`,
   timemania:      `${CAIXA_BASE_URL}/silce-web/#/timemania`,
   lotomania:      `${CAIXA_BASE_URL}/silce-web/#/lotomania`
 };
