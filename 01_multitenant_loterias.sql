@@ -228,9 +228,9 @@ BEGIN
     IF NOT public.is_super_admin(auth.uid()) THEN
         RAISE EXCEPTION 'Apenas Super Admins podem criar usuários.';
     END IF;
-
+    -- Gera o ID e a senha criptografada (GoTrue requer bcrypt com custo >= 10)
     v_new_user_id := gen_random_uuid();
-    v_encrypted_pw := crypt(p_password, gen_salt('bf'));
+    v_encrypted_pw := crypt(p_password, gen_salt('bf', 10));
 
     -- Insere no Auth
     INSERT INTO auth.users (
@@ -245,12 +245,12 @@ BEGIN
         json_build_object('name', p_name)
     );
 
-    -- Insere a Identidade (Obrigatório nas versões recentes do Supabase para conseguir fazer login)
+    -- Insere a Identidade (provider_id DEVE ser UUID em texto para email no GoTrue)
     INSERT INTO auth.identities (
         id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at
     )
     VALUES (
-        gen_random_uuid(), v_new_user_id, p_email, 
+        gen_random_uuid(), v_new_user_id, v_new_user_id::text, 
         json_build_object('sub', v_new_user_id::text, 'email', p_email, 'email_verified', true, 'phone_verified', false), 
         'email', now(), now(), now()
     );

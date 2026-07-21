@@ -24,9 +24,9 @@ BEGIN
         RAISE EXCEPTION 'Apenas Super Admins podem criar usuários.';
     END IF;
 
-    -- Gera o ID e a senha criptografada
+    -- Gera o ID e a senha criptografada (GoTrue requer bcrypt com custo >= 10, default do pgcrypto é 6 e causa Invalid Credentials)
     v_new_user_id := gen_random_uuid();
-    v_encrypted_pw := crypt(p_password, gen_salt('bf'));
+    v_encrypted_pw := crypt(p_password, gen_salt('bf', 10));
 
     -- Insere no Auth (removendo colunas instáveis e adicionando app_meta_data)
     INSERT INTO auth.users (
@@ -41,12 +41,12 @@ BEGIN
         json_build_object('name', p_name)
     );
 
-    -- Insere a Identidade (Obrigatório nas versões recentes do Supabase para conseguir fazer login)
+    -- Insere a Identidade (provider_id DEVE ser UUID em texto para provider email, senão GoTrue retorna 500)
     INSERT INTO auth.identities (
         id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at
     )
     VALUES (
-        gen_random_uuid(), v_new_user_id, p_email, 
+        gen_random_uuid(), v_new_user_id, v_new_user_id::text, 
         json_build_object('sub', v_new_user_id::text, 'email', p_email, 'email_verified', true, 'phone_verified', false), 
         'email', now(), now(), now()
     );
