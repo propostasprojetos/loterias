@@ -177,6 +177,19 @@ export function updateSummary() {
         return Math.round(c);
     }
 
+    // Tabela de preços atualizada da Caixa (override seguro)
+    const BASE_PRICES = {
+        'mega-sena': 6.00,
+        'lotofacil': 3.50,
+        'quina': 3.00,
+        'dupla-sena': 3.00,
+        'dia-de-sorte': 2.50,
+        'super-sete': 3.00,
+        'mais-milionaria': 6.00,
+        'timemania': 3.50,
+        'lotomania': 3.00
+    };
+
     state.activeGames.forEach(g => {
         const el = $('qty-'+g.slug);
         const qty = parseInt(el?.value) || 0;
@@ -187,10 +200,18 @@ export function updateSummary() {
         let customSize = sizeEl && sizeEl.value ? parseInt(sizeEl.value, 10) : defaultSize;
         if (customSize < defaultSize) customSize = defaultSize;
         
-        const baseCost = parseFloat(el?.dataset.cost) || 0;
+        // Usa o preço novo ou fallback
+        const baseCost = BASE_PRICES[g.slug] || parseFloat(el?.dataset.cost) || 0;
         
         let multiplier = 1;
-        if (customSize > defaultSize) {
+        if (g.slug === 'super-sete') {
+            // Regra especial Super Sete: colunas e números por coluna
+            if (customSize >= 7) {
+                const q = Math.floor(customSize / 7);
+                const r = customSize % 7;
+                multiplier = Math.pow(q + 1, r) * Math.pow(q, 7 - r);
+            }
+        } else if (customSize > defaultSize) {
             multiplier = comb(customSize, defaultSize);
         }
         
