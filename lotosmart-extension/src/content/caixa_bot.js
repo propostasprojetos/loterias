@@ -145,95 +145,99 @@ function clickSuperSeteNumber(colIndex, num) {
 }
 
 /**
- * Seleciona um Mês de Sorte aleatório para a loteria Dia de Sorte.
+ * Seleciona o Mês de Sorte para a loteria Dia de Sorte.
+ * @param {number|null} mesEspecifico - Número do mês (1-12) ou null para aleatório.
  */
-async function selectDiaDeSorteMonth() {
-    const months = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-    
-    // 1. Tenta achar um dropdown de meses
-    const select = document.querySelector('select[id*="mes"], select[class*="mes"]');
-    if (select) {
-        const options = select.options;
-        if (options.length > 1) {
-            const randomIndex = Math.floor(Math.random() * (options.length - 1)) + 1;
-            select.selectedIndex = randomIndex;
-            select.dispatchEvent(new Event('change', { bubbles: true }));
+async function selectDiaDeSorteMonth(mesEspecifico = null) {
+    const MONTH_NAMES = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+                        'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+    // 1. Estratégia por atributo ng-model ou data (AngularJS)
+    const allElements = document.querySelectorAll('a, button, li, span, div');
+    for (const el of allElements) {
+        const text = (el.innerText || el.textContent || '').trim().toLowerCase();
+        const targetMonth = mesEspecifico ? MONTH_NAMES[mesEspecifico] : null;
+        if (targetMonth && text === targetMonth) {
+            simulateClick(el);
             return true;
         }
     }
 
-    // 2. Tenta achar botões dos meses no DOM
-    for (const m of months) {
-        const btn = findElementByText('a, button, li, span', m);
-        if (btn) {
-            const container = btn.closest('ul, div.grid, div.container-meses');
-            if (container) {
-                const allMonthButtons = container.querySelectorAll('a, button, li, span');
-                if (allMonthButtons.length > 0) {
-                    const randomBtn = allMonthButtons[Math.floor(Math.random() * allMonthButtons.length)];
-                    simulateClick(randomBtn);
-                    return true;
-                }
-            } else {
-                simulateClick(btn);
-                return true;
-            }
-        }
-    }
-
-    // 3. Fallback procurando cabeçalho
-    const label = findElementByText('h2, h3, h4, label, span', 'Mês de Sorte');
+    // 2. Procura pelo cabeçalho Mês de Sorte e clica no botão do mês desejado ou aleatório
+    const label = findElementByText('h2, h3, h4, label, p, span', 'Mês de Sorte') ||
+                  findElementByText('h2, h3, h4, label, p, span', 'mês');
     if (label) {
-        const parent = label.closest('div, section');
+        const parent = label.closest('div, section, form');
         if (parent) {
-            const buttons = parent.querySelectorAll('a, button, li');
+            const buttons = Array.from(parent.querySelectorAll('a, button, li'));
             if (buttons.length > 0) {
-                simulateClick(buttons[Math.floor(Math.random() * buttons.length)]);
+                let target = null;
+                if (mesEspecifico && mesEspecifico >= 1 && mesEspecifico <= 12) {
+                    // Tenta encontrar o mês pelo texto
+                    const mName = MONTH_NAMES[mesEspecifico].toLowerCase();
+                    target = buttons.find(b =>
+                        (b.innerText || b.textContent || '').trim().toLowerCase().startsWith(mName.substring(0, 3))
+                    );
+                }
+                simulateClick(target || buttons[Math.floor(Math.random() * buttons.length)]);
                 return true;
             }
         }
     }
-    
+
     return false;
 }
 
 /**
- * Seleciona um Time do Coração aleatório para a loteria Timemania.
+ * Seleciona o Time do Coração para a loteria Timemania.
+ * @param {string|null} timeEspecifico - Nome exato do time ou null para aleatório.
  */
-async function selectTimemaniaTeam() {
-    // Procura as imagens de botões de time com name="btnTime" ou classe "data-selecionar-time-do-coracao"
-    const teamImgs = document.querySelectorAll('#carrossel_timemania img[name="btnTime"], img.data-selecionar-time-do-coracao');
-    
-    if (teamImgs.length > 0) {
-        const randomImg = teamImgs[Math.floor(Math.random() * teamImgs.length)];
-        simulateClick(randomImg);
-        return true;
-    }
-
-    // Fallback: se não achar as imagens específicas, procura por qualquer nó clicável no carrossel de times
+async function selectTimemaniaTeam(timeEspecifico = null) {
     const carrossel = document.getElementById('carrossel_timemania');
-    if (carrossel) {
-        const items = carrossel.querySelectorAll('li img, li');
-        if (items.length > 0) {
-            simulateClick(items[Math.floor(Math.random() * items.length)]);
-            return true;
+    const teamImgs  = document.querySelectorAll('#carrossel_timemania img[name="btnTime"], img.data-selecionar-time-do-coracao');
+    const pool      = teamImgs.length > 0 ? teamImgs : (carrossel ? carrossel.querySelectorAll('li img') : []);
+
+    if (pool.length === 0) return false;
+
+    if (timeEspecifico) {
+        // Tenta encontrar o time pelo texto do elemento irmão span.nomeTime
+        for (const img of pool) {
+            const li = img.closest('li');
+            if (!li) continue;
+            const nomeEl = li.querySelector('span.nomeTime, span');
+            const nome   = (nomeEl?.innerText || nomeEl?.textContent || '').trim();
+            if (nome.toLowerCase().includes(timeEspecifico.toLowerCase())) {
+                simulateClick(img);
+                return true;
+            }
         }
     }
-    
-    return false;
+
+    // Fallback: aleatório
+    const randomImg = pool[Math.floor(Math.random() * pool.length)];
+    simulateClick(randomImg);
+    return true;
 }
 
 /**
- * Seleciona 2 trevos aleatórios para a loteria +Milionária.
+ * Seleciona os trevos para a loteria +Milionária.
+ * @param {number[]|null} trevosEspecificos - Array com os trevos a clicar (1-6), ou null para aleatório.
  */
-async function selectMaisMilionariaTrevos() {
-    // Os trevos da +Milionária são tags <img> dentro de #step3 com IDs trevo1 a trevo6
-    const indices = [];
-    while (indices.length < 2) {
-        const idx = Math.floor(Math.random() * 6) + 1; // 1 a 6
-        if (!indices.includes(idx)) indices.push(idx);
+async function selectMaisMilionariaTrevos(trevosEspecificos = null) {
+    let indices;
+
+    if (trevosEspecificos && trevosEspecificos.length >= 2) {
+        // Usa os trevos específicos passados pela inserção manual
+        indices = trevosEspecificos.filter(n => n >= 1 && n <= 6);
+    } else {
+        // Aleatório: 2 trevos distintos
+        indices = [];
+        while (indices.length < 2) {
+            const idx = Math.floor(Math.random() * 6) + 1;
+            if (!indices.includes(idx)) indices.push(idx);
+        }
     }
-    
+
     let clicked = 0;
     for (const num of indices) {
         const img = document.getElementById(`trevo${num}`);
@@ -243,31 +247,42 @@ async function selectMaisMilionariaTrevos() {
             await sleep(TIMEOUT_BETWEEN_CLICKS);
         }
     }
-    
-    return clicked === 2;
+
+    return clicked >= 2;
 }
 
 /**
  * Preenche e adiciona um único jogo ao carrinho.
- * @param {number[]} numbers - Array de números
+ * @param {number[]|Object} numbers - Array de números OU objeto { dezenas, trevos?, mes?, time? }
  * @param {string} lotteryName - Nome da modalidade para os logs
  * @returns {Promise<boolean>}
  */
 export async function executeSingleGame(numbers, lotteryName = 'Loterias') {
     try {
-        console.log(`🎲 ${lotteryName}: Preenchendo jogo: ${numbers.join(',')}`);
+        // Suporta formato legado (array) e novo formato (objeto com dezenas + campos extras)
+        const isObject = numbers && !Array.isArray(numbers) && typeof numbers === 'object';
+        const dezenas  = isObject ? (numbers.dezenas || []) : numbers;
+        const trevosEspecificos = isObject ? (numbers.trevos || null) : null;
+        const mesEspecifico     = isObject ? (numbers.mes   || null) : null;
+        const timeEspecifico    = isObject ? (numbers.time  || null) : null;
+
+        console.log(`🎲 ${lotteryName}: Preenchendo jogo: ${dezenas.join(',')}` +
+            (trevosEspecificos ? ` | Trevos: ${trevosEspecificos}` : '') +
+            (mesEspecifico     ? ` | Mês: ${mesEspecifico}` : '') +
+            (timeEspecifico    ? ` | Time: ${timeEspecifico}` : '')
+        );
 
         // 1. Limpar volante atual por segurança
         clickClearVolante();
         await sleep(500);
 
         // 2. Clicar em cada número sequencialmente de acordo com a regra da modalidade
-        const nameNormalized = lotteryName.toLowerCase().replace(/-/g, '');
-        
+        const nameNormalized = lotteryName.toLowerCase().replace(/-/g, '').replace(/\s/g, '').replace(/\+/g, '');
+
         if (nameNormalized === 'supersete') {
-            // Lógica especial para Super Sete: números correspondem à seleção por coluna [col0, col1, ...]
-            for (let col = 0; col < numbers.length; col++) {
-                const num = numbers[col];
+            // Super Sete: cada posição do array = um dígito (col 0 a 6)
+            for (let col = 0; col < dezenas.length; col++) {
+                const num = dezenas[col];
                 const success = clickSuperSeteNumber(col, num);
                 if (!success) {
                     console.error(`🎲 ${lotteryName}: Falha ao encontrar o número ${num} na coluna ${col + 1}`);
@@ -276,8 +291,8 @@ export async function executeSingleGame(numbers, lotteryName = 'Loterias') {
                 await sleep(TIMEOUT_BETWEEN_CLICKS);
             }
         } else {
-            // Outras loterias: ordene e clique nos números
-            const sorted = [...numbers].sort((a, b) => a - b);
+            // Outras loterias: ordena e clica nos números
+            const sorted = [...dezenas].sort((a, b) => a - b);
             for (const num of sorted) {
                 const success = clickNumber(num);
                 if (!success) {
@@ -290,19 +305,19 @@ export async function executeSingleGame(numbers, lotteryName = 'Loterias') {
 
         // 3. Preenchimento de campos secundários obrigatórios
         if (nameNormalized === 'diadesorte') {
-            const monthSuccess = await selectDiaDeSorteMonth();
+            const monthSuccess = await selectDiaDeSorteMonth(mesEspecifico);
             if (!monthSuccess) {
-                console.warn(`🎲 ${lotteryName}: Não conseguiu selecionar o Mês de Sorte automaticamente.`);
+                console.warn(`🎲 ${lotteryName}: Não conseguiu selecionar o Mês de Sorte.`);
             }
         } else if (nameNormalized === 'timemania') {
-            const teamSuccess = await selectTimemaniaTeam();
+            const teamSuccess = await selectTimemaniaTeam(timeEspecifico);
             if (!teamSuccess) {
-                console.warn(`🎲 ${lotteryName}: Não conseguiu selecionar o Time do Coração automaticamente.`);
+                console.warn(`🎲 ${lotteryName}: Não conseguiu selecionar o Time do Coração.`);
             }
-        } else if (nameNormalized === 'maismilionaria') {
-            const trevosSuccess = await selectMaisMilionariaTrevos();
+        } else if (nameNormalized === 'maismilionaria' || nameNormalized === 'milionaria') {
+            const trevosSuccess = await selectMaisMilionariaTrevos(trevosEspecificos);
             if (!trevosSuccess) {
-                console.warn(`🎲 ${lotteryName}: Não conseguiu selecionar os Trevos automaticamente.`);
+                console.warn(`🎲 ${lotteryName}: Não conseguiu selecionar os Trevos.`);
             }
         }
 

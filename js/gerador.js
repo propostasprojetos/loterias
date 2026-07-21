@@ -255,11 +255,33 @@ export function renderGames() {
         let html = paginatedGames.map((game, relativeIdx) => {
             const idx = startIdx + relativeIdx;
             const sel = st.selected.has(idx);
-            const stats = metricsCalculator.calculate(game, g.parametros);
+
+            // Suporta jogo como array plano OU como objeto { dezenas, trevos, mes, time }
+            const dezenas = Array.isArray(game) ? game : (game.dezenas || []);
+            const stats = metricsCalculator.calculate(dezenas, g.parametros);
+
+            // Tags de campos especiais (inserção manual)
+            let extraTags = '';
+            if (!Array.isArray(game)) {
+                if (game.trevos && game.trevos.length > 0) {
+                    extraTags += `<span style="background:rgba(232,180,77,.15);color:var(--gold);border:1px solid var(--gold-border);border-radius:4px;padding:1px 7px;font-size:.7rem;font-weight:700;">🍀 ${game.trevos.join(', ')}</span>`;
+                }
+                const meses = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+                if (game.mes) {
+                    extraTags += `<span style="background:rgba(78,205,196,.12);color:var(--teal);border:1px solid var(--teal-border);border-radius:4px;padding:1px 7px;font-size:.7rem;font-weight:700;">📅 ${meses[game.mes] || game.mes}</span>`;
+                }
+                if (game.time) {
+                    extraTags += `<span style="background:rgba(109,213,117,.10);color:var(--green);border:1px solid var(--green-border);border-radius:4px;padding:1px 7px;font-size:.7rem;font-weight:700;">🏆 ${game.time}</span>`;
+                }
+            }
+
             return `
             <div class="game-card ${sel ? 'selected' : ''}" data-slug="${g.slug}" data-idx="${idx}">
                 <div class="game-top" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <span class="game-label" style="margin-bottom: 0;">Jogo ${pad(idx + 1)}</span>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span class="game-label" style="margin-bottom: 0;">Jogo ${pad(idx + 1)}</span>
+                        ${extraTags}
+                    </div>
                     <div class="game-meta" style="margin-right: 0;">
                         <span class="game-stat" title="Distribuição: Pares e Ímpares (Quantidade de números pares / Quantidade de números ímpares)">P/I: <strong>${stats.evens}/${stats.odds}</strong></span>
                         <span class="game-stat" title="Soma total de todas as dezenas deste jogo">Soma: <strong>${stats.sum}</strong></span>
@@ -272,7 +294,7 @@ export function renderGames() {
                         <button class="btn-icon btn-select ${sel ? 'checked' : ''}" title="Fixar / Manter este jogo na próxima geração" data-slug="${g.slug}" data-idx="${idx}">${sel ? ICON.check : ICON.pin}</button>
                     </div>
                 </div>
-                <div class="game-numbers" style="margin-top: 12px; margin-bottom: 12px;">${game.map(n => renderBall(n, g.slug)).join('')}</div>
+                <div class="game-numbers" style="margin-top: 12px; margin-bottom: 12px;">${dezenas.map(n => renderBall(n, g.slug)).join('')}</div>
                 <div class="score-row" title="Score geral de qualidade baseado no balanço estatístico">
                     <span class="score-tag ${stats.sClass}">${stats.sLabel}</span>
                     <div class="score-bar-wrap"><div class="score-bar" style="width:${stats.score}%"></div></div>
