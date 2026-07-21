@@ -36,6 +36,7 @@ BEGIN
         raw_app_meta_data, raw_user_meta_data,
         confirmation_token, recovery_token, email_change_token_new,
         phone_change_token, reauthentication_token,
+        email_change,
         is_sso_user, deleted_at
     )
     VALUES (
@@ -45,6 +46,7 @@ BEGIN
         json_build_object('name', p_name),
         '', '', '',
         '', '',
+        '',
         false, null
     );
 
