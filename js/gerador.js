@@ -81,6 +81,8 @@ export function renderDynamicGameUI() {
         state.activeGames.forEach(g => {
             const el = $('qty-'+g.slug);
             if(el) el.addEventListener('input', updateSummary);
+            const sizeEl = $('size-'+g.slug);
+            if(sizeEl) sizeEl.addEventListener('input', updateSummary);
         });
     }
 
@@ -163,17 +165,45 @@ export function renderDynamicGameUI() {
 export function updateSummary() {
     let totalCost = 0;
     const qtys = {};
+
+    function comb(n, k) {
+        if (k < 0 || k > n) return 0;
+        if (k === 0 || k === n) return 1;
+        k = Math.min(k, n - k);
+        let c = 1;
+        for (let i = 0; i < k; i++) {
+            c = c * (n - i) / (i + 1);
+        }
+        return Math.round(c);
+    }
+
     state.activeGames.forEach(g => {
         const el = $('qty-'+g.slug);
         const qty = parseInt(el?.value) || 0;
         qtys[g.slug] = qty;
-        const cost = parseFloat(el?.dataset.cost) || 0;
-        totalCost += qty * cost;
-        const sel = $('s-'+g.slug+'-qty');
-        if(sel) sel.textContent = qty + ' jogos';
+        
+        const sizeEl = $('size-'+g.slug);
+        const defaultSize = g.parametros.pick_size || 6;
+        let customSize = sizeEl && sizeEl.value ? parseInt(sizeEl.value, 10) : defaultSize;
+        if (customSize < defaultSize) customSize = defaultSize;
+        
+        const baseCost = parseFloat(el?.dataset.cost) || 0;
+        
+        let multiplier = 1;
+        if (customSize > defaultSize) {
+            multiplier = comb(customSize, defaultSize);
+        }
+        
+        const unitCost = baseCost * multiplier;
+        totalCost += (qty * unitCost);
+
+        const itemEl = $(`s-${g.slug}-qty`);
+        if (itemEl) itemEl.textContent = `${qty} jogos (R$ ${(qty * unitCost).toFixed(2).replace('.',',')})`;
     });
-    const stot = $('s-total');
-    if(stot) stot.textContent = fmt(totalCost);
+
+    const totEl = $('s-total');
+    if (totEl) totEl.textContent = fmt(totalCost);
+
     return qtys;
 }
 
