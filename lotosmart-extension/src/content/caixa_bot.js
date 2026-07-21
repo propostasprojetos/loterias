@@ -128,31 +128,16 @@ function findElementByTextInside(parent, selector, text) {
  * Seleciona o número correto na coluna específica do Super Sete.
  */
 function clickSuperSeteNumber(colIndex, num) {
-    // Procura colunas do Super Sete (geralmente identificadas por .coluna, .coluna-num, etc)
-    const columns = document.querySelectorAll('.coluna-num, .coluna, .numeros-aposta, ul.num-do-volante, ul[id^="num-do-volante"]');
+    // O Super Sete tem 7 colunas (0 a 6) e 10 dezenas por coluna (0 a 9).
+    // Conforme mapeamento do DOM da Caixa, os IDs vão de n1 a n70 de forma posicional:
+    // ID = 7 * num + colIndex + 1
+    const targetId = `n${7 * num + colIndex + 1}`;
+    const button = document.getElementById(targetId);
     
-    if (columns.length >= 7) {
-        const col = columns[colIndex];
-        const numStr = String(num);
-        
-        // Tenta achar o botão do número dentro daquela coluna
-        const button = col.querySelector(`[data-numero="${num}"], [data-numero="0${num}"], [data-value="${num}"], a[id*="n-${num}"]`) 
-                       || findElementByTextInside(col, 'a, button, span, li', numStr);
-                       
-        if (button) {
-            simulateClick(button);
-            return true;
-        }
-    }
-    
-    // Fallback: tenta buscar por identificadores de coluna e número juntos
-    const fallbackSelector = `[id$="-${colIndex}-${num}"], [id*="col-${colIndex + 1}"] [data-numero="${num}"]`;
-    const fallbackEl = document.querySelector(fallbackSelector);
-    if (fallbackEl) {
-        simulateClick(fallbackEl);
+    if (button) {
+        simulateClick(button);
         return true;
     }
-    
     return false;
 }
 
@@ -213,45 +198,22 @@ async function selectDiaDeSorteMonth() {
  * Seleciona um Time do Coração aleatório para a loteria Timemania.
  */
 async function selectTimemaniaTeam() {
-    // 1. Tenta achar dropdown de time
-    const select = document.querySelector('select[id*="time"], select[class*="time"], select');
-    if (select) {
-        const options = select.options;
-        if (options.length > 1) {
-            const randomIndex = Math.floor(Math.random() * (options.length - 1)) + 1;
-            select.selectedIndex = randomIndex;
-            select.dispatchEvent(new Event('change', { bubbles: true }));
+    // Procura as imagens de botões de time com name="btnTime" ou classe "data-selecionar-time-do-coracao"
+    const teamImgs = document.querySelectorAll('#carrossel_timemania img[name="btnTime"], img.data-selecionar-time-do-coracao');
+    
+    if (teamImgs.length > 0) {
+        const randomImg = teamImgs[Math.floor(Math.random() * teamImgs.length)];
+        simulateClick(randomImg);
+        return true;
+    }
+
+    // Fallback: se não achar as imagens específicas, procura por qualquer nó clicável no carrossel de times
+    const carrossel = document.getElementById('carrossel_timemania');
+    if (carrossel) {
+        const items = carrossel.querySelectorAll('li img, li');
+        if (items.length > 0) {
+            simulateClick(items[Math.floor(Math.random() * items.length)]);
             return true;
-        }
-    }
-
-    // 2. Tenta achar botões com nomes comuns de times
-    const teams = ["flamengo", "corinthians", "palmeiras", "sao paulo", "gremio", "santos", "cruzeiro", "vasco", "inter"];
-    for (const t of teams) {
-        const btn = findElementByText('a, button, li, span', t);
-        if (btn) {
-            const container = btn.closest('ul, div.grid, div.container-times');
-            if (container) {
-                const allTeamButtons = container.querySelectorAll('a, button, li, span');
-                if (allTeamButtons.length > 0) {
-                    const randomBtn = allTeamButtons[Math.floor(Math.random() * allTeamButtons.length)];
-                    simulateClick(randomBtn);
-                    return true;
-                }
-            }
-        }
-    }
-
-    // 3. Fallback procurando cabeçalho
-    const label = findElementByText('h2, h3, h4, label, span', 'Time do Coração');
-    if (label) {
-        const parent = label.closest('div, section');
-        if (parent) {
-            const buttons = parent.querySelectorAll('a, button, li');
-            if (buttons.length > 0) {
-                simulateClick(buttons[Math.floor(Math.random() * buttons.length)]);
-                return true;
-            }
         }
     }
     
@@ -262,45 +224,24 @@ async function selectTimemaniaTeam() {
  * Seleciona 2 trevos aleatórios para a loteria +Milionária.
  */
 async function selectMaisMilionariaTrevos() {
-    const trevosContainer = document.querySelector('.trevos, .container-trevos, #trevos, .trevo');
+    // Os trevos da +Milionária são tags <img> dentro de #step3 com IDs trevo1 a trevo6
+    const indices = [];
+    while (indices.length < 2) {
+        const idx = Math.floor(Math.random() * 6) + 1; // 1 a 6
+        if (!indices.includes(idx)) indices.push(idx);
+    }
     
-    if (trevosContainer) {
-        const buttons = trevosContainer.querySelectorAll('a, button, li, span');
-        if (buttons.length >= 6) {
-            const indices = [];
-            while (indices.length < 2) {
-                const idx = Math.floor(Math.random() * 6);
-                if (!indices.includes(idx)) indices.push(idx);
-            }
-            for (const idx of indices) {
-                simulateClick(buttons[idx]);
-                await sleep(TIMEOUT_BETWEEN_CLICKS);
-            }
-            return true;
+    let clicked = 0;
+    for (const num of indices) {
+        const img = document.getElementById(`trevo${num}`);
+        if (img) {
+            simulateClick(img);
+            clicked++;
+            await sleep(TIMEOUT_BETWEEN_CLICKS);
         }
     }
     
-    const label = findElementByText('h2, h3, h4, label, span', 'Trevos');
-    if (label) {
-        const parent = label.closest('div, section');
-        if (parent) {
-            const buttons = parent.querySelectorAll('a, button, li');
-            if (buttons.length >= 6) {
-                const indices = [];
-                while (indices.length < 2) {
-                    const idx = Math.floor(Math.random() * buttons.length);
-                    if (!indices.includes(idx)) indices.push(idx);
-                }
-                for (const idx of indices) {
-                    simulateClick(buttons[idx]);
-                    await sleep(TIMEOUT_BETWEEN_CLICKS);
-                }
-                return true;
-            }
-        }
-    }
-    
-    return false;
+    return clicked === 2;
 }
 
 /**
