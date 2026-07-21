@@ -87,10 +87,19 @@ export function simulateClick(element) {
     if (!element) return false;
     
     try {
-        // Na Caixa (AngularJS), o element.click() nativo é perfeito.
-        // Se dispararmos MouseEvents artificiais logo depois, ocorre um "duplo clique",
-        // o que faz a dezena ser selecionada e imediatamente desmarcada.
-        element.click();
+        const tagName = element.tagName.toLowerCase();
+        // Para botões, links e inputs, o .click() nativo funciona perfeitamente.
+        // Para elementos como IMG, DIV e SPAN, usamos MouseEvent para garantir que o Angular/JS capture o evento.
+        if (tagName === 'a' || tagName === 'button' || tagName === 'input') {
+            element.click();
+        } else {
+            const event = new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                view: window
+            });
+            element.dispatchEvent(event);
+        }
         return true;
     } catch (e) {
         console.error('🎲 LotoSmart: Erro ao clicar', e);
