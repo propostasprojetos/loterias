@@ -111,8 +111,201 @@ async function verifySuccess() {
 }
 
 /**
+ * Encontra um elemento baseado em texto dentro de um elemento pai específico.
+ */
+function findElementByTextInside(parent, selector, text) {
+    const elements = parent.querySelectorAll(selector);
+    const search = text.trim();
+    for (const el of elements) {
+        if (el.textContent.trim() === search) {
+            return el;
+        }
+    }
+    return null;
+}
+
+/**
+ * Seleciona o número correto na coluna específica do Super Sete.
+ */
+function clickSuperSeteNumber(colIndex, num) {
+    // Procura colunas do Super Sete (geralmente identificadas por .coluna, .coluna-num, etc)
+    const columns = document.querySelectorAll('.coluna-num, .coluna, .numeros-aposta, ul.num-do-volante, ul[id^="num-do-volante"]');
+    
+    if (columns.length >= 7) {
+        const col = columns[colIndex];
+        const numStr = String(num);
+        
+        // Tenta achar o botão do número dentro daquela coluna
+        const button = col.querySelector(`[data-numero="${num}"], [data-numero="0${num}"], [data-value="${num}"], a[id*="n-${num}"]`) 
+                       || findElementByTextInside(col, 'a, button, span, li', numStr);
+                       
+        if (button) {
+            simulateClick(button);
+            return true;
+        }
+    }
+    
+    // Fallback: tenta buscar por identificadores de coluna e número juntos
+    const fallbackSelector = `[id$="-${colIndex}-${num}"], [id*="col-${colIndex + 1}"] [data-numero="${num}"]`;
+    const fallbackEl = document.querySelector(fallbackSelector);
+    if (fallbackEl) {
+        simulateClick(fallbackEl);
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * Seleciona um Mês de Sorte aleatório para a loteria Dia de Sorte.
+ */
+async function selectDiaDeSorteMonth() {
+    const months = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+    
+    // 1. Tenta achar um dropdown de meses
+    const select = document.querySelector('select[id*="mes"], select[class*="mes"]');
+    if (select) {
+        const options = select.options;
+        if (options.length > 1) {
+            const randomIndex = Math.floor(Math.random() * (options.length - 1)) + 1;
+            select.selectedIndex = randomIndex;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            return true;
+        }
+    }
+
+    // 2. Tenta achar botões dos meses no DOM
+    for (const m of months) {
+        const btn = findElementByText('a, button, li, span', m);
+        if (btn) {
+            const container = btn.closest('ul, div.grid, div.container-meses');
+            if (container) {
+                const allMonthButtons = container.querySelectorAll('a, button, li, span');
+                if (allMonthButtons.length > 0) {
+                    const randomBtn = allMonthButtons[Math.floor(Math.random() * allMonthButtons.length)];
+                    simulateClick(randomBtn);
+                    return true;
+                }
+            } else {
+                simulateClick(btn);
+                return true;
+            }
+        }
+    }
+
+    // 3. Fallback procurando cabeçalho
+    const label = findElementByText('h2, h3, h4, label, span', 'Mês de Sorte');
+    if (label) {
+        const parent = label.closest('div, section');
+        if (parent) {
+            const buttons = parent.querySelectorAll('a, button, li');
+            if (buttons.length > 0) {
+                simulateClick(buttons[Math.floor(Math.random() * buttons.length)]);
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * Seleciona um Time do Coração aleatório para a loteria Timemania.
+ */
+async function selectTimemaniaTeam() {
+    // 1. Tenta achar dropdown de time
+    const select = document.querySelector('select[id*="time"], select[class*="time"], select');
+    if (select) {
+        const options = select.options;
+        if (options.length > 1) {
+            const randomIndex = Math.floor(Math.random() * (options.length - 1)) + 1;
+            select.selectedIndex = randomIndex;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            return true;
+        }
+    }
+
+    // 2. Tenta achar botões com nomes comuns de times
+    const teams = ["flamengo", "corinthians", "palmeiras", "sao paulo", "gremio", "santos", "cruzeiro", "vasco", "inter"];
+    for (const t of teams) {
+        const btn = findElementByText('a, button, li, span', t);
+        if (btn) {
+            const container = btn.closest('ul, div.grid, div.container-times');
+            if (container) {
+                const allTeamButtons = container.querySelectorAll('a, button, li, span');
+                if (allTeamButtons.length > 0) {
+                    const randomBtn = allTeamButtons[Math.floor(Math.random() * allTeamButtons.length)];
+                    simulateClick(randomBtn);
+                    return true;
+                }
+            }
+        }
+    }
+
+    // 3. Fallback procurando cabeçalho
+    const label = findElementByText('h2, h3, h4, label, span', 'Time do Coração');
+    if (label) {
+        const parent = label.closest('div, section');
+        if (parent) {
+            const buttons = parent.querySelectorAll('a, button, li');
+            if (buttons.length > 0) {
+                simulateClick(buttons[Math.floor(Math.random() * buttons.length)]);
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * Seleciona 2 trevos aleatórios para a loteria +Milionária.
+ */
+async function selectMaisMilionariaTrevos() {
+    const trevosContainer = document.querySelector('.trevos, .container-trevos, #trevos, .trevo');
+    
+    if (trevosContainer) {
+        const buttons = trevosContainer.querySelectorAll('a, button, li, span');
+        if (buttons.length >= 6) {
+            const indices = [];
+            while (indices.length < 2) {
+                const idx = Math.floor(Math.random() * 6);
+                if (!indices.includes(idx)) indices.push(idx);
+            }
+            for (const idx of indices) {
+                simulateClick(buttons[idx]);
+                await sleep(TIMEOUT_BETWEEN_CLICKS);
+            }
+            return true;
+        }
+    }
+    
+    const label = findElementByText('h2, h3, h4, label, span', 'Trevos');
+    if (label) {
+        const parent = label.closest('div, section');
+        if (parent) {
+            const buttons = parent.querySelectorAll('a, button, li');
+            if (buttons.length >= 6) {
+                const indices = [];
+                while (indices.length < 2) {
+                    const idx = Math.floor(Math.random() * buttons.length);
+                    if (!indices.includes(idx)) indices.push(idx);
+                }
+                for (const idx of indices) {
+                    simulateClick(buttons[idx]);
+                    await sleep(TIMEOUT_BETWEEN_CLICKS);
+                }
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+/**
  * Preenche e adiciona um único jogo ao carrinho.
- * @param {number[]} numbers - Array de números (ex: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15])
+ * @param {number[]} numbers - Array de números
  * @param {string} lotteryName - Nome da modalidade para os logs
  * @returns {Promise<boolean>}
  */
@@ -124,25 +317,59 @@ export async function executeSingleGame(numbers, lotteryName = 'Loterias') {
         clickClearVolante();
         await sleep(500);
 
-        // 2. Clicar em cada número sequencialmente
-        const sorted = [...numbers].sort((a, b) => a - b);
-        for (const num of sorted) {
-            const success = clickNumber(num);
-            if (!success) {
-                console.error(`🎲 ${lotteryName}: Falha ao encontrar o número ${num}`);
-                return false;
+        // 2. Clicar em cada número sequencialmente de acordo com a regra da modalidade
+        const nameNormalized = lotteryName.toLowerCase().replace(/-/g, '');
+        
+        if (nameNormalized === 'supersete') {
+            // Lógica especial para Super Sete: números correspondem à seleção por coluna [col0, col1, ...]
+            for (let col = 0; col < numbers.length; col++) {
+                const num = numbers[col];
+                const success = clickSuperSeteNumber(col, num);
+                if (!success) {
+                    console.error(`🎲 ${lotteryName}: Falha ao encontrar o número ${num} na coluna ${col + 1}`);
+                    return false;
+                }
+                await sleep(TIMEOUT_BETWEEN_CLICKS);
             }
-            await sleep(TIMEOUT_BETWEEN_CLICKS);
+        } else {
+            // Outras loterias: ordene e clique nos números
+            const sorted = [...numbers].sort((a, b) => a - b);
+            for (const num of sorted) {
+                const success = clickNumber(num);
+                if (!success) {
+                    console.error(`🎲 ${lotteryName}: Falha ao encontrar o número ${num}`);
+                    return false;
+                }
+                await sleep(TIMEOUT_BETWEEN_CLICKS);
+            }
         }
 
-        // 3. Colocar no carrinho
+        // 3. Preenchimento de campos secundários obrigatórios
+        if (nameNormalized === 'diadesorte') {
+            const monthSuccess = await selectDiaDeSorteMonth();
+            if (!monthSuccess) {
+                console.warn(`🎲 ${lotteryName}: Não conseguiu selecionar o Mês de Sorte automaticamente.`);
+            }
+        } else if (nameNormalized === 'timemania') {
+            const teamSuccess = await selectTimemaniaTeam();
+            if (!teamSuccess) {
+                console.warn(`🎲 ${lotteryName}: Não conseguiu selecionar o Time do Coração automaticamente.`);
+            }
+        } else if (nameNormalized === 'maismilionaria') {
+            const trevosSuccess = await selectMaisMilionariaTrevos();
+            if (!trevosSuccess) {
+                console.warn(`🎲 ${lotteryName}: Não conseguiu selecionar os Trevos automaticamente.`);
+            }
+        }
+
+        // 4. Colocar no carrinho
         const added = await clickAddToCart();
         if (!added) {
             console.error(`🎲 ${lotteryName}: Botão "Colocar no Carrinho" não encontrado!`);
             return false;
         }
 
-        // 4. Aguardar confirmação visual
+        // 5. Aguardar confirmação visual
         const verified = await verifySuccess();
         return verified;
 
