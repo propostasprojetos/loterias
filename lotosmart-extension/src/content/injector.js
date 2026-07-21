@@ -41,8 +41,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (bet && bet.lottery_type) {
-      // Verifica se a URL atual contém a rota esperada (ex: #/megasena)
-      if (!window.location.hash.includes(`#/${bet.lottery_type}`)) {
+      // Normaliza o hash atual e a rota da loteria removendo hífens para permitir a correspondência correta
+      const currentHash = window.location.hash.replace(/-/g, '').toLowerCase();
+      const targetHash = `#/${bet.lottery_type.replace(/-/g, '').toLowerCase()}`;
+      
+      if (!currentHash.includes(targetHash)) {
         sendResponse({ status: 'error', message: 'wrong_page' });
         return;
       }
