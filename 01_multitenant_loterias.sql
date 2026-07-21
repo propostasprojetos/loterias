@@ -250,8 +250,8 @@ BEGIN
         id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at
     )
     VALUES (
-        gen_random_uuid(), v_new_user_id, v_new_user_id::text, 
-        json_build_object('sub', v_new_user_id::text, 'email', p_email), 
+        gen_random_uuid(), v_new_user_id, p_email, 
+        json_build_object('sub', v_new_user_id::text, 'email', p_email, 'email_verified', true, 'phone_verified', false), 
         'email', now(), now(), now()
     );
 
