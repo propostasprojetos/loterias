@@ -59,12 +59,20 @@ export function renderDynamicGameUI() {
 
         configGrid.innerHTML = state.activeGames.map(g => {
             const cost = g.parametros.cost || 3.00;
+            const minSize = g.parametros.pick_size || 6;
+            const maxSize = g.parametros.range_max || 60;
             return `
                 <div class="field">
-                    <label title="Digite a quantidade de jogos para ${g.nome} (Custo unitário: R$ ${cost.toFixed(2)})">${g.nome}</label>
-                    <div class="input-row" title="Informe a quantidade de jogos que deseja gerar para este tipo">
-                        <span class="prefix">Qtd</span>
-                        <input type="number" id="qty-${g.slug}" min="0" data-cost="${cost}" placeholder="0" style="text-align: center;">
+                    <label title="Configure os jogos para ${g.nome} (Custo base: R$ ${cost.toFixed(2)})">${g.nome}</label>
+                    <div style="display:flex; gap:8px;">
+                        <div class="input-row" title="Informe a quantidade de jogos que deseja gerar" style="flex:1;">
+                            <span class="prefix" style="padding:0 6px;">Qtd</span>
+                            <input type="number" id="qty-${g.slug}" min="0" data-cost="${cost}" placeholder="0" style="text-align: center; width:100%;">
+                        </div>
+                        <div class="input-row" title="Qtd de dezenas por jogo (Vazio = Padrão: ${minSize})" style="flex:1;">
+                            <span class="prefix" style="padding:0 6px;">Dez</span>
+                            <input type="number" id="size-${g.slug}" min="${minSize}" max="${maxSize}" placeholder="${minSize}" style="text-align: center; width:100%;">
+                        </div>
                     </div>
                 </div>
             `;
@@ -199,7 +207,13 @@ export async function generateAll() {
             
             let newGames = [];
             if (needed > 0) {
-                newGames = strategyEngine.run(strategyName, needed, { ...g.parametros, slug: g.slug }, history, kept);
+                // Lê a quantidade personalizada de dezenas do input
+                const sizeEl = $(`size-${g.slug}`);
+                let customSize = sizeEl && sizeEl.value ? parseInt(sizeEl.value, 10) : g.parametros.pick_size;
+                if (customSize < g.parametros.pick_size) customSize = g.parametros.pick_size;
+                if (customSize > g.parametros.range_max) customSize = g.parametros.range_max;
+
+                newGames = strategyEngine.run(strategyName, needed, { ...g.parametros, slug: g.slug, pick_size: customSize }, history, kept);
             }
             
             st.games = [...kept, ...newGames];
