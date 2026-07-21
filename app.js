@@ -38,7 +38,12 @@ function switchTab(tabId) {
 document.addEventListener('DOMContentLoaded', () => {
     // Nav & Menu
     setupMobileMenu();
-    $$('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+    $$('.nav-btn').forEach(b => b.addEventListener('click', () => {
+        switchView(b.dataset.view);
+        if (b.dataset.view === 'admin' && typeof window.refreshAdminData === 'function') {
+            window.refreshAdminData();
+        }
+    }));
     
     // Gerador
     $('btn-generate')?.addEventListener('click', generateAll);
