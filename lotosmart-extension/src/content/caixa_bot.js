@@ -252,6 +252,47 @@ async function selectMaisMilionariaTrevos(trevosEspecificos = null) {
 }
 
 /**
+ * Ajusta o combobox "Quantidade de números da aposta" no site da Caixa.
+ * @param {number} targetQty - Quantidade de dezenas que queremos jogar.
+ */
+async function selectGameSize(targetQty) {
+    try {
+        const selects = document.querySelectorAll('select');
+        let targetSelect = null;
+        let targetOption = null;
+
+        for (const select of selects) {
+            const options = Array.from(select.options);
+            // Procura a option cujo texto seja exatamente a quantidade desejada (ex: "7", "8")
+            const opt = options.find(o => o.text.trim() === String(targetQty));
+            if (opt) {
+                // Checagem de segurança para não pegar selects de mês (ex: Dia de Sorte)
+                const isMonthSelect = options.some(o => o.text.toLowerCase().includes('janeiro') || o.text.toLowerCase().includes('fevereiro'));
+                if (!isMonthSelect) {
+                    targetSelect = select;
+                    targetOption = opt;
+                    break; // Encontrou o select correto
+                }
+            }
+        }
+
+        if (targetSelect && targetOption) {
+            // Só dispara se o valor atual for diferente
+            if (targetSelect.value !== targetOption.value) {
+                targetSelect.value = targetOption.value;
+                targetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                console.log(`[selectGameSize] Ajustado select para ${targetQty} números.`);
+                await sleep(800); // Aguarda o Angular liberar os botões extras
+            }
+            return true;
+        }
+    } catch (e) {
+        console.warn('Erro ao tentar ajustar selectGameSize:', e);
+    }
+    return false;
+}
+
+/**
  * Preenche e adiciona um único jogo ao carrinho.
  * @param {number[]|Object} numbers - Array de números OU objeto { dezenas, trevos?, mes?, time? }
  * @param {string} lotteryName - Nome da modalidade para os logs
@@ -276,8 +317,14 @@ export async function executeSingleGame(numbers, lotteryName = 'Loterias') {
         clickClearVolante();
         await sleep(500);
 
-        // 2. Clicar em cada número sequencialmente de acordo com a regra da modalidade
+        // 1.5 Ajustar quantidade de dezenas da aposta no Select (se aplicável)
         const nameNormalized = lotteryName.toLowerCase().replace(/-/g, '').replace(/\s/g, '').replace(/\+/g, '');
+        // Super Sete, Lotomania e Timemania não precisam de ajuste de tamanho de dezenas
+        if (nameNormalized !== 'supersete' && nameNormalized !== 'lotomania' && nameNormalized !== 'timemania') {
+            await selectGameSize(dezenas.length);
+        }
+
+        // 2. Clicar em cada número sequencialmente de acordo com a regra da modalidade
 
         if (nameNormalized === 'supersete') {
             // Super Sete: cada posição do array = um dígito (col 0 a 6)
