@@ -19,9 +19,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target.disabled) return;
             const modal = e.target.closest('.modal-content');
             modal.querySelectorAll('.modal-tab-btn').forEach(b => b.classList.remove('active'));
-            modal.querySelectorAll('.modal-tab-content').forEach(c => c.classList.add('hidden'));
+            modal.querySelectorAll('.modal-tab-content').forEach(c => {
+                c.classList.remove('active');
+                c.classList.add('hidden');
+            });
             e.target.classList.add('active');
-            document.getElementById(e.target.dataset.tab).classList.remove('hidden');
+            const tab = document.getElementById(e.target.dataset.tab);
+            if (tab) {
+                tab.classList.remove('hidden');
+                tab.classList.add('active');
+            }
         });
     });
 
