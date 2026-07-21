@@ -280,9 +280,36 @@ async function selectGameSize(targetQty) {
             // Só dispara se o valor atual for diferente
             if (targetSelect.value !== targetOption.value) {
                 targetSelect.value = targetOption.value;
+                
+                // Dispara os eventos padrão do DOM
+                targetSelect.dispatchEvent(new Event('input', { bubbles: true }));
                 targetSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                console.log(`[selectGameSize] Ajustado select para ${targetQty} números.`);
-                await sleep(800); // Aguarda o Angular liberar os botões extras
+                
+                // Atribui um ID temporário se não tiver, para achá-lo no script injetado
+                if (!targetSelect.id) targetSelect.id = 'lotosmart-qty-select';
+                
+                // Injeta script para forçar o Angular 1.x a atualizar o model e a tela
+                const script = document.createElement('script');
+                script.textContent = `
+                    try {
+                        const sel = document.getElementById('${targetSelect.id}');
+                        if (sel && window.angular) {
+                            const ngEl = angular.element(sel);
+                            ngEl.triggerHandler('change');
+                            const scope = ngEl.scope();
+                            if (scope && !scope.$$phase) {
+                                scope.$apply();
+                            }
+                        }
+                    } catch(e) {
+                        console.error('Erro ao injetar scope apply:', e);
+                    }
+                `;
+                document.body.appendChild(script);
+                script.remove();
+
+                console.log(`[selectGameSize] Ajustado select para ${targetQty} números via Angular Injection.`);
+                await sleep(1000); // Aguarda a tela piscar/liberar os números extras
             }
             return true;
         }
