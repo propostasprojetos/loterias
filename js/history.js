@@ -8,7 +8,7 @@ import { switchView } from './ui.js';
 import { renderGames, renderAnalysis } from './gerador.js';
 
 function getHistoryKey() {
-    return state.currentSession ? \`lotosmart_history_\${state.currentSession.user.id}\` : 'lotosmart_history';
+    return state.currentSession ? `lotosmart_history_${state.currentSession.user.id}` : 'lotosmart_history';
 }
 
 export function loadHistory() {

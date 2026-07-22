@@ -468,7 +468,7 @@
                     <div class="field">
                         <label for="login-password">Senha</label>
                         <div class="input-row">
-                            <input type="password" id="login-password" required placeholder="Sua senha">
+                            <input type="password" id="login-password" required placeholder="Sua senha" autocomplete="current-password">
                         </div>
                     </div>
                     <button type="submit" class="btn-primary btn-auth" id="btn-login-submit">Entrar</button>
@@ -486,19 +486,19 @@
                     <div class="field">
                         <label for="change-old-password">Senha Atual</label>
                         <div class="input-row">
-                            <input type="password" id="change-old-password" required placeholder="Senha atual ou temporária">
+                            <input type="password" id="change-old-password" required placeholder="Senha atual ou temporária" autocomplete="current-password">
                         </div>
                     </div>
                     <div class="field">
                         <label for="change-new-password">Nova Senha</label>
                         <div class="input-row">
-                            <input type="password" id="change-new-password" required placeholder="Mínimo 8 caracteres">
+                            <input type="password" id="change-new-password" required placeholder="Mínimo 8 caracteres" autocomplete="new-password">
                         </div>
                     </div>
                     <div class="field">
                         <label for="change-confirm-password">Confirmar Nova Senha</label>
                         <div class="input-row">
-                            <input type="password" id="change-confirm-password" required placeholder="Confirme a nova senha">
+                            <input type="password" id="change-confirm-password" required placeholder="Confirme a nova senha" autocomplete="new-password">
                         </div>
                     </div>
                     <button type="submit" class="btn-primary btn-auth" id="btn-change-pass-submit">Alterar Senha</button>
@@ -709,7 +709,7 @@
                             </div>
                             <div class="field" id="wrap-user-password">
                                 <label for="user-password">Senha (Apenas para novos)</label>
-                                <div class="input-row"><input type="password" id="user-password" placeholder="Mín 8 chars"></div>
+                                <div class="input-row"><input type="password" id="user-password" placeholder="Mín 8 chars" autocomplete="new-password"></div>
                             </div>
                         </div>
                     </div>

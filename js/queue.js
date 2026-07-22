@@ -181,9 +181,9 @@ export async function resetAllFinancialData() {
                 await supabaseClient.from('bets').delete().eq('owner_id', uid);
                 await supabaseClient.from('prizes').delete().eq('owner_id', uid);
 
-                const betKey = state.currentSession ? \`lotosmart_bets_\${uid}\` : 'lotosmart_bets';
-                const prizeKey = state.currentSession ? \`lotosmart_prizes_\${uid}\` : 'lotosmart_prizes';
-                const historyKey = state.currentSession ? \`lotosmart_history_\${uid}\` : 'lotosmart_history';
+                const betKey = state.currentSession ? `lotosmart_bets_${uid}` : 'lotosmart_bets';
+                const prizeKey = state.currentSession ? `lotosmart_prizes_${uid}` : 'lotosmart_prizes';
+                const historyKey = state.currentSession ? `lotosmart_history_${uid}` : 'lotosmart_history';
 
                 localStorage.removeItem(betKey);
                 localStorage.removeItem(prizeKey);

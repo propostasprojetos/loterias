@@ -8,11 +8,11 @@ import { $, fmt, toast, showConfirm, ICON } from './utils.js';
 
 // ===== LOCALSTORAGE FALLBACK =====
 function getFinBetsKey() {
-    return state.currentSession ? \`lotosmart_bets_\${state.currentSession.user.id}\` : 'lotosmart_bets';
+    return state.currentSession ? `lotosmart_bets_${state.currentSession.user.id}` : 'lotosmart_bets';
 }
 
 function getFinPrizesKey() {
-    return state.currentSession ? \`lotosmart_prizes_\${state.currentSession.user.id}\` : 'lotosmart_prizes';
+    return state.currentSession ? `lotosmart_prizes_${state.currentSession.user.id}` : 'lotosmart_prizes';
 }
 
 function loadLocalBets() {
