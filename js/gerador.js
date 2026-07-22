@@ -12,13 +12,13 @@ import { loadHistory, saveHistoryData } from './history.js';
 import { refreshFinancialData, setFinFilter } from './financeiro.js';
 
 const GAME_MAX_PICKS = {
-    'mega-sena': 20,
+    'megasena': 20,
     'lotofacil': 20,
     'quina': 15,
-    'mais-milionaria': 12,
-    'dupla-sena': 15,
-    'dia-de-sorte': 15,
-    'super-sete': 21,
+    'maismilionaria': 12,
+    'duplasena': 15,
+    'diadesorte': 15,
+    'supersete': 21,
     'timemania': 10,
     'lotomania': 50,
     'loteca': 14
@@ -212,13 +212,13 @@ export function updateSummary() {
 
     // Tabela de preços atualizada da Caixa (override seguro)
     const BASE_PRICES = {
-        'mega-sena': 6.00,
+        'megasena': 6.00,
         'lotofacil': 3.50,
         'quina': 3.00,
-        'dupla-sena': 3.00,
-        'dia-de-sorte': 2.50,
-        'super-sete': 3.00,
-        'mais-milionaria': 6.00,
+        'duplasena': 3.00,
+        'diadesorte': 2.50,
+        'supersete': 3.00,
+        'maismilionaria': 6.00,
         'timemania': 3.50,
         'lotomania': 3.00
     };
