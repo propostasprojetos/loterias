@@ -181,9 +181,13 @@ export async function resetAllFinancialData() {
                 await supabaseClient.from('bets').delete().eq('owner_id', uid);
                 await supabaseClient.from('prizes').delete().eq('owner_id', uid);
 
-                localStorage.removeItem('lotosmart_bets');
-                localStorage.removeItem('lotosmart_prizes');
-                localStorage.removeItem('lotosmart_history');
+                const betKey = state.currentSession ? \`lotosmart_bets_\${uid}\` : 'lotosmart_bets';
+                const prizeKey = state.currentSession ? \`lotosmart_prizes_\${uid}\` : 'lotosmart_prizes';
+                const historyKey = state.currentSession ? \`lotosmart_history_\${uid}\` : 'lotosmart_history';
+
+                localStorage.removeItem(betKey);
+                localStorage.removeItem(prizeKey);
+                localStorage.removeItem(historyKey);
 
                 toast('Todos os dados de teste foram apagados!', 'success');
                 await refreshFinancialData();

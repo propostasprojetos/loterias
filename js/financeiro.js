@@ -7,20 +7,25 @@ import { state } from './store.js';
 import { $, fmt, toast, showConfirm, ICON } from './utils.js';
 
 // ===== LOCALSTORAGE FALLBACK =====
-const FIN_BETS_KEY = 'lotosmart_bets';
-const FIN_PRIZES_KEY = 'lotosmart_prizes';
+function getFinBetsKey() {
+    return state.currentSession ? \`lotosmart_bets_\${state.currentSession.user.id}\` : 'lotosmart_bets';
+}
+
+function getFinPrizesKey() {
+    return state.currentSession ? \`lotosmart_prizes_\${state.currentSession.user.id}\` : 'lotosmart_prizes';
+}
 
 function loadLocalBets() {
-    try { return JSON.parse(localStorage.getItem(FIN_BETS_KEY)) || []; }
+    try { return JSON.parse(localStorage.getItem(getFinBetsKey())) || []; }
     catch { return []; }
 }
-function saveLocalBets(data) { localStorage.setItem(FIN_BETS_KEY, JSON.stringify(data)); }
+function saveLocalBets(data) { localStorage.setItem(getFinBetsKey(), JSON.stringify(data)); }
 
 function loadLocalPrizes() {
-    try { return JSON.parse(localStorage.getItem(FIN_PRIZES_KEY)) || []; }
+    try { return JSON.parse(localStorage.getItem(getFinPrizesKey())) || []; }
     catch { return []; }
 }
-function saveLocalPrizes(data) { localStorage.setItem(FIN_PRIZES_KEY, JSON.stringify(data)); }
+function saveLocalPrizes(data) { localStorage.setItem(getFinPrizesKey(), JSON.stringify(data)); }
 
 // ===== STATE =====
 export let allBets = [];

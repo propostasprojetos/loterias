@@ -7,15 +7,17 @@ import { $, $$, toast, showConfirm } from './utils.js';
 import { switchView } from './ui.js';
 import { renderGames, renderAnalysis } from './gerador.js';
 
-const HISTORY_KEY = 'lotosmart_history';
+function getHistoryKey() {
+    return state.currentSession ? \`lotosmart_history_\${state.currentSession.user.id}\` : 'lotosmart_history';
+}
 
 export function loadHistory() {
-    try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
+    try { return JSON.parse(localStorage.getItem(getHistoryKey())) || []; }
     catch { return []; }
 }
 
 export function saveHistoryData(data) { 
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(data)); 
+    localStorage.setItem(getHistoryKey(), JSON.stringify(data)); 
 }
 
 export function saveToHistory() {
