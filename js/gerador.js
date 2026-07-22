@@ -99,8 +99,23 @@ export function renderDynamicGameUI() {
         state.activeGames.forEach(g => {
             const el = $('qty-'+g.slug);
             if(el) el.addEventListener('input', updateSummary);
+            
             const sizeEl = $('size-'+g.slug);
-            if(sizeEl) sizeEl.addEventListener('input', updateSummary);
+            if(sizeEl) {
+                sizeEl.addEventListener('input', updateSummary);
+                sizeEl.addEventListener('change', (e) => {
+                    const defaultSize = g.parametros.pick_size || 6;
+                    const maxAllowed = GAME_MAX_PICKS[g.slug] || defaultSize;
+                    let val = parseInt(e.target.value, 10);
+                    if (isNaN(val)) return;
+
+                    if (val < defaultSize || val > maxAllowed) {
+                        toast(`Coloque um número de ${defaultSize} a ${maxAllowed}`, 'error');
+                        e.target.value = val < defaultSize ? defaultSize : maxAllowed;
+                        updateSummary();
+                    }
+                });
+            }
         });
     }
 
@@ -221,11 +236,6 @@ export function updateSummary() {
         if (customSize < defaultSize) customSize = defaultSize;
         if (customSize > maxAllowed) customSize = maxAllowed;
         
-        // Atualiza visualmente se estiver fora dos limites (opcional)
-        if (sizeEl && sizeEl.value && customSize !== parseInt(sizeEl.value, 10)) {
-            sizeEl.value = customSize;
-        }
-
         // Usa o preço novo ou fallback
         const baseCost = BASE_PRICES[g.slug] || parseFloat(el?.dataset.cost) || 0;
         
