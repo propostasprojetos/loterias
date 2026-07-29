@@ -657,6 +657,24 @@ select option { background: var(--surface-solid); color: var(--text); }
 .status-lancado{background:var(--lavender-dim);color:var(--lavender)}
 @keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:.5}}
 
+/* ===== BUDGET SUGGESTER ===== */
+.budget-suggester-box { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+.budget-suggester-box .header-row { display: flex; flex-direction: column; gap: 8px; }
+.budget-suggester-box .header-row label { color: var(--gold); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.budget-suggester-box .budget-input-wrapper { display: flex; align-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 12px; height: 42px; width: 100%; max-width: 250px; }
+.budget-suggester-box .budget-input-wrapper span { color: var(--text-2); font-weight: 600; margin-right: 8px; }
+.budget-suggester-box .budget-input-wrapper input { border: none; background: transparent; color: var(--text); font-family: var(--font-num); font-size: 1.1rem; width: 100%; outline: none; }
+.budget-lottery-list { display: flex; flex-direction: column; gap: 12px; }
+.budget-lottery-item { display: flex; align-items: center; justify-content: space-between; background: var(--surface); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+.budget-lottery-item label { display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text); flex: 1; }
+.budget-pct-input { width: 70px; text-align: center; }
+.budget-options-container { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.budget-option-card { flex: 1; min-width: 150px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; cursor: pointer; transition: all 0.2s ease; text-align: center; }
+.budget-option-card:hover { border-color: var(--gold); transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.budget-option-card .opt-title { font-size: 0.8rem; color: var(--text-2); text-transform: uppercase; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.5px; }
+.budget-option-card .opt-dist { font-size: 0.9rem; color: var(--text); font-weight: 600; line-height: 1.4; }
+.budget-option-card .opt-dist span { color: var(--gold); font-family: var(--font-num); }
+
 @media(max-width:768px){
 
     main{padding:24px 16px 80px}

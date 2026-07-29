@@ -70,6 +70,9 @@ export function renderDynamicGameUI() {
             return;
         }
 
+        // Renderiza o sugeridor de orçamento
+        renderBudgetSuggester();
+
         configGrid.innerHTML = state.activeGames.map(g => {
             const cost = g.parametros.cost || 3.00;
             const minSize = g.parametros.pick_size || 6;
@@ -514,4 +517,195 @@ export function renderAnalysis() {
 
     if (!hasData) h = '<p style="color:var(--text-3);font-size:.85rem">Gere jogos para ver a análise estatística.</p>';
     ab.innerHTML = h;
+}
+
+// ==========================================
+// BUDGET SUGGESTER LOGIC
+// ==========================================
+
+function renderBudgetSuggester() {
+    const container = $('budget-suggester-container');
+    if (!container) return;
+
+    if (state.activeGames.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let lotteriesHtml = state.activeGames.map(g => {
+        return `
+            <div class="budget-lottery-item">
+                <label>
+                    <input type="checkbox" class="budget-chk" value="${g.slug}" checked>
+                    ${g.nome}
+                </label>
+                <input type="number" class="budget-pct-input field" placeholder="%" min="0" max="100" data-slug="${g.slug}" title="Porcentagem (Opcional)">
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="budget-suggester-box">
+            <div class="header-row">
+                <label>Sugeridor de Orçamento</label>
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <div class="budget-input-wrapper">
+                        <span>R$</span>
+                        <input type="number" id="budget-total-input" placeholder="0.00" min="0" step="10">
+                    </div>
+                    <button class="btn-primary" id="btn-budget-suggest">Sugerir Distribuição</button>
+                </div>
+            </div>
+            <div class="budget-lottery-list">
+                ${lotteriesHtml}
+            </div>
+            <div id="budget-options-wrapper" class="budget-options-container"></div>
+        </div>
+    `;
+
+    $('btn-budget-suggest').addEventListener('click', handleBudgetSuggest);
+}
+
+function handleBudgetSuggest() {
+    const budgetStr = $('budget-total-input').value;
+    const budget = parseFloat(budgetStr);
+    
+    if (isNaN(budget) || budget <= 0) {
+        toast('Informe um valor válido para o orçamento.');
+        return;
+    }
+
+    const checkboxes = $$('.budget-chk:checked');
+    if (checkboxes.length === 0) {
+        toast('Selecione ao menos uma loteria para distribuir.');
+        return;
+    }
+
+    const selectedSlugs = Array.from(checkboxes).map(chk => chk.value);
+    
+    // Ler as porcentagens informadas
+    let hasCustomPct = false;
+    let customPctTotal = 0;
+    const customDist = {};
+    
+    selectedSlugs.forEach(slug => {
+        const input = document.querySelector(\`.budget-pct-input[data-slug="\${slug}"]\`);
+        if (input && input.value) {
+            const val = parseFloat(input.value);
+            if (!isNaN(val) && val > 0) {
+                hasCustomPct = true;
+                customDist[slug] = val;
+                customPctTotal += val;
+            } else {
+                customDist[slug] = 0;
+            }
+        } else {
+            customDist[slug] = 0;
+        }
+    });
+
+    if (hasCustomPct) {
+        if (Math.abs(customPctTotal - 100) > 0.01) {
+            toast('A soma das porcentagens informadas deve ser 100%!');
+            return;
+        }
+        applyBudgetDistribution(budget, customDist);
+        $('budget-options-wrapper').innerHTML = '';
+        toast('Distribuição aplicada com sucesso!', 'success');
+    } else {
+        // Sem porcentagem, gera 3 opções de distribuição baseadas no número de selecionados
+        const optionsHtml = generateDistributionOptions(selectedSlugs, budget);
+        $('budget-options-wrapper').innerHTML = optionsHtml;
+        
+        $$('.budget-option-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const distStr = e.currentTarget.dataset.dist;
+                const dist = JSON.parse(distStr);
+                applyBudgetDistribution(budget, dist);
+                toast('Opção aplicada!', 'success');
+            });
+        });
+    }
+}
+
+function generateDistributionOptions(slugs, budget) {
+    let options = [];
+    
+    if (slugs.length === 1) {
+        options = [ { [slugs[0]]: 100 } ];
+    } else if (slugs.length === 2) {
+        options = [
+            { [slugs[0]]: 70, [slugs[1]]: 30 },
+            { [slugs[0]]: 50, [slugs[1]]: 50 },
+            { [slugs[0]]: 30, [slugs[1]]: 70 }
+        ];
+    } else if (slugs.length === 3) {
+        options = [
+            { [slugs[0]]: 70, [slugs[1]]: 15, [slugs[2]]: 15 },
+            { [slugs[0]]: 50, [slugs[1]]: 25, [slugs[2]]: 25 },
+            { [slugs[0]]: 10, [slugs[1]]: 40, [slugs[2]]: 50 }
+        ];
+    } else {
+        // Se houver mais de 3, criamos uma divisão igual e um par aleatório
+        const equal = 100 / slugs.length;
+        const dist1 = {}; slugs.forEach(s => dist1[s] = equal);
+        options = [ dist1 ];
+    }
+
+    return options.map((opt, i) => {
+        let distHtml = Object.keys(opt).map(s => {
+            const game = state.activeGames.find(g => g.slug === s);
+            const nome = game ? game.nome : s;
+            return `<div>${nome}: <span>${opt[s].toFixed(0)}%</span></div>`;
+        }).join('');
+        
+        const distStr = JSON.stringify(opt);
+        return `
+            <div class="budget-option-card" data-dist='${distStr}'>
+                <div class="opt-title">Opção ${i+1}</div>
+                <div class="opt-dist">${distHtml}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function applyBudgetDistribution(budget, distObj) {
+    // Tabela de preços base idêntica ao gerador
+    const BASE_PRICES = {
+        'megasena': 6.00,
+        'lotofacil': 3.50,
+        'quina': 3.00,
+        'duplasena': 3.00,
+        'diadesorte': 2.50,
+        'supersete': 3.00,
+        'maismilionaria': 6.00,
+        'timemania': 3.50,
+        'lotomania': 3.00
+    };
+
+    // Zera todas as quantidades antes
+    state.activeGames.forEach(g => {
+        const input = $('qty-'+g.slug);
+        if (input) input.value = '';
+    });
+
+    for (const slug in distObj) {
+        const pct = distObj[slug];
+        if (pct <= 0) continue;
+        
+        const game = state.activeGames.find(g => g.slug === slug);
+        if (!game) continue;
+        
+        const input = $('qty-'+slug);
+        const baseCost = BASE_PRICES[slug] || parseFloat(input?.dataset.cost) || 3.00;
+        
+        const budgetForGame = budget * (pct / 100);
+        const qty = Math.floor(budgetForGame / baseCost);
+        
+        if (input && qty > 0) {
+            input.value = qty;
+        }
+    }
+    
+    updateSummary();
 }
