@@ -98,23 +98,25 @@ export async function addPrize(prizeData) {
 export async function deleteBet(id) {
     if (sbReady && state.currentSession) {
         try {
-            // Remove registros dependentes antes de deletar a aposta (caso não haja CASCADE no banco)
-            await supabaseClient.from('jogo_participantes').delete().eq('bet_id', id);
-            await supabaseClient.from('premios_participantes').delete().eq('bet_id', id);
-            await supabaseClient.from('bet_games').delete().eq('bet_id', id);
-            await supabaseClient.from('automation_queue').delete().eq('bet_id', id);
-
-            const { error } = await supabaseClient.from('bets').delete().eq('id', id);
+            // ON DELETE CASCADE no banco cuida de: automation_queue, bet_games, jogo_participantes, premios_participantes
+            const { error } = await supabaseClient
+                .from('bets')
+                .delete()
+                .eq('id', id)
+                .eq('owner_id', state.currentSession.user.id); // garante que só exclui a própria aposta
             if (error) throw error;
+            toast('Aposta excluída com sucesso!', 'success');
         } catch (e) {
             console.error('Supabase delete bet failed:', e);
-            // Fallback: remove do localStorage
+            toast('Erro ao excluir aposta: ' + (e.message || e), 'error');
+            // Fallback localStorage
             const bets = loadLocalBets().filter(b => b.id !== id);
             saveLocalBets(bets);
         }
     } else {
         const bets = loadLocalBets().filter(b => b.id !== id);
         saveLocalBets(bets);
+        toast('Aposta excluída!', 'success');
     }
     await refreshFinancialData();
 }
@@ -295,7 +297,7 @@ export function renderTransactions() {
         }
         
         transactions.push({
-            id: b.id, type: 'bet', date: b.bet_date, lottery: b.lottery_type,
+            id: b.id, type: 'bet', date: b.bet_date, created_at: b.created_at || b.bet_date, lottery: b.lottery_type,
             details: `${b.game_count || 1} jogo${(b.game_count || 1) > 1 ? 's' : ''}` + 
                      (b.contest_number ? ` · Conc. ${b.contest_number}` : '') + 
                      partStr +
@@ -308,13 +310,17 @@ export function renderTransactions() {
 
     allPrizes.forEach(p => {
         transactions.push({
-            id: p.id, type: 'prize', date: p.prize_date, lottery: p.lottery_type,
+            id: p.id, type: 'prize', date: p.prize_date, created_at: p.created_at || p.prize_date, lottery: p.lottery_type,
             details: `${p.matches || 0} acertos` + (p.contest_number ? ` · Conc. ${p.contest_number}` : '') + (p.notes ? ` · ${p.notes}` : ''),
             amount: parseFloat(p.prize_amount) || 0, source: 'prizes'
         });
     });
 
-    transactions.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    transactions.sort((a, b) => {
+        const da = new Date(a.created_at || a.date || 0);
+        const db = new Date(b.created_at || b.date || 0);
+        return db - da; // Mais recente primeiro (desc)
+    });
 
     const filtered = transactions.filter(t => {
         if (finFilter === 'all') return true;
@@ -345,7 +351,19 @@ export function renderTransactions() {
     }
 
     tbody.innerHTML = filtered.map(t => {
-        const dateStr = t.date ? t.date.split('-').reverse().join('/') : '—';
+        let dateStr = '—';
+        if (t.created_at && t.created_at.includes('T')) {
+            const d = new Date(t.created_at);
+            const dia = pad(d.getDate());
+            const mes = pad(d.getMonth() + 1);
+            const ano = d.getFullYear();
+            const h = pad(d.getHours());
+            const m = pad(d.getMinutes());
+            dateStr = `${dia}/${mes}/${ano} ${h}:${m}`;
+        } else if (t.date) {
+            dateStr = t.date.split('-').reverse().join('/');
+        }
+        
         const lotteryLabel = t.lottery === 'lf' ? 'Lotofácil' : t.lottery === 'qn' ? 'Quina' : '—';
         const amountClass = t.amount >= 0 ? 'amount-positive' : 'amount-negative';
         const amountStr = (t.amount >= 0 ? '+' : '') + fmt(Math.abs(t.amount));
