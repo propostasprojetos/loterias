@@ -311,6 +311,16 @@ export function populateFinanceiroSelects(boloes_ativos, apostas_recentes) {
         if (val) betBolao.value = val;
     }
     
+    const genBolao = $('gen-bolao-select');
+    if (genBolao) {
+        const val = genBolao.value;
+        genBolao.innerHTML = '<option value="">Aposta Individual (Sem Bolão)</option>';
+        boloes_ativos.forEach(b => {
+            genBolao.innerHTML += `<option value="${b.id}">${b.nome}</option>`;
+        });
+        if (val) genBolao.value = val;
+    }
+    
     const prizeBet = $('fin-prize-bet');
     if (prizeBet) {
         const val = prizeBet.value;

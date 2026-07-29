@@ -19,6 +19,29 @@ export async function enqueueBetsForAutomation() {
         const qtys = updateSummary();
         const today = new Date().toISOString().slice(0, 10);
         let enqueued = 0;
+        
+        // Pega seleção de bolão
+        const genBolaoId = $('gen-bolao-select')?.value || null;
+        let bolaoParticipantes = [];
+        if (genBolaoId) {
+            try {
+                const BolaoService = await import('./bolao.service.js');
+                const parts = await BolaoService.listParticipantesAtivos(genBolaoId);
+                if (parts.length > 0) {
+                    const pctIgual = +(100 / parts.length).toFixed(2);
+                    // Garante que a soma exata seja 100% (o ultimo compensa a dízima se houver, ou a trigger ajusta, mas vamos passar certinho)
+                    bolaoParticipantes = parts.map((p, idx) => {
+                        let pct = pctIgual;
+                        if (idx === parts.length - 1) {
+                            pct = +(100 - (pctIgual * (parts.length - 1))).toFixed(2);
+                        }
+                        return { participante_id: p.id, percentual: pct };
+                    });
+                }
+            } catch(e) {
+                console.warn('Falha ao carregar participantes do bolao para automacao', e);
+            }
+        }
 
         for (const g of state.activeGames) {
             const qty = qtys[g.slug];
@@ -41,10 +64,11 @@ export async function enqueueBetsForAutomation() {
                     games: [],
                     generation_mode: strategy,
                     automation_status: 'queued',
-                    automation_requested_at: new Date().toISOString()
+                    automation_requested_at: new Date().toISOString(),
+                    bolao_id: genBolaoId
                 };
 
-                const insertedBet = await addBet(betData);
+                const insertedBet = await addBet(betData, bolaoParticipantes);
 
                 if (!insertedBet || !insertedBet.id) {
                     toast('Erro ao criar a aposta no banco.');

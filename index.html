@@ -42,6 +42,18 @@
 
                 <div class="field" style="margin-bottom: 24px;">
                     <label style="color: var(--gold); display: flex; align-items: center; gap: 8px; font-weight: 600;">
+                        <span>🎰</span> Vincular a Bolão (Geração em massa)
+                    </label>
+                    <div class="input-row">
+                        <select id="gen-bolao-select">
+                            <option value="">Aposta Individual (Sem Bolão)</option>
+                            <!-- opções dinâmicas -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="field" style="margin-bottom: 24px;">
+                    <label style="color: var(--gold); display: flex; align-items: center; gap: 8px; font-weight: 600;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                         Estratégia de Seleção
                     </label>
@@ -1077,5 +1089,52 @@
     <script type="module" src="admin.js?v=1"></script>
     <script type="module" src="app.js?v=1"></script>
     <script type="module" src="js/manual_entry.js?v=6"></script>
+    <!-- Modal Editar Aposta Financeiro -->
+    <div id="modal-edit-bet" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <button class="modal-close" id="btn-close-edit-bet">&times;</button>
+            <h2>Editar Aposta</h2>
+            <form id="form-edit-bet" style="margin-top: 16px;">
+                <input type="hidden" id="edit-bet-id">
+                
+                <div class="field">
+                    <label for="edit-bet-notes">Observação / Detalhes</label>
+                    <div class="input-row">
+                        <input type="text" id="edit-bet-notes" placeholder="Ex: Aposta teimosinha">
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="edit-bet-contest">Concurso</label>
+                    <div class="input-row">
+                        <input type="number" id="edit-bet-contest" placeholder="Opcional">
+                    </div>
+                </div>
+
+                <div class="field" style="margin-top: 16px;">
+                    <label for="edit-bet-bolao">Vincular a Bolão</label>
+                    <div class="input-row">
+                        <select id="edit-bet-bolao">
+                            <option value="">Aposta Individual (Sem Bolão)</option>
+                            <!-- opções preenchidas via JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <div id="edit-bet-participantes-wrap" class="hidden" style="margin-top: 12px;">
+                    <label>Participantes Ativos & Cotas (%)</label>
+                    <div id="edit-bet-participantes-list" style="display:flex; flex-direction:column; gap:8px; margin-top:8px; max-height:180px; overflow-y:auto; padding-right:4px;">
+                        <!-- preenchido via JS -->
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; margin-top:12px; font-weight:700; font-size:0.9rem; color:var(--gold);" id="edit-bet-participantes-total">Soma Total: 0%</div>
+                </div>
+
+                <div style="margin-top: 24px; text-align: right; display:flex; gap:12px; justify-content:flex-end;">
+                    <button type="button" class="btn-outline" id="btn-cancel-edit-bet">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

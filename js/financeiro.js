@@ -112,6 +112,26 @@ export async function deleteBet(id) {
     await refreshFinancialData();
 }
 
+export async function updateBet(id, betData, participantes = []) {
+    if (sbReady && state.currentSession) {
+        try {
+            const { error } = await supabaseClient.from('bets').update(betData).eq('id', id);
+            if (error) throw error;
+            
+            // Delete previous participants relation and save new
+            const BolaoService = await import('./bolao.service.js');
+            await supabaseClient.from('jogo_participantes').delete().eq('bet_id', id);
+            if (betData.bolao_id && participantes.length > 0) {
+                await BolaoService.salvarParticipantesAposta(id, participantes);
+            }
+        } catch (e) {
+            console.error('Supabase update bet failed:', e);
+            toast('Erro ao atualizar no servidor.', 'error');
+        }
+    }
+    await refreshFinancialData();
+}
+
 export async function deletePrize(id) {
     if (sbReady && state.currentSession) {
         try {
@@ -177,8 +197,21 @@ export async function refreshFinancialData() {
         // Pegar as ultimas apostas para vincular premio
         const recentes = allBets.slice(0, 50); 
         BolaoUI.populateFinanceiroSelects(ativos, recentes);
+        populateEditBetSelect(ativos);
     } catch(e) {
         // ignora se o modulo bolao não estiver pronto
+    }
+}
+
+function populateEditBetSelect(boloes_ativos) {
+    const editBolao = $('edit-bet-bolao');
+    if (editBolao) {
+        const val = editBolao.value;
+        editBolao.innerHTML = '<option value="">Aposta Individual (Sem Bolão)</option>';
+        boloes_ativos.forEach(b => {
+            editBolao.innerHTML += `<option value="${b.id}">${b.nome}</option>`;
+        });
+        if (val) editBolao.value = val;
     }
 }
 
@@ -313,6 +346,7 @@ export function renderTransactions() {
             <td>${t.details}</td>
             <td class="amount-cell ${amountClass}">${amountStr}</td>
             <td class="actions-cell">
+                ${t.source === 'bets' ? `<button class="btn-icon btn-table-action btn-edit-transaction" title="Editar" data-id="${t.id}" data-source="${t.source}">✏️</button>` : ''}
                 <button class="btn-icon btn-table-action btn-del-transaction" title="Excluir" data-id="${t.id}" data-source="${t.source}">${ICON.trash}</button>
             </td>
         </tr>`;
@@ -330,6 +364,13 @@ export function renderTransactions() {
                     else await deletePrize(id);
                 }
             );
+        });
+    });
+
+    tbody.querySelectorAll('.btn-edit-transaction').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            openEditBetModal(id);
         });
     });
 }
@@ -555,8 +596,138 @@ export function handleAddPrize() {
 
     $('fin-prize-contest').value = '';
     $('fin-prize-notes').value = '';
-    toast('🏆 Prêmio registrado com sucesso!', 'success');
+    $('fin-prize-bet').value = '';
 }
+
+// ==========================================
+// EDIT BET MODAL LOGIC
+// ==========================================
+
+async function openEditBetModal(id) {
+    const bet = allBets.find(b => b.id === id);
+    if (!bet) return;
+    
+    $('edit-bet-id').value = bet.id;
+    $('edit-bet-notes').value = bet.notes || '';
+    $('edit-bet-contest').value = bet.contest_number || '';
+    $('edit-bet-bolao').value = bet.bolao_id || '';
+    
+    $('modal-edit-bet').classList.remove('hidden');
+    
+    if (bet.bolao_id) {
+        await renderEditBetParticipantes(bet.bolao_id, bet.jogo_participantes);
+    } else {
+        $('edit-bet-participantes-wrap').classList.add('hidden');
+    }
+}
+
+async function renderEditBetParticipantes(bolao_id, existingParts) {
+    const wrap = $('edit-bet-participantes-wrap');
+    const list = $('edit-bet-participantes-list');
+    const totalEl = $('edit-bet-participantes-total');
+    
+    if (!bolao_id) {
+        wrap.classList.add('hidden');
+        return;
+    }
+    
+    wrap.classList.remove('hidden');
+    list.innerHTML = '<div style="color:var(--text-3); font-size:0.85rem;">Carregando...</div>';
+    
+    try {
+        const BolaoService = await import('./bolao.service.js');
+        const parts = await BolaoService.listParticipantesAtivos(bolao_id);
+        list.innerHTML = '';
+        
+        if (parts.length === 0) {
+            list.innerHTML = '<div style="color:var(--red); font-size:0.85rem;">Nenhum participante ativo.</div>';
+            return;
+        }
+        
+        const pctIgual = +(100 / parts.length).toFixed(2);
+        
+        parts.forEach(p => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:var(--surface-3); padding:8px 12px; border-radius:4px;';
+            
+            // Verifica se o participante ja estava na aposta
+            const exist = existingParts ? existingParts.find(ep => ep.participante_id === p.id) : null;
+            const isChecked = !!exist || !existingParts; // default checked if new, or check if exist
+            const val = exist ? exist.percentual : pctIgual;
+            
+            row.innerHTML = `
+                <label style="display:flex; align-items:center; gap:8px; margin:0; flex:1; cursor:pointer;">
+                    <input type="checkbox" class="edit-part-row-check" value="${p.id}" style="width:auto;" ${isChecked ? 'checked' : ''}>
+                    <span style="font-size:0.9rem; color:var(--text); font-weight:600;">${p.nome}</span>
+                </label>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <input type="number" class="edit-part-row-pct percentual-input" data-id="${p.id}" value="${val}" min="0.01" max="100" step="0.01">
+                    <span style="font-size:0.8rem; color:var(--text-3);">%</span>
+                </div>
+            `;
+            list.appendChild(row);
+        });
+        
+        const calcTotal = () => {
+            let sum = 0;
+            document.querySelectorAll('.edit-part-row-check:checked').forEach(chk => {
+                const val = parseFloat(document.querySelector(`.edit-part-row-pct[data-id="${chk.value}"]`).value) || 0;
+                sum += val;
+            });
+            totalEl.textContent = `Soma Total: ${sum.toFixed(2)}%`;
+            totalEl.style.color = Math.abs(sum - 100) < 0.01 ? 'var(--green)' : 'var(--red)';
+        };
+        
+        list.addEventListener('input', calcTotal);
+        list.addEventListener('change', calcTotal);
+        calcTotal();
+        
+    } catch (e) {
+        list.innerHTML = '<div style="color:var(--red); font-size:0.85rem;">Erro.</div>';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    $('btn-close-edit-bet')?.addEventListener('click', () => {
+        $('modal-edit-bet').classList.add('hidden');
+    });
+    $('btn-cancel-edit-bet')?.addEventListener('click', () => {
+        $('modal-edit-bet').classList.add('hidden');
+    });
+    
+    $('edit-bet-bolao')?.addEventListener('change', async (e) => {
+        await renderEditBetParticipantes(e.target.value, null);
+    });
+
+    $('form-edit-bet')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const id = $('edit-bet-id').value;
+        const notes = $('edit-bet-notes').value.trim();
+        const contest = parseInt($('edit-bet-contest').value) || null;
+        const bolao_id = $('edit-bet-bolao').value || null;
+        
+        let participantes = [];
+        if (bolao_id) {
+            let sum = 0;
+            document.querySelectorAll('.edit-part-row-check:checked').forEach(chk => {
+                const pct = parseFloat(document.querySelector(`.edit-part-row-pct[data-id="${chk.value}"]`).value) || 0;
+                participantes.push({ participante_id: chk.value, percentual: pct });
+                sum += pct;
+            });
+            if (Math.abs(sum - 100) > 0.01) {
+                toast('A soma das cotas deve ser exatamente 100%', 'error');
+                return;
+            }
+        }
+        
+        const updateData = { notes, contest_number: contest, bolao_id };
+        await updateBet(id, updateData, participantes);
+        
+        $('modal-edit-bet').classList.add('hidden');
+        toast('Aposta atualizada com sucesso!', 'success');
+    });
+});
 
 export function setFinFilter(filter) {
     finFilter = filter;
