@@ -589,7 +589,7 @@ function handleBudgetSuggest() {
     const customDist = {};
     
     selectedSlugs.forEach(slug => {
-        const input = document.querySelector(\`.budget-pct-input[data-slug="\${slug}"]\`);
+        const input = document.querySelector(`.budget-pct-input[data-slug="${slug}"]`);
         if (input && input.value) {
             const val = parseFloat(input.value);
             if (!isNaN(val) && val > 0) {
