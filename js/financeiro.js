@@ -275,9 +275,14 @@ export function renderTransactions() {
 
     allBets.forEach(b => {
         let partStr = '';
-        if (b.jogo_participantes && b.jogo_participantes.length > 0) {
-            const nomes = b.jogo_participantes.map(p => p.participantes?.nome || 'Desconhecido');
-            partStr = ` · Participantes: ${nomes.join(', ')}`;
+        if (b.bolao_id) {
+            partStr = ` · 🎰 Bolão`;
+            if (b.jogo_participantes && b.jogo_participantes.length > 0) {
+                const nomes = b.jogo_participantes.map(p => p.participantes?.nome || 'Desconhecido');
+                partStr += ` (${nomes.join(', ')})`;
+            }
+        } else {
+            partStr = ` · 👤 Individual`;
         }
         
         transactions.push({
