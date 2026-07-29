@@ -534,31 +534,40 @@ function renderBudgetSuggester() {
 
     let lotteriesHtml = state.activeGames.map(g => {
         return `
-            <div class="budget-lottery-item">
-                <label>
-                    <input type="checkbox" class="budget-chk" value="${g.slug}" checked>
-                    ${g.nome}
-                </label>
-                <input type="number" class="budget-pct-input field" placeholder="%" min="0" max="100" data-slug="${g.slug}" title="Porcentagem (Opcional)">
-            </div>
+            <label class="budget-lottery-premium-card">
+                <div class="bl-card-left">
+                    <input type="checkbox" class="budget-chk custom-toggle" value="${g.slug}" checked>
+                    <span class="bl-name">${g.nome}</span>
+                </div>
+                <div class="bl-card-right" title="Porcentagem (Opcional)">
+                    <input type="number" class="budget-pct-input" placeholder="%" min="0" max="100" data-slug="${g.slug}">
+                    <span class="bl-pct-symbol">%</span>
+                </div>
+            </label>
         `;
     }).join('');
 
     container.innerHTML = `
-        <div class="budget-suggester-box">
-            <div class="header-row">
-                <label>Sugeridor de Orçamento</label>
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                    <div class="budget-input-wrapper">
-                        <span>R$</span>
-                        <input type="number" id="budget-total-input" placeholder="0.00" min="0" step="10">
-                    </div>
-                    <button class="btn-primary" id="btn-budget-suggest">Sugerir Distribuição</button>
-                </div>
+        <div class="budget-suggester-premium">
+            <div class="bs-header">
+                <h3><span style="color:var(--gold);">✨</span> Sugeridor Inteligente de Orçamento</h3>
+                <p>Informe o valor e nós dividimos os jogos para você.</p>
             </div>
-            <div class="budget-lottery-list">
+            
+            <div class="bs-main-input-wrap">
+                <span class="bs-currency">R$</span>
+                <input type="number" id="budget-total-input" class="bs-main-input" placeholder="0.00" min="0" step="10">
+            </div>
+
+            <div class="bs-lotteries-grid">
                 ${lotteriesHtml}
             </div>
+            
+            <button class="btn-primary bs-btn-suggest" id="btn-budget-suggest">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                Gerar Distribuição Ideal
+            </button>
+            
             <div id="budget-options-wrapper" class="budget-options-container"></div>
         </div>
     `;
