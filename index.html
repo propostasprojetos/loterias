@@ -1089,6 +1089,21 @@
     <script type="module" src="admin.js?v=1"></script>
     <script type="module" src="app.js?v=1"></script>
     <script type="module" src="js/manual_entry.js?v=6"></script>
+    <!-- Modal Ver Jogos da Aposta -->
+    <div id="modal-view-games" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <button class="modal-close" id="btn-close-view-games">&times;</button>
+            <h2 id="view-games-title">Detalhes da Aposta</h2>
+            <div id="view-games-loading" style="display:none; color:var(--text-3); text-align:center; padding: 20px;">Carregando jogos...</div>
+            <div id="view-games-list" style="margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; max-height: 60vh; overflow-y: auto;">
+                <!-- Preenchido via JS -->
+            </div>
+            <div style="margin-top: 24px; text-align: right;">
+                <button class="btn-outline" id="btn-close-view-games-2">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Editar Aposta Financeiro -->
     <div id="modal-edit-bet" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 500px;">

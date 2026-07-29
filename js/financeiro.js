@@ -351,6 +351,7 @@ export function renderTransactions() {
             <td>${t.details}</td>
             <td class="amount-cell ${amountClass}">${amountStr}</td>
             <td class="actions-cell">
+                ${t.source === 'bets' ? `<button class="btn-icon btn-table-action btn-view-games" title="Ver Jogos" data-id="${t.id}">👁️</button>` : ''}
                 ${t.source === 'bets' ? `<button class="btn-icon btn-table-action btn-edit-transaction" title="Editar" data-id="${t.id}" data-source="${t.source}">✏️</button>` : ''}
                 <button class="btn-icon btn-table-action btn-del-transaction" title="Excluir" data-id="${t.id}" data-source="${t.source}">${ICON.trash}</button>
             </td>
@@ -369,6 +370,12 @@ export function renderTransactions() {
                     else await deletePrize(id);
                 }
             );
+        });
+    });
+
+    tbody.querySelectorAll('.btn-view-games').forEach(btn => {
+        btn.addEventListener('click', () => {
+            openViewGamesModal(btn.dataset.id);
         });
     });
 
@@ -692,12 +699,74 @@ async function renderEditBetParticipantes(bolao_id, existingParts) {
     }
 }
 
+// ==========================================
+// VIEW BET GAMES MODAL LOGIC
+// ==========================================
+
+async function openViewGamesModal(id) {
+    const bet = allBets.find(b => b.id === id);
+    if (!bet) return;
+    
+    $('modal-view-games').classList.remove('hidden');
+    $('view-games-list').innerHTML = '';
+    $('view-games-loading').style.display = 'block';
+    $('view-games-title').textContent = `Jogos da Aposta - ${bet.lottery_type.toUpperCase()}`;
+    
+    if (sbReady && state.currentSession) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('bet_games')
+                .select('numbers')
+                .eq('bet_id', id)
+                .order('game_index', { ascending: true });
+                
+            $('view-games-loading').style.display = 'none';
+            
+            if (error) throw error;
+            
+            if (!data || data.length === 0) {
+                $('view-games-list').innerHTML = '<div style="color:var(--text-3); grid-column: 1 / -1; text-align: center;">Nenhum detalhe de jogo registrado para esta aposta (ou aposta manual).</div>';
+                return;
+            }
+            
+            const list = $('view-games-list');
+            data.forEach((g, idx) => {
+                const arr = Array.isArray(g.numbers) ? g.numbers : [];
+                const numsStr = arr.map(n => `<span style="display:inline-block; background:var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size:0.8rem; font-weight:600; color:var(--text); margin:2px;">${pad(n)}</span>`).join('');
+                
+                const card = document.createElement('div');
+                card.style.cssText = 'background:var(--surface-3); padding:12px; border-radius:6px; border:1px solid var(--border);';
+                card.innerHTML = `
+                    <div style="font-size:0.75rem; color:var(--text-3); margin-bottom:8px; font-weight:700;">JOGO ${idx + 1}</div>
+                    <div style="display:flex; flex-wrap:wrap;">${numsStr}</div>
+                `;
+                list.appendChild(card);
+            });
+            
+        } catch(e) {
+            console.error('Erro ao buscar jogos da aposta:', e);
+            $('view-games-loading').style.display = 'none';
+            $('view-games-list').innerHTML = '<div style="color:var(--red); grid-column: 1 / -1; text-align: center;">Erro ao carregar jogos.</div>';
+        }
+    } else {
+        $('view-games-loading').style.display = 'none';
+        $('view-games-list').innerHTML = '<div style="color:var(--text-3); grid-column: 1 / -1; text-align: center;">Indisponível no modo offline.</div>';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     $('btn-close-edit-bet')?.addEventListener('click', () => {
         $('modal-edit-bet').classList.add('hidden');
     });
     $('btn-cancel-edit-bet')?.addEventListener('click', () => {
         $('modal-edit-bet').classList.add('hidden');
+    });
+    
+    $('btn-close-view-games')?.addEventListener('click', () => {
+        $('modal-view-games').classList.add('hidden');
+    });
+    $('btn-close-view-games-2')?.addEventListener('click', () => {
+        $('modal-view-games').classList.add('hidden');
     });
     
     $('edit-bet-bolao')?.addEventListener('change', async (e) => {
