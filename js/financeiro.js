@@ -34,7 +34,7 @@ export let finFilter = 'all';
 let finChart = null;
 
 // ===== CRUD =====
-export async function addBet(betData) {
+export async function addBet(betData, participantes = []) {
     let insertedBet = null;
     if (sbReady && state.currentSession) {
         try {
@@ -42,6 +42,12 @@ export async function addBet(betData) {
             const { data, error } = await supabaseClient.from('bets').insert(dataWithOwner).select();
             if (error) throw error;
             insertedBet = data?.[0];
+            
+            if (insertedBet && participantes.length > 0) {
+                // Import dinâmico para evitar dependência circular pesada se não precisar
+                const BolaoService = await import('./bolao.service.js');
+                await BolaoService.vincularParticipantes(insertedBet.id, participantes);
+            }
         } catch (e) {
             console.error('Supabase create bet failed, using localStorage:', e);
             const bets = loadLocalBets();
@@ -63,8 +69,18 @@ export async function addPrize(prizeData) {
     if (sbReady && state.currentSession) {
         try {
             const dataWithOwner = { ...prizeData, owner_id: state.currentSession.user.id };
-            const { error } = await supabaseClient.from('prizes').insert(dataWithOwner);
+            // prizeData.bet_id is handled below, we might not have it in the prizes table schema explicitly
+            // if we do, it's inserted. If not, it just ignores. We definitely use it to calculate the split.
+            const bet_id = dataWithOwner.bet_id;
+            delete dataWithOwner.bet_id; // in case prizes table doesn't have bet_id
+
+            const { data, error } = await supabaseClient.from('prizes').insert(dataWithOwner).select();
             if (error) throw error;
+            
+            if (bet_id) {
+                const BolaoService = await import('./bolao.service.js');
+                await BolaoService.salvarPremiosParticipantes(bet_id, prizeData.prize_amount);
+            }
         } catch (e) {
             console.error('Supabase create prize failed, using localStorage:', e);
             const prizes = loadLocalPrizes();
@@ -116,7 +132,10 @@ export async function deletePrize(id) {
 export async function getAllBets() {
     if (sbReady && state.currentSession) {
         try {
-            const { data, error } = await supabaseClient.from('bets').select('*').order('bet_date', { ascending: false });
+            const { data, error } = await supabaseClient
+                .from('bets')
+                .select(`*, jogo_participantes(percentual, participantes(nome))`)
+                .order('bet_date', { ascending: false });
             if (error) throw error;
             return data;
         } catch (e) {
@@ -149,6 +168,18 @@ export async function refreshFinancialData() {
     renderFinancialDashboard();
     renderTransactions();
     renderFinancialChart();
+    
+    try {
+        const BolaoService = await import('./bolao.service.js');
+        const BolaoUI = await import('./bolao.js');
+        const boloes = await BolaoService.listBoloes();
+        const ativos = boloes.filter(b => b.ativo);
+        // Pegar as ultimas apostas para vincular premio
+        const recentes = allBets.slice(0, 50); 
+        BolaoUI.populateFinanceiroSelects(ativos, recentes);
+    } catch(e) {
+        // ignora se o modulo bolao não estiver pronto
+    }
 }
 
 // ===== RENDER =====
@@ -210,10 +241,21 @@ export function renderTransactions() {
     const transactions = [];
 
     allBets.forEach(b => {
+        let partStr = '';
+        if (b.jogo_participantes && b.jogo_participantes.length > 0) {
+            const nomes = b.jogo_participantes.map(p => p.participantes?.nome || 'Desconhecido');
+            partStr = ` · Participantes: ${nomes.join(', ')}`;
+        }
+        
         transactions.push({
             id: b.id, type: 'bet', date: b.bet_date, lottery: b.lottery_type,
-            details: `${b.game_count || 1} jogo${(b.game_count || 1) > 1 ? 's' : ''}` + (b.contest_number ? ` · Conc. ${b.contest_number}` : '') + (b.notes ? ` · ${b.notes}` : ''),
-            amount: -(parseFloat(b.total_cost) || 0), source: 'bets'
+            details: `${b.game_count || 1} jogo${(b.game_count || 1) > 1 ? 's' : ''}` + 
+                     (b.contest_number ? ` · Conc. ${b.contest_number}` : '') + 
+                     partStr +
+                     (b.notes ? ` · ${b.notes}` : ''),
+            amount: -(parseFloat(b.total_cost) || 0), source: 'bets',
+            bolao_id: b.bolao_id,
+            participantes: b.jogo_participantes || []
         });
     });
 
@@ -449,14 +491,40 @@ export function handleAddBet() {
     if (!betDate) { toast('Informe a data da aposta'); return; }
     if (totalCost <= 0) { toast('Informe o valor gasto'); return; }
 
+    const bolaoId = $('fin-bet-bolao')?.value || null;
+    const partWrap = $('fin-bet-participantes-wrap');
+    const participantes = [];
+
+    if (bolaoId && !partWrap.classList.contains('hidden')) {
+        let soma = 0;
+        document.querySelectorAll('.part-row-check:checked').forEach(chk => {
+            const pid = chk.value;
+            const pct = parseFloat(document.querySelector(`.part-row-pct[data-id="${pid}"]`).value) || 0;
+            if (pct > 0) {
+                participantes.push({ participante_id: pid, percentual: pct });
+                soma += pct;
+            }
+        });
+        
+        if (participantes.length === 0) {
+            toast('Selecione ao menos um participante do bolão.');
+            return;
+        }
+        if (Math.abs(soma - 100) > 0.01) {
+            toast('A soma das cotas deve ser exatamente 100%!');
+            return;
+        }
+    }
+
     addBet({
         bet_date: betDate,
         lottery_type: lotteryType,
         game_count: gameCount,
         total_cost: totalCost,
         contest_number: contestNumber,
-        notes: notes
-    });
+        notes: notes,
+        bolao_id: bolaoId
+    }, participantes);
 
     $('fin-bet-contest').value = '';
     $('fin-bet-notes').value = '';
@@ -470,6 +538,7 @@ export function handleAddPrize() {
     const prizeAmount = parseFloat($('fin-prize-amount').value) || 0;
     const contestNumber = parseInt($('fin-prize-contest').value) || null;
     const notes = $('fin-prize-notes').value.trim();
+    const betId = $('fin-prize-bet')?.value || null;
 
     if (!prizeDate) { toast('Informe a data do resultado'); return; }
     if (prizeAmount <= 0) { toast('Informe o valor do prêmio'); return; }
@@ -480,7 +549,8 @@ export function handleAddPrize() {
         matches: matches,
         prize_amount: prizeAmount,
         contest_number: contestNumber,
-        notes: notes
+        notes: notes,
+        bet_id: betId
     });
 
     $('fin-prize-contest').value = '';

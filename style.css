@@ -918,6 +918,127 @@ footer p {
     font-size: 0.8rem; color: var(--text-3); font-weight: 500;
 }
 
+/* ===== MÓDULO DE BOLÃO ===== */
+.bolao-list {
+    margin-top: 16px;
+}
+
+/* Participante Card */
+.participante-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.25s ease;
+}
+.participante-card:hover {
+    border-color: var(--border-h);
+    background: var(--surface-3);
+}
+.participante-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.participante-nome {
+    font-weight: 700;
+    color: var(--text);
+    font-size: 1.05rem;
+}
+.participante-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.participante-badge.ativo {
+    background: var(--green-dim);
+    color: var(--green);
+}
+.participante-badge.inativo {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--red);
+}
+.participante-bolao-nome {
+    font-size: 0.8rem;
+    color: var(--gold);
+    font-weight: 600;
+}
+.participante-telefone {
+    font-size: 0.8rem;
+    color: var(--text-3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.participante-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+/* Bolão Card */
+.bolao-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.25s ease;
+}
+.bolao-card:hover {
+    border-color: var(--gold-border);
+    background: var(--surface-3);
+    box-shadow: var(--shadow-hover);
+}
+.bolao-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.bolao-info h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.bolao-info p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-2);
+}
+
+/* Relatórios & Tabelas */
+.ranking-table th {
+    font-size: 0.75rem;
+}
+.ranking-table td {
+    font-size: 0.85rem;
+}
+.ranking-pos {
+    font-weight: 800;
+    font-family: var(--font-num);
+    color: var(--gold);
+}
+
+/* Inputs Específicos */
+.percentual-input {
+    width: 70px !important;
+    text-align: right;
+    padding: 6px !important;
+}
+
 @media (max-width: 680px) {
     .strategy-radio-group {
         grid-template-columns: 1fr;

@@ -128,6 +128,7 @@ export async function checkAuthState() {
         const navGerador = $('nav-btn-gerador');
         const navHistorico = $('nav-btn-historico');
         const navFinanceiro = $('nav-btn-financeiro');
+        const navBolao = $('nav-btn-bolao');
         const navAdmin = $('nav-btn-admin');
         const userMenu = $('user-menu');
         const headerUserName = $('header-user-name');
@@ -137,6 +138,7 @@ export async function checkAuthState() {
             if(navGerador) navGerador.style.display = 'none';
             if(navHistorico) navHistorico.style.display = 'none';
             if(navFinanceiro) navFinanceiro.style.display = 'none';
+            if(navBolao) navBolao.style.display = 'none';
             if(navAdmin) navAdmin.style.display = 'none';
             if(userMenu) userMenu.style.display = 'none';
             state.activeGames = [];
@@ -153,12 +155,14 @@ export async function checkAuthState() {
                 if(navGerador) navGerador.style.display = 'none';
                 if(navHistorico) navHistorico.style.display = 'none';
                 if(navFinanceiro) navFinanceiro.style.display = 'none';
+                if(navBolao) navBolao.style.display = 'none';
                 if(navAdmin) navAdmin.style.display = 'none';
                 switchView('change-password');
             } else {
                 if(navGerador) navGerador.style.display = 'inline-block';
                 if(navHistorico) navHistorico.style.display = 'inline-block';
                 if(navFinanceiro) navFinanceiro.style.display = 'inline-block';
+                if(navBolao) navBolao.style.display = 'inline-block';
                 
                 if (window.isSuperAdmin) {
                     if(navAdmin) {

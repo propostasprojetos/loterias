@@ -11,6 +11,7 @@ import { generateAll, updateSummary } from './js/gerador.js';
 import { handleAddBet, handleAddPrize, setFinFilter, refreshFinancialData } from './js/financeiro.js';
 import { enqueueBetsForAutomation, clearAutomationQueue, resetAllFinancialData, refreshPendingPanel, initBetGamesRealtime } from './js/queue.js';
 import { clearHistory } from './js/history.js';
+import { initBolao } from './js/bolao.js';
 
 // Mode Switching Logic
 function setMode(mode) {
@@ -140,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.currentSession && (!state.currentProfile || !state.currentProfile.must_change_password)) {
             refreshFinancialData();
             initBetGamesRealtime();
+            initBolao();
             await refreshPendingPanel();
         }
     });
