@@ -782,6 +782,29 @@ async function openViewGamesModal(id) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    
+    // Atualização automática de custo ao registrar aposta manual
+    const qtyInput = $('fin-bet-qty');
+    const typeInput = $('fin-bet-type');
+    const costInput = $('fin-bet-cost');
+    
+    const updateCost = () => {
+        if (!qtyInput || !typeInput || !costInput) return;
+        const qty = parseInt(qtyInput.value) || 1;
+        const type = typeInput.value;
+        const game = state.activeGames.find(g => g.slug === type);
+        const costUnit = game?.parametros?.cost || (type === 'lf' ? 3.00 : (type === 'qn' ? 2.50 : 3.00));
+        costInput.value = (qty * costUnit).toFixed(2);
+    };
+
+    if (qtyInput) {
+        qtyInput.addEventListener('input', updateCost);
+        qtyInput.addEventListener('change', updateCost);
+    }
+    if (typeInput) {
+        typeInput.addEventListener('change', updateCost);
+    }
+
     $('btn-close-edit-bet')?.addEventListener('click', () => {
         $('modal-edit-bet').classList.add('hidden');
     });
