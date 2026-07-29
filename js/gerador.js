@@ -292,6 +292,12 @@ export async function generateAll() {
                 history = await historyManager.getHistory(g.slug);
             }
 
+            // Busca o concurso vigente (próximo a ser sorteado) em paralelo
+            const contestInfo = await historyManager.getLatestContest(g.slug);
+            if (contestInfo) {
+                st.contestInfo = contestInfo; // { last, next, lastDate }
+            }
+
             const kept = st.games.filter((_, i) => st.selected.has(i));
             const needed = qty - kept.length;
             
@@ -344,6 +350,16 @@ export function renderGames() {
         const st = state.currentGamesData[g.slug];
         const container = $(g.slug + '-games');
         if(!container || !st) return;
+        
+        const tabInfo = document.querySelector(`#tab-${g.slug} .tab-info`);
+        if (tabInfo) {
+            const p = g.parametros || {};
+            let infoHtml = `${p.pick_size||0} dezenas · 1 a ${p.range_max||0}`;
+            if (st.contestInfo && st.contestInfo.next) {
+                infoHtml += ` · <strong style="color:var(--gold);">Conc. Vigente: ${st.contestInfo.next}</strong>`;
+            }
+            tabInfo.innerHTML = infoHtml;
+        }
         
         const itemsPerPage = 6;
         const totalItems = st.games.length;

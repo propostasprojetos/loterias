@@ -58,6 +58,28 @@ export class HistoryManager {
             return [];
         }
     }
+    /**
+     * Returns the next (vigente) contest number for a given lottery slug.
+     * Uses a short-lived localStorage cache (1 hour) to avoid repeated API calls.
+     */
+    async getLatestContest(slug) {
+        const CACHE_KEY = `lotosmart_contest_${slug}`;
+        const CACHE_TTL = 60 * 60 * 1000; // 1 hora
+        try {
+            const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+            if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
+                return cached.data;
+            }
+        } catch (_) {}
+
+        const data = await this.primary.fetchLatestContest(slug);
+        if (data) {
+            try {
+                localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+            } catch (_) {}
+        }
+        return data;
+    }
 }
 
 export const historyManager = new HistoryManager();

@@ -58,4 +58,25 @@ export class CaixaProvider {
             throw err;
         }
     }
+
+    /**
+     * Fetches the latest contest info for a given lottery.
+     * Returns { last: number, next: number, lastDate: string } or null.
+     */
+    async fetchLatestContest(slug) {
+        const apiSlug = this.mapSlug(slug);
+        try {
+            const res = await fetch(`${this.baseUrl}/${apiSlug}/latest`);
+            if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+            const draw = await res.json();
+            return {
+                last: draw.concurso,
+                next: draw.concurso + 1,
+                lastDate: draw.data
+            };
+        } catch (err) {
+            console.warn(`CaixaProvider: fetchLatestContest failed for ${slug}`, err);
+            return null;
+        }
+    }
 }

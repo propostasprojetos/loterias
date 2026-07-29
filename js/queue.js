@@ -59,7 +59,7 @@ export async function enqueueBetsForAutomation() {
                     lottery_type: g.slug,
                     game_count: gamesArr.length,
                     total_cost: total,
-                    contest_number: null,
+                    contest_number: state.currentGamesData[g.slug]?.contestInfo?.next || null,
                     notes: `Automacao LotoSmart`,
                     games: [],
                     generation_mode: strategy,
