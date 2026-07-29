@@ -656,7 +656,12 @@ function generateDistributionOptions(slugs, budget) {
         let distHtml = Object.keys(opt).map(s => {
             const game = state.activeGames.find(g => g.slug === s);
             const nome = game ? game.nome : s;
-            return `<div>${nome}: <span>${opt[s].toFixed(0)}%</span></div>`;
+            return `
+                <div class="opt-row">
+                    <span class="opt-name">${nome}</span>
+                    <span class="opt-pct">${opt[s].toFixed(0)}%</span>
+                </div>
+            `;
         }).join('');
         
         const distStr = JSON.stringify(opt);
@@ -664,6 +669,7 @@ function generateDistributionOptions(slugs, budget) {
             <div class="budget-option-card" data-dist='${distStr}'>
                 <div class="opt-title">Opção ${i+1}</div>
                 <div class="opt-dist">${distHtml}</div>
+                <div class="opt-btn">Aplicar</div>
             </div>
         `;
     }).join('');
