@@ -98,10 +98,17 @@ export async function addPrize(prizeData) {
 export async function deleteBet(id) {
     if (sbReady && state.currentSession) {
         try {
+            // Remove registros dependentes antes de deletar a aposta (caso não haja CASCADE no banco)
+            await supabaseClient.from('jogo_participantes').delete().eq('bet_id', id);
+            await supabaseClient.from('premios_participantes').delete().eq('bet_id', id);
+            await supabaseClient.from('bet_games').delete().eq('bet_id', id);
+            await supabaseClient.from('automation_queue').delete().eq('bet_id', id);
+
             const { error } = await supabaseClient.from('bets').delete().eq('id', id);
             if (error) throw error;
         } catch (e) {
             console.error('Supabase delete bet failed:', e);
+            // Fallback: remove do localStorage
             const bets = loadLocalBets().filter(b => b.id !== id);
             saveLocalBets(bets);
         }
@@ -118,15 +125,17 @@ export async function updateBet(id, betData, participantes = []) {
             const { error } = await supabaseClient.from('bets').update(betData).eq('id', id);
             if (error) throw error;
             
-            // Delete previous participants relation and save new
+            // Atualiza vínculos de participantes (usa vincularParticipantes que já faz delete + insert)
             const BolaoService = await import('./bolao.service.js');
-            await supabaseClient.from('jogo_participantes').delete().eq('bet_id', id);
             if (betData.bolao_id && participantes.length > 0) {
-                await BolaoService.salvarParticipantesAposta(id, participantes);
+                await BolaoService.vincularParticipantes(id, participantes);
+            } else {
+                // Se removeu o bolão, garante que os vínculos sejam removidos
+                await BolaoService.desvincularParticipantes(id);
             }
         } catch (e) {
             console.error('Supabase update bet failed:', e);
-            toast('Erro ao atualizar no servidor.', 'error');
+            toast('Erro ao atualizar aposta no servidor.', 'error');
         }
     }
     await refreshFinancialData();
