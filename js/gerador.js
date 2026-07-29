@@ -536,7 +536,7 @@ function renderBudgetSuggester() {
         return `
             <label class="budget-lottery-premium-card">
                 <div class="bl-card-left">
-                    <input type="checkbox" class="budget-chk custom-toggle" value="${g.slug}" checked>
+                    <input type="checkbox" class="budget-chk custom-toggle" value="${g.slug}">
                     <span class="bl-name">${g.nome}</span>
                 </div>
                 <div class="bl-card-right" title="Porcentagem (Opcional)">
