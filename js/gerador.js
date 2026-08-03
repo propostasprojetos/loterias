@@ -8,7 +8,7 @@ import { $, $$, pad, fmt, toast, renderBall, ICON, countEven, maxConsec } from '
 import { strategyEngine } from './engine/StrategyEngine.js';
 import { historyManager } from './engine/HistoryManager.js';
 import { metricsCalculator } from './engine/MetricsCalculator.js';
-import { loadHistory, saveHistoryData } from './history.js';
+import { loadHistory, saveToHistory } from './history.js';
 import { refreshFinancialData, setFinFilter } from './financeiro.js';
 
 const GAME_MAX_PICKS = {
@@ -328,7 +328,7 @@ export async function generateAll() {
             resArea.classList.remove('hidden');
         }
 
-        if(typeof saveHistoryData === 'function') saveHistoryData();
+        if(typeof saveToHistory === 'function') saveToHistory();
         
         if (!hasSelections) toast('Jogos gerados e salvos no histórico!', 'success', 'top-right');
         else toast('Jogos complementados e salvos!', 'success', 'top-right');
