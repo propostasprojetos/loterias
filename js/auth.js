@@ -186,6 +186,10 @@ export async function checkAuthState() {
                 }
 
                 await loadAvailableGames();
+                
+                // Dispara evento para a aplicação carregar os dados
+                window.dispatchEvent(new Event('lotosmart:auth_success'));
+
                 const currentView = document.querySelector('[id^="view-"]:not(.hidden)');
                 if (!currentView || currentView.id === 'view-login' || currentView.id === 'view-change-password') {
                     switchView('gerador');

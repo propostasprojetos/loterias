@@ -12,7 +12,12 @@ let selectedBolaoId = null;
 // ==============================================================================
 // INICIALIZAÇÃO E EVENTOS
 // ==============================================================================
+let isBolaoInitialized = false;
+
 export async function initBolao() {
+    if (isBolaoInitialized) return;
+    isBolaoInitialized = true;
+
     setupTabs();
     setupModais();
     setupFinanceiroBolao();

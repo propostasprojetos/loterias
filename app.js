@@ -138,11 +138,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Init Core
     initSupabase().then(async () => {
         await checkAuthState();
-        if (state.currentSession && (!state.currentProfile || !state.currentProfile.must_change_password)) {
-            refreshFinancialData();
-            initBetGamesRealtime();
-            initBolao();
-            await refreshPendingPanel();
-        }
+    });
+
+    window.addEventListener('lotosmart:auth_success', async () => {
+        refreshFinancialData();
+        initBetGamesRealtime();
+        initBolao();
+        await refreshPendingPanel();
     });
 });
