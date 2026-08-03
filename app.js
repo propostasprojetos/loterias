@@ -10,7 +10,7 @@ import { switchView, setupMobileMenu } from './js/ui.js';
 import { generateAll, updateSummary } from './js/gerador.js';
 import { handleAddBet, handleAddPrize, setFinFilter, refreshFinancialData } from './js/financeiro.js';
 import { enqueueBetsForAutomation, clearAutomationQueue, resetAllFinancialData, refreshPendingPanel, initBetGamesRealtime } from './js/queue.js';
-import { clearHistory } from './js/history.js';
+import { clearHistory, renderHistory } from './js/history.js';
 import { initBolao } from './js/bolao.js';
 
 // Mode Switching Logic
@@ -43,6 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView(b.dataset.view);
         if (b.dataset.view === 'admin' && typeof window.refreshAdminData === 'function') {
             window.refreshAdminData();
+        }
+        if (b.dataset.view === 'historico') {
+            renderHistory();
         }
     }));
     
@@ -144,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshFinancialData();
         initBetGamesRealtime();
         initBolao();
+        renderHistory();
         await refreshPendingPanel();
     });
 });
