@@ -114,7 +114,7 @@ function setupListeners() {
   // Link do Dashboard (abre nova aba)
   els.linkDashboard.addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: 'https://loterias-six.vercel.app/' });
+    chrome.tabs.create({ url: 'https://faciloto.vercel.app/' });
   });
 
   // Link de Logs (abre a página de extensões)
