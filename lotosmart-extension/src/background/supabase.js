@@ -28,6 +28,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         await chrome.storage.local.remove([key]);
       }
     }
+  },
+  realtime: {
+    worker: false
   }
 });
 
