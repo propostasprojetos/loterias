@@ -72,9 +72,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     db.isAuthenticated().then(isAuthenticated => {
       sendResponse({
         version: WORKER_VERSION,
+        serviceWorkerOnline: true,  // O service worker está sempre online se responde
         workerActive: queue.isActive(),
         authenticated: isAuthenticated,
-        queueLength: 0, // Será dinâmico quando integrarmos a fila
+        queueLength: 0,
       });
     });
     return true; // keep channel open for async

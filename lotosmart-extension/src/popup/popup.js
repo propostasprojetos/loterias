@@ -52,20 +52,25 @@ async function refreshStatus() {
     // Versão
     els.versionBadge.textContent = `v${response.version}`;
 
-    // Status do Worker
-    if (response.workerActive) {
+    // Status do Service Worker (sempre online se o background respondeu)
+    if (response.serviceWorkerOnline) {
       els.statusDot.className = 'status-dot';
       els.statusText.textContent = 'Online';
     } else {
       setWorkerOffline();
     }
 
+    // Estado do toggle do Worker de fila
+    els.toggleWorker.checked = !!response.workerActive;
+
     // Autenticação
     if (response.authenticated) {
       els.authDot.className = 'status-dot';
       els.authText.textContent = 'Conectado';
       els.toggleWorker.disabled = false;
-      els.toggleHint.textContent = 'O robô processará a fila automaticamente.';
+      els.toggleHint.textContent = response.workerActive
+        ? 'O robô está processando a fila automaticamente.'
+        : 'Ative o Worker para processar a fila.';
     } else {
       els.authDot.className = 'status-dot offline';
       els.authText.textContent = 'Desconectado';
