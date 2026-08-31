@@ -39,24 +39,42 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
     return;
   }
 
-  // Recebe e armazena a sessão (Fase 2)
+  // Recebe e armazena a sessão
   if (message?.type === 'LOTOSMART_SESSION_SYNC') {
-    log.info('Sessão recebida do Dashboard Web');
-    
-    // Armazena no chrome.storage local
-    chrome.storage.local.set({ supabaseSession: message.session }, () => {
-      // Passa para o SDK do Supabase inicializar
-      db.setSessionFromWeb(message.session)
-        .then(() => {
-          log.info('Sessão aplicada ao SDK Supabase');
-          sendResponse({ status: 'session_stored' });
-        })
-        .catch(err => {
-          log.error('Erro ao aplicar sessão no SDK', err);
-          sendResponse({ status: 'error', message: err.message });
-        });
-    });
+    if (!message.session) {
+      log.warn('Sessão nula recebida (logout ou sem sessão no dashboard)');
+      sendResponse({ status: 'no_session' });
+      return;
+    }
+
+    log.info('Sessão recebida do Dashboard Web', { user: message.session?.user?.email });
+
+    db.setSessionFromWeb(message.session)
+      .then(() => {
+        log.info('✅ Sessão aplicada ao SDK Supabase com sucesso!');
+        sendResponse({ status: 'session_stored' });
+      })
+      .catch(err => {
+        log.error('Erro ao aplicar sessão no SDK', err.message);
+        sendResponse({ status: 'error', message: err.message });
+      });
     return true; // Keep channel open for async
+  }
+
+  // Diagnóstico: retorna o que há no chrome.storage.local
+  if (message?.type === 'GET_DEBUG_INFO') {
+    Promise.all([
+      db.isAuthenticated(),
+      chrome.storage.local.get(null)
+    ]).then(([isAuth, allStorage]) => {
+      const keys = Object.keys(allStorage);
+      sendResponse({
+        isAuthenticated: isAuth,
+        storageKeys: keys,
+        storageSize: keys.length
+      });
+    });
+    return true;
   }
 
   sendResponse({ status: 'unknown_message' });
@@ -72,9 +90,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     db.isAuthenticated().then(isAuthenticated => {
       sendResponse({
         version: WORKER_VERSION,
+        serviceWorkerOnline: true,  // O service worker está sempre online se responde
         workerActive: queue.isActive(),
         authenticated: isAuthenticated,
-        queueLength: 0, // Será dinâmico quando integrarmos a fila
+        queueLength: 0,
       });
     });
     return true; // keep channel open for async

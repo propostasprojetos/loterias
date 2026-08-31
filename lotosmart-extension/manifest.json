@@ -29,6 +29,15 @@
       "matches": ["*://*.loteriasonline.caixa.gov.br/*"],
       "js": ["src/content/injector.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://faciloto.vercel.app/*",
+        "http://localhost:*/*",
+        "http://127.0.0.1:*/*"
+      ],
+      "js": ["src/content/dashboard_sync.js"],
+      "run_at": "document_idle"
     }
   ],
 
@@ -41,7 +50,10 @@
 
   "host_permissions": [
     "*://*.loteriasonline.caixa.gov.br/*",
-    "*://*.caixa.gov.br/*"
+    "*://*.caixa.gov.br/*",
+    "https://faciloto.vercel.app/*",
+    "http://localhost:*/*",
+    "http://127.0.0.1:*/*"
   ],
 
   "externally_connectable": {
