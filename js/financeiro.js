@@ -51,13 +51,13 @@ export async function addBet(betData, participantes = []) {
         } catch (e) {
             console.error('Supabase create bet failed, using localStorage:', e);
             const bets = loadLocalBets();
-            insertedBet = { ...betData, id: Date.now().toString(), created: new Date().toISOString() };
+            insertedBet = { ...betData, id: Date.now().toString(), created: new Date().toISOString(), isLocal: true };
             bets.unshift(insertedBet);
             saveLocalBets(bets);
         }
     } else {
         const bets = loadLocalBets();
-        insertedBet = { ...betData, id: Date.now().toString(), created: new Date().toISOString() };
+        insertedBet = { ...betData, id: Date.now().toString(), created: new Date().toISOString(), isLocal: true };
         bets.unshift(insertedBet);
         saveLocalBets(bets);
     }

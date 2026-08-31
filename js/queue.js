@@ -76,6 +76,11 @@ export async function enqueueBetsForAutomation() {
                 }
 
                 if (sbReady && state.currentSession) {
+                    if (insertedBet.isLocal) {
+                        toast(`Aposta salva localmente (offline/erro no Supabase). Automação não disponível para a loteria ${g.nome}.`, 'error');
+                        continue;
+                    }
+
                     const betGamesPayload = gamesArr.map((numbers, idx) => ({
                         bet_id: insertedBet.id,
                         owner_id: state.currentSession.user.id,
