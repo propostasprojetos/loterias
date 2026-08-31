@@ -52,10 +52,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Gerador
     $('btn-generate')?.addEventListener('click', generateAll);
     $('btn-automation-gen')?.addEventListener('click', enqueueBetsForAutomation);
-    $('btn-clear-queue-gen')?.addEventListener('click', clearAutomationQueue);
     $('btn-clear-queue-panel')?.addEventListener('click', clearAutomationQueue);
     $('btn-clear-history')?.addEventListener('click', clearHistory);
-    $('btn-reset-all-data')?.addEventListener('click', resetAllFinancialData);
+    // $('btn-reset-all-data')?.addEventListener('click', resetAllFinancialData); // Removido em prod
     
     // Config Modes
     $$('.mode-btn').forEach(btn => {

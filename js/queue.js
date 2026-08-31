@@ -68,16 +68,24 @@ export async function enqueueBetsForAutomation() {
                     bolao_id: genBolaoId
                 };
 
-                const insertedBet = await addBet(betData, bolaoParticipantes);
+                let insertedBet = null;
+                try {
+                    // Passa true no 3º argumento para que a aposta NÃO seja salva no histórico local em caso de erro no Supabase
+                    insertedBet = await addBet(betData, bolaoParticipantes, true);
+                } catch (e) {
+                    console.error('Falha ao registrar aposta (Financeiro):', e);
+                    toast(`Falha ao registrar aposta para a loteria ${g.nome}.`, 'error');
+                    continue;
+                }
 
                 if (!insertedBet || !insertedBet.id) {
-                    toast('Erro ao criar a aposta no banco.');
+                    toast(`Erro desconhecido ao criar a aposta para ${g.nome}.`, 'error');
                     continue;
                 }
 
                 if (sbReady && state.currentSession) {
                     if (insertedBet.isLocal) {
-                        toast(`Aposta salva localmente (offline/erro no Supabase). Automação não disponível para a loteria ${g.nome}.`, 'error');
+                        toast(`Aposta salva localmente. Automação não disponível para a loteria ${g.nome}.`, 'error');
                         continue;
                     }
 
@@ -90,25 +98,40 @@ export async function enqueueBetsForAutomation() {
                         status: 'pendente'
                     }));
 
+                    let errorInQueue = false;
+
                     try {
                         const { error: bgErr } = await supabaseClient.from('bet_games').insert(betGamesPayload);
                         if (bgErr) throw bgErr;
                     } catch (e) {
                         console.error('Erro ao criar bet_games:', e);
-                        toast('Erro ao registrar jogos individuais: ' + e.message);
+                        errorInQueue = true;
+                        alert('Erro ao registrar jogos individuais: ' + e.message);
                     }
 
-                    try {
-                        const { error } = await supabaseClient.from('automation_queue').insert({ 
-                            bet_id: insertedBet.id, 
-                            owner_id: state.currentSession.user.id, 
-                            status: 'queued' 
-                        });
-                        if (error) throw error;
-                        enqueued++;
-                    } catch (e) {
-                        console.error('Erro ao enfileirar:', e);
-                        alert('Erro ao enviar para a fila de automacao: ' + e.message);
+                    if (!errorInQueue) {
+                        try {
+                            const { error } = await supabaseClient.from('automation_queue').insert({ 
+                                bet_id: insertedBet.id, 
+                                owner_id: state.currentSession.user.id, 
+                                status: 'queued' 
+                            });
+                            if (error) throw error;
+                            enqueued++;
+                        } catch (e) {
+                            console.error('Erro ao enfileirar:', e);
+                            errorInQueue = true;
+                            alert('Erro ao enviar para a fila de automacao: ' + e.message);
+                        }
+                    }
+
+                    // Se houve falha na automação, faz rollback da aposta para não sujar o financeiro
+                    if (errorInQueue) {
+                        try {
+                            await supabaseClient.from('bets').delete().eq('id', insertedBet.id);
+                        } catch(rollErr) {
+                            console.error('Erro ao fazer rollback da aposta:', rollErr);
+                        }
                     }
                 }
             }
@@ -120,10 +143,10 @@ export async function enqueueBetsForAutomation() {
         }
 
         if (enqueued > 0) {
-            toast(`${enqueued} aposta(s) enviada(s) para fila! Acompanhe abaixo.`);
+            alert('Os jogos foram registrados no financeiro com sucesso.\n\nVá para o site da Caixa e abra a extensão para efetuar o pagamento.');
             await refreshPendingPanel();
         } else {
-            toast('Nenhuma aposta enfileirada. Banco offline ou sem jogos gerados.');
+            toast('Nenhuma aposta enfileirada. Banco offline ou erro ao salvar jogos.');
         }
     } catch (err) {
         console.error('Erro fatal em enqueueBetsForAutomation:', err);

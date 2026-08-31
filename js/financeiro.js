@@ -34,7 +34,7 @@ export let finFilter = 'all';
 let finChart = null;
 
 // ===== CRUD =====
-export async function addBet(betData, participantes = []) {
+export async function addBet(betData, participantes = [], skipLocalFallback = false) {
     let insertedBet = null;
     if (sbReady && state.currentSession) {
         try {
@@ -49,6 +49,7 @@ export async function addBet(betData, participantes = []) {
                 await BolaoService.vincularParticipantes(insertedBet.id, participantes);
             }
         } catch (e) {
+            if (skipLocalFallback) throw e;
             console.error('Supabase create bet failed, using localStorage:', e);
             const bets = loadLocalBets();
             insertedBet = { ...betData, id: Date.now().toString(), created: new Date().toISOString(), isLocal: true };
@@ -56,6 +57,7 @@ export async function addBet(betData, participantes = []) {
             saveLocalBets(bets);
         }
     } else {
+        if (skipLocalFallback) throw new Error("Offline. Automação requer conexão com servidor.");
         const bets = loadLocalBets();
         insertedBet = { ...betData, id: Date.now().toString(), created: new Date().toISOString(), isLocal: true };
         bets.unshift(insertedBet);

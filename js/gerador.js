@@ -329,13 +329,16 @@ export async function generateAll() {
         }
 
         if(typeof saveToHistory === 'function') saveToHistory();
+
+        $('btn-automation-gen')?.classList.remove('hidden');
+        $('btn-register-bet-gen')?.classList.remove('hidden');
+        $('results-area')?.classList.remove('hidden');
+        $('manual-entry-panel')?.classList.add('hidden');
+        $('manual-entry-panel')?.classList.add('hidden');
         
         if (!hasSelections) toast('Jogos gerados e salvos no histórico!', 'success', 'top-right');
         else toast('Jogos complementados e salvos!', 'success', 'top-right');
 
-        $('btn-register-bet-gen')?.classList.remove('hidden');
-        $('btn-automation-gen')?.classList.remove('hidden');
-        $('btn-clear-queue-gen')?.classList.remove('hidden');
     } catch (e) {
         console.error("Error generating games:", e);
         toast('Erro ao gerar: ' + e.message);
