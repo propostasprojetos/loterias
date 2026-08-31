@@ -332,8 +332,9 @@ export async function refreshPendingPanel() {
 }
 
 export function renderPendingPanel(items) {
+    const section = $('pending-launch-section');
     const panel = $('pending-launch-panel');
-    if (!panel) return;
+    if (!panel || !section) return;
 
     const pendLaunch = items.filter(i => i.status === 'pendente_lancamento');
     const inProgress = items.filter(i => ['pendente', 'processando'].includes(i.status));
@@ -345,9 +346,12 @@ export function renderPendingPanel(items) {
     }
 
     if (items.length === 0) {
+        section.classList.add('hidden');
         panel.innerHTML = '<p class="fin-empty-state">Nenhum jogo aguardando lancamento.</p>';
         return;
     }
+
+    section.classList.remove('hidden');
 
     const totalPend = pendLaunch.reduce((acc, bg) => {
         const g = state.activeGames.find(x => x.slug === bg.lottery_type);
