@@ -332,6 +332,7 @@ export async function generateAll() {
 
         $('btn-automation-gen')?.classList.remove('hidden');
         $('btn-register-bet-gen')?.classList.remove('hidden');
+        $('btn-clear-queue-gen')?.classList.remove('hidden');
         $('results-area')?.classList.remove('hidden');
         $('manual-entry-panel')?.classList.add('hidden');
         $('manual-entry-panel')?.classList.add('hidden');

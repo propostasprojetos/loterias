@@ -143,14 +143,22 @@ export async function enqueueBetsForAutomation() {
         }
 
         if (enqueued > 0) {
-            alert('Os jogos foram registrados no financeiro com sucesso.\n\nVá para o site da Caixa e abra a extensão para efetuar o pagamento.');
+            if (typeof showAlert === 'function') {
+                showAlert('Sucesso no Financeiro', 'Os jogos foram registrados no financeiro com sucesso.\n\nVá para o site da Caixa e abra a extensão para efetuar o pagamento.');
+            } else {
+                alert('Os jogos foram registrados no financeiro com sucesso.\n\nVá para o site da Caixa e abra a extensão para efetuar o pagamento.');
+            }
             await refreshPendingPanel();
         } else {
             toast('Nenhuma aposta enfileirada. Banco offline ou erro ao salvar jogos.');
         }
     } catch (err) {
         console.error('Erro fatal em enqueueBetsForAutomation:', err);
-        alert('Erro no botao Fazer Jogos: ' + err.message);
+        if (typeof showAlert === 'function') {
+            showAlert('Ops!', 'Erro no botão Fazer Jogos: ' + err.message, 'Entendi', '⚠️');
+        } else {
+            alert('Erro no botao Fazer Jogos: ' + err.message);
+        }
         const btn = $('btn-automation-gen');
         if (btn) {
             btn.classList.remove('loading');

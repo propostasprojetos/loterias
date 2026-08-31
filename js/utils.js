@@ -109,3 +109,36 @@ export function showConfirm(title, message, onConfirm) {
     };
 }
 window.showConfirm = showConfirm;
+
+// ===== PREMIUM ALERT DIALOG =====
+export function showAlert(title, message, btnText = 'Entendi', icon = '✅') {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.opacity = '0';
+    overlay.style.transition = 'opacity 0.25s ease';
+    overlay.style.zIndex = '99999';
+    overlay.innerHTML = `
+        <div class="modal-content" style="max-width: 420px; text-align: center; border-color: var(--border-active);">
+            <div style="font-size: 2.5rem; margin-bottom: 12px; filter: drop-shadow(0 2px 10px rgba(78,205,196,0.3));">${icon}</div>
+            <div class="modal-header" style="justify-content: center; margin-bottom: 14px;">
+                <h2 style="font-size: 1.2rem; color: var(--teal); margin: 0;">${title}</h2>
+            </div>
+            <p style="color: var(--text-2); font-size: 0.88rem; margin-bottom: 24px; line-height: 1.5; white-space: pre-line;">
+                ${message}
+            </p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button id="alert-ok-btn" class="btn-primary" style="margin: 0; padding: 10px 30px; width: auto; min-width: 120px;">${btnText}</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.style.opacity = '1', 20);
+
+    const cleanup = () => {
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 250);
+    };
+
+    overlay.querySelector('#alert-ok-btn').onclick = cleanup;
+}
+window.showAlert = showAlert;
