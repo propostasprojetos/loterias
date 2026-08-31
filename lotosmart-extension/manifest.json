@@ -49,7 +49,7 @@
       "http://localhost:*/*",
       "http://127.0.0.1:*/*",
       "https://*.lotosmart.com/*",
-      "https://loterias-six.vercel.app/*"
+      "https://faciloto.vercel.app/*"
     ]
   },
 
