@@ -134,12 +134,29 @@ export async function vincularParticipantes(bet_id, participantes) {
 
     if (!participantes || participantes.length === 0) return [];
 
-    const rows = participantes.map(p => ({
-        owner_id,
-        bet_id,
-        participante_id: p.participante_id,
-        percentual: p.percentual,
-    }));
+    // Valida se a soma informada é 100%
+    const sumInformada = participantes.reduce((acc, p) => acc + (parseFloat(p.percentual) || 0), 0);
+    const requiresRecalc = Math.abs(sumInformada - 100) > 0.05; // Margem para float
+
+    const pctIgual = +(100 / participantes.length).toFixed(2);
+    let sum = 0;
+
+    const rows = participantes.map((p, idx) => {
+        let pct = requiresRecalc ? pctIgual : (parseFloat(p.percentual) || 0);
+        
+        // Ajuste no último para garantir exatos 100
+        if (idx === participantes.length - 1) {
+            pct = +(100 - sum).toFixed(2);
+        }
+        sum += pct;
+        
+        return {
+            owner_id,
+            bet_id,
+            participante_id: p.participante_id,
+            percentual: pct,
+        };
+    });
 
     const { data, error } = await supabaseClient
         .from('jogo_participantes')
