@@ -173,19 +173,46 @@ export async function clearAutomationQueue() {
         return;
     }
 
-    showConfirm(
-        'Limpar Fila de Automação',
-        'Limpar a fila cancela todos os jobs pendentes e em processamento.\nO robô vai parar de pegar novas tarefas.\n\nDeseja confirmar?',
-        async () => {
-            const btn = $('btn-clear-queue-gen');
-            const btnPanel = $('btn-clear-queue-panel');
-            [btn, btnPanel].forEach(b => { if (b) { b.disabled = true; b.textContent = 'Limpando...'; } });
+    try {
+        const btn = $('btn-clear-queue-gen');
+        const btnPanel = $('btn-clear-queue-panel');
+        [btn, btnPanel].forEach(b => { if (b) b.disabled = true; });
 
-            try {
-                const { error: qErr } = await supabaseClient
-                    .from('automation_queue')
-                    .delete()
-                    .eq('owner_id', state.currentSession.user.id)
+        // Levantar relatório do que tem na fila
+        const { data: bgData, error } = await supabaseClient
+            .from('bet_games')
+            .select('lottery_type, status')
+            .eq('owner_id', state.currentSession.user.id)
+            .in('status', ['pendente', 'processando']);
+            
+        if (error) throw error;
+
+        [btn, btnPanel].forEach(b => { if (b) b.disabled = false; });
+        
+        if (!bgData || bgData.length === 0) {
+            if (typeof showAlert === 'function') showAlert('Fila Vazia', 'Não há nenhum jogo pendente ou processando na fila de automação.', 'Entendi', 'ℹ️');
+            else toast('A fila já está vazia.');
+            return;
+        }
+
+        const counts = {};
+        bgData.forEach(bg => {
+            const name = bg.lottery_type.charAt(0).toUpperCase() + bg.lottery_type.slice(1);
+            counts[name] = (counts[name] || 0) + 1;
+        });
+        const reportLines = Object.entries(counts).map(([lot, count]) => `• ${count} jogo(s) de ${lot}`).join('\n');
+
+        showConfirm(
+            'Limpar Fila de Automação',
+            `Você tem ${bgData.length} jogo(s) em andamento:\n\n${reportLines}\n\nLimpar a fila cancela todos esses jogos. O robô vai parar imediatamente.\nDeseja confirmar o cancelamento?`,
+            async () => {
+                [btn, btnPanel].forEach(b => { if (b) { b.disabled = true; b.textContent = 'Limpando...'; } });
+
+                try {
+                    const { error: qErr } = await supabaseClient
+                        .from('automation_queue')
+                        .delete()
+                        .eq('owner_id', state.currentSession.user.id)
                     .in('status', ['queued', 'processing']);
                 if (qErr) throw qErr;
 
@@ -218,6 +245,13 @@ export async function clearAutomationQueue() {
             }
         }
     );
+    } catch (err) {
+        console.error('Erro ao consultar a fila para exclusão:', err);
+        const btn = $('btn-clear-queue-gen');
+        const btnPanel = $('btn-clear-queue-panel');
+        [btn, btnPanel].forEach(b => { if (b) b.disabled = false; });
+        toast('Erro ao buscar dados da fila.');
+    }
 }
 
 export async function resetAllFinancialData() {
