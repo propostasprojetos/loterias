@@ -7,7 +7,7 @@
 
 import { createLogger } from '../shared/logger.js';
 import * as db from './supabase.js';
-import { POLL_INTERVAL_SECONDS, GAME_URLS } from '../shared/config.js';
+import { POLL_INTERVAL_SECONDS, GAME_URLS, CAIXA_CART_URL } from '../shared/config.js';
 
 const log = createLogger('QueueManager');
 
@@ -15,6 +15,7 @@ let isWorkerActive = false;
 let isProcessing = false;
 let pollingInterval = null;
 let currentWorkerId = 'worker_ext_' + Math.random().toString(36).substring(2, 9); // ID único para este worker
+let shouldRedirectToCart = false; // Flag para redirecionar ao carrinho ao final
 
 export function isActive() {
   return isWorkerActive;
@@ -71,6 +72,14 @@ async function processNextJob() {
     
     if (!currentJob) {
       log.debug('Nenhum job na fila.');
+      if (shouldRedirectToCart) {
+        shouldRedirectToCart = false;
+        log.info('Todas as apostas finalizadas. Redirecionando para o carrinho...');
+        const tabs = await chrome.tabs.query({ url: "*://*.loteriasonline.caixa.gov.br/*" });
+        if (tabs.length > 0) {
+          await chrome.tabs.update(tabs[0].id, { url: CAIXA_CART_URL });
+        }
+      }
       return;
     }
 
@@ -179,6 +188,9 @@ async function processNextJob() {
       // Conclui o job
       await db.completeJob(currentJob.id, bet.id);
       log.info(`Job ${currentJob.id} processado. Sucesso: ${success.length}, Falhas: ${failed.length}`);
+      
+      // Sinaliza que ao esvaziar a fila, deve redirecionar
+      shouldRedirectToCart = true;
       
     } else {
       throw new Error(`Erro do Content Script: ${response.message}`);
