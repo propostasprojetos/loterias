@@ -286,17 +286,40 @@ function setupFinanceiroBolao() {
                 
                 const calcTotal = () => {
                     let sum = 0;
-                    document.querySelectorAll('.part-row-check:checked').forEach(chk => {
+                    document.querySelectorAll('#fin-bet-participantes-list .part-row-check:checked').forEach(chk => {
                         const val = parseFloat(document.querySelector(`.part-row-pct[data-id="${chk.value}"]`).value) || 0;
                         sum += val;
                     });
                     totalEl.textContent = `Soma Total: ${sum.toFixed(2)}%`;
                     totalEl.style.color = Math.abs(sum - 100) < 0.01 ? 'var(--green)' : 'var(--red)';
                 };
+
+                const recalculateEqually = () => {
+                    const checked = document.querySelectorAll('#fin-bet-participantes-list .part-row-check:checked');
+                    if (checked.length === 0) { calcTotal(); return; }
+                    const pctIgual = +(100 / checked.length).toFixed(2);
+                    let sum = 0;
+                    checked.forEach((chk, idx) => {
+                        const input = document.querySelector(`.part-row-pct[data-id="${chk.value}"]`);
+                        if (idx === checked.length - 1) {
+                            input.value = (100 - sum).toFixed(2);
+                        } else {
+                            input.value = pctIgual.toFixed(2);
+                            sum += pctIgual;
+                        }
+                    });
+                    calcTotal();
+                };
                 
                 list.addEventListener('input', calcTotal);
-                list.addEventListener('change', calcTotal);
-                calcTotal();
+                list.addEventListener('change', (e) => {
+                    if (e.target.classList.contains('part-row-check')) {
+                        recalculateEqually();
+                    } else {
+                        calcTotal();
+                    }
+                });
+                recalculateEqually();
                 
             } catch (e) {
                 list.innerHTML = '<div style="color:var(--red); font-size:0.85rem;">Erro ao carregar participantes.</div>';
@@ -334,7 +357,8 @@ export function populateFinanceiroSelects(boloes_ativos, apostas_recentes) {
             const dateStr = new Date(b.bet_date).toLocaleDateString('pt-BR');
             const conc = b.contest_number ? `Conc. ${b.contest_number}` : '';
             const isBolao = b.bolao_id ? ` [Bolão]` : '';
-            prizeBet.innerHTML += `<option value="${b.id}">${dateStr} - ${b.lottery_type} ${conc}${isBolao}</option>`;
+            const betNum = b.bet_number ? `#${b.bet_number} - ` : '';
+            prizeBet.innerHTML += `<option value="${b.id}">${betNum}${dateStr} - ${b.lottery_type} ${conc}${isBolao}</option>`;
         });
         if (val) prizeBet.value = val;
     }
@@ -494,6 +518,10 @@ async function renderRelatorioBolao(bolao_id) {
         $('bolao-total-apostado').textContent = fmt(rel.totalApostado);
         $('bolao-total-premiado').textContent = fmt(rel.totalPremiado);
         $('bolao-saldo').textContent = fmt(rel.saldo);
+        
+        if ($('bolao-total-caixa')) {
+            $('bolao-total-caixa').textContent = fmt(rel.saldoCaixa);
+        }
         
         const saldoEl = $('bolao-saldo');
         saldoEl.className = 'metric-value ' + (rel.saldo > 0 ? 'positive' : (rel.saldo < 0 ? 'negative' : ''));

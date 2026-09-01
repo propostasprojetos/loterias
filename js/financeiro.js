@@ -297,24 +297,31 @@ export function renderTransactions() {
         } else {
             partStr = ` · 👤 Individual`;
         }
+
+        const betNumStr = b.bet_number ? `#${b.bet_number} · ` : '';
+        const caixaStr = b.manter_em_caixa ? ` · 💰 Em caixa` : '';
         
         transactions.push({
             id: b.id, type: 'bet', date: b.bet_date, created_at: b.created_at || b.bet_date, lottery: b.lottery_type,
-            details: `${b.game_count || 1} jogo${(b.game_count || 1) > 1 ? 's' : ''}` + 
+            details: `${betNumStr}${b.game_count || 1} jogo${(b.game_count || 1) > 1 ? 's' : ''}` + 
                      (b.contest_number ? ` · Conc. ${b.contest_number}` : '') + 
-                     partStr +
+                     partStr + caixaStr +
                      (b.notes ? ` · ${b.notes}` : ''),
             amount: -(parseFloat(b.total_cost) || 0), source: 'bets',
             bolao_id: b.bolao_id,
+            bet_number: b.bet_number,
+            manter_em_caixa: b.manter_em_caixa,
             participantes: b.jogo_participantes || []
         });
     });
 
     allPrizes.forEach(p => {
+        const caixaStr = p.manter_em_caixa ? ` · 💰 Em caixa` : '';
         transactions.push({
             id: p.id, type: 'prize', date: p.prize_date, created_at: p.created_at || p.prize_date, lottery: p.lottery_type,
-            details: `${p.matches || 0} acertos` + (p.contest_number ? ` · Conc. ${p.contest_number}` : '') + (p.notes ? ` · ${p.notes}` : ''),
-            amount: parseFloat(p.prize_amount) || 0, source: 'prizes'
+            details: `${p.matches || 0} acertos` + (p.contest_number ? ` · Conc. ${p.contest_number}` : '') + caixaStr + (p.notes ? ` · ${p.notes}` : ''),
+            amount: parseFloat(p.prize_amount) || 0, source: 'prizes',
+            manter_em_caixa: p.manter_em_caixa
         });
     });
 
@@ -598,6 +605,8 @@ export function handleAddBet() {
         }
     }
 
+    const manterEmCaixa = $('fin-bet-caixa')?.checked || false;
+
     addBet({
         bet_date: betDate,
         lottery_type: lotteryType,
@@ -605,11 +614,13 @@ export function handleAddBet() {
         total_cost: totalCost,
         contest_number: contestNumber,
         notes: notes,
-        bolao_id: bolaoId
+        bolao_id: bolaoId,
+        manter_em_caixa: manterEmCaixa
     }, participantes);
 
     $('fin-bet-contest').value = '';
     $('fin-bet-notes').value = '';
+    if ($('fin-bet-caixa')) $('fin-bet-caixa').checked = false;
     toast('💸 Gasto registrado com sucesso!');
 }
 
@@ -621,6 +632,7 @@ export function handleAddPrize() {
     const contestNumber = parseInt($('fin-prize-contest').value) || null;
     const notes = $('fin-prize-notes').value.trim();
     const betId = $('fin-prize-bet')?.value || null;
+    const manterEmCaixa = $('fin-prize-caixa')?.checked || false;
 
     if (!prizeDate) { toast('Informe a data do resultado'); return; }
     if (prizeAmount <= 0) { toast('Informe o valor do prêmio'); return; }
@@ -632,12 +644,15 @@ export function handleAddPrize() {
         prize_amount: prizeAmount,
         contest_number: contestNumber,
         notes: notes,
-        bet_id: betId
+        bet_id: betId,
+        manter_em_caixa: manterEmCaixa
     });
 
     $('fin-prize-contest').value = '';
     $('fin-prize-notes').value = '';
     $('fin-prize-bet').value = '';
+    if ($('fin-prize-caixa')) $('fin-prize-caixa').checked = false;
+    toast('🏆 Prêmio registrado com sucesso!', 'success');
 }
 
 // ==========================================
@@ -718,10 +733,38 @@ async function renderEditBetParticipantes(bolao_id, existingParts) {
             totalEl.textContent = `Soma Total: ${sum.toFixed(2)}%`;
             totalEl.style.color = Math.abs(sum - 100) < 0.01 ? 'var(--green)' : 'var(--red)';
         };
+
+        const recalculateEqually = () => {
+            const checked = document.querySelectorAll('.edit-part-row-check:checked');
+            if (checked.length === 0) { calcTotal(); return; }
+            const pctIgual = +(100 / checked.length).toFixed(2);
+            let sum = 0;
+            checked.forEach((chk, idx) => {
+                const input = document.querySelector(`.edit-part-row-pct[data-id="${chk.value}"]`);
+                if (idx === checked.length - 1) {
+                    input.value = (100 - sum).toFixed(2);
+                } else {
+                    input.value = pctIgual.toFixed(2);
+                    sum += pctIgual;
+                }
+            });
+            calcTotal();
+        };
         
         list.addEventListener('input', calcTotal);
-        list.addEventListener('change', calcTotal);
-        calcTotal();
+        list.addEventListener('change', (e) => {
+            if (e.target.classList.contains('edit-part-row-check')) {
+                recalculateEqually();
+            } else {
+                calcTotal();
+            }
+        });
+        
+        if (!existingParts) {
+            recalculateEqually();
+        } else {
+            calcTotal();
+        }
         
     } catch (e) {
         list.innerHTML = '<div style="color:var(--red); font-size:0.85rem;">Erro.</div>';

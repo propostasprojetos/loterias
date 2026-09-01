@@ -399,6 +399,12 @@
                                 <div style="display:flex; justify-content:flex-end; margin-top:12px; font-weight:700; font-size:0.9rem; color:var(--gold);" id="fin-bet-participantes-total">Soma Total: 0%</div>
                             </div>
                         </div>
+                        <div class="field" style="grid-column: 1 / -1;">
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:8px 0;">
+                                <input type="checkbox" id="fin-bet-caixa" style="width:auto; accent-color:var(--gold);">
+                                <span style="font-size:0.88rem; color:var(--text);">💰 Manter em caixa <span style="font-size:0.78rem; color:var(--text-3);">(dinheiro físico permanece no caixa do bolão)</span></span>
+                            </label>
+                        </div>
                     </div>
                     <button class="btn-danger" id="btn-add-bet" style="width: auto; padding: 12px 20px;">💸 Registrar Gasto</button>
                 </div>
@@ -455,8 +461,14 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="field" style="grid-column: 1 / -1;">
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:8px 0;">
+                                <input type="checkbox" id="fin-prize-caixa" style="width:auto; accent-color:var(--green);">
+                                <span style="font-size:0.88rem; color:var(--text);">💰 Manter em caixa <span style="font-size:0.78rem; color:var(--text-3);">(dinheiro físico permanece no caixa do bolão)</span></span>
+                            </label>
+                        </div>
                     </div>
-                    <button class="btn-success" id="btn-add-prize" style="width: auto; padding: 12px 20px;">🏆 Registrar Prêmio</button>
+                    <button class="btn-primary" id="btn-add-prize" style="width: auto; padding: 12px 20px; background: var(--green); color: #0e1015;">🎉 Registrar Prêmio</button>
                 </div>
             </div>
 
@@ -545,6 +557,10 @@
                         <div class="fin-metric-card metric-weeks">
                             <span class="metric-label">Arrecadado</span>
                             <span class="metric-value" id="bolao-total-arrecadado">R$ 0,00</span>
+                        </div>
+                        <div class="fin-metric-card" style="border-left-color: var(--gold);">
+                            <span class="metric-label">💰 Em Caixa</span>
+                            <span class="metric-value" id="bolao-total-caixa" style="color:var(--gold);">R$ 0,00</span>
                         </div>
                         <div class="fin-metric-card metric-spent">
                             <span class="metric-label">Apostado</span>
