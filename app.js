@@ -140,7 +140,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Init Core
     initSupabase().then(async () => {
-        await checkAuthState();
+        const hash = window.location.hash;
+        if (hash.startsWith('#/bolao-publico/')) {
+            const token = hash.split('/')[2];
+            if (token) {
+                // Esconde sidebar, mobile btn e footer para visão pública limpa
+                const sidebar = $('sidebar');
+                const mobileBtn = $('mobile-menu-btn');
+                const footer = document.querySelector('footer');
+                if (sidebar) sidebar.style.display = 'none';
+                if (mobileBtn) mobileBtn.style.display = 'none';
+                if (footer) footer.style.display = 'none';
+                // Ajusta o main para ocupar tela inteira
+                const mainEl = document.querySelector('main');
+                if (mainEl) mainEl.style.marginLeft = '0';
+                
+                switchView('bolao-publico');
+                if (window.initBolaoPublico) {
+                    window.initBolaoPublico(token);
+                }
+            }
+        } else {
+            await checkAuthState();
+        }
     });
 
     window.addEventListener('lotosmart:auth_success', async () => {

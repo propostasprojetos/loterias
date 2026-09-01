@@ -181,6 +181,7 @@ function renderListaBoloes() {
                 ${b.descricao ? `<p>${b.descricao}</p>` : ''}
             </div>
             <div style="display:flex; gap:8px;">
+                <button class="btn-icon btn-share-bolao" data-id="${b.id}" title="Compartilhar Bolão" style="color:var(--gold);">🔗</button>
                 <button class="btn-icon btn-edit-bolao" data-id="${b.id}" title="Editar bolão">✏️</button>
                 <button class="btn-icon btn-toggle-bolao" data-id="${b.id}" title="${b.ativo ? 'Desativar' : 'Reativar'}">
                     ${b.ativo ? '⏸️' : '▶️'}
@@ -191,6 +192,13 @@ function renderListaBoloes() {
     });
 
     // Eventos
+    $$('.btn-share-bolao').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const bolao = boloes.find(x => x.id === btn.dataset.id);
+            if (bolao) abrirShareBolao(bolao);
+        });
+    });
+
     $$('.btn-edit-bolao').forEach(btn => {
         btn.addEventListener('click', () => {
             const bolao = boloes.find(x => x.id === btn.dataset.id);
@@ -234,6 +242,44 @@ function abrirModalBolao(bolao = null) {
 function fecharModalBolao() {
     $('modal-novo-bolao').classList.add('hidden');
     $('form-bolao').reset();
+}
+
+// ==============================================================================
+// COMPARTILHAMENTO PÚBLICO
+// ==============================================================================
+
+function abrirShareBolao(bolao) {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const link = `${baseUrl}#/bolao-publico/${bolao.public_token}`;
+    
+    const linkInput = $('share-bolao-link');
+    if (linkInput) linkInput.value = link;
+    
+    $('modal-share-bolao').classList.remove('hidden');
+    
+    // Copiar Link
+    $('btn-copy-share-link').onclick = async () => {
+        try {
+            await navigator.clipboard.writeText(link);
+            toast('Link copiado para a área de transferência!', 'success');
+        } catch {
+            // Fallback
+            linkInput.select();
+            document.execCommand('copy');
+            toast('Link copiado!', 'success');
+        }
+    };
+    
+    // WhatsApp
+    $('btn-wpp-share-link').onclick = () => {
+        const text = encodeURIComponent(`Confira o bolão "${bolao.nome}" no LotoSmart:\n${link}`);
+        window.open(`https://wa.me/?text=${text}`, '_blank');
+    };
+    
+    // Fechar modal
+    $('btn-close-share-bolao').onclick = () => {
+        $('modal-share-bolao').classList.add('hidden');
+    };
 }
 
 // ==============================================================================

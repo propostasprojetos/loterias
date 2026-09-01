@@ -689,6 +689,90 @@
             </div>
         </div>
 
+    <!-- ====== MODAL DE COMPARTILHAMENTO DE BOLÃO ====== -->
+    <div id="modal-share-bolao" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>🔗 Compartilhar Bolão</h2>
+                <button class="btn-close-modal" id="btn-close-share-bolao">✕</button>
+            </div>
+            <div style="padding: 16px 0; color: var(--text-2); font-size: 0.95rem;">
+                Envie o link abaixo para os participantes. Eles poderão acompanhar o saldo, cotas e prêmios em tempo real, sem precisar de senha.
+            </div>
+            <div class="input-row" style="margin-bottom: 24px;">
+                <input type="text" id="share-bolao-link" readonly style="font-family: monospace; font-size: 0.85rem; color: var(--gold); padding: 12px; width: 100%; text-align: center; background: rgba(0,0,0,0.2); border: 1px dashed var(--gold); border-radius: 6px;">
+            </div>
+            <div class="modal-footer" style="display:flex; justify-content:space-between;">
+                <button class="btn-outline" id="btn-copy-share-link">📋 Copiar Link</button>
+                <button class="btn-primary" id="btn-wpp-share-link" style="background: #25D366; color: #fff;">WhatsApp</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== VISÃO PÚBLICA DO BOLÃO (SEM LOGIN) ====== -->
+    <section id="view-bolao-publico" class="hidden" style="padding: 20px; max-width: 1000px; margin: 0 auto; height: 100vh; overflow-y: auto;">
+        <div style="text-align: center; margin-bottom: 30px; margin-top: 20px;">
+            <div style="color: var(--gold); font-weight: 800; font-size: 2.2rem; letter-spacing: 1px; font-family: 'Outfit', sans-serif;">LotoSmart</div>
+            <div style="color: var(--text-3); font-size: 1rem; margin-top: 5px;">Prestação de Contas Transparente</div>
+        </div>
+        
+        <div id="public-bolao-loading" style="text-align:center; padding: 50px; color: var(--text-3);">
+            Carregando informações do bolão...
+        </div>
+        
+        <div id="public-bolao-error" class="hidden" style="text-align:center; padding: 50px; color: var(--red);">
+            <h2>Bolão não encontrado</h2>
+            <p>O link pode ter expirado ou estar incorreto.</p>
+        </div>
+
+        <div id="public-bolao-content" class="hidden">
+            <h2 id="pub-bolao-nome" style="text-align:center; color: var(--text); font-size: 1.8rem; margin-bottom: 30px;">Carregando...</h2>
+            
+            <div class="fin-dashboard">
+                <div class="fin-metric-card metric-weeks">
+                    <span class="metric-label">Arrecadado</span>
+                    <span class="metric-value" id="pub-bolao-total-arrecadado">R$ 0,00</span>
+                </div>
+                <div class="fin-metric-card" style="border-left-color: var(--gold);">
+                    <span class="metric-label">💰 Em Caixa</span>
+                    <span class="metric-value" id="pub-bolao-total-caixa" style="color:var(--gold);">R$ 0,00</span>
+                </div>
+                <div class="fin-metric-card metric-spent">
+                    <span class="metric-label">Apostado</span>
+                    <span class="metric-value negative" id="pub-bolao-total-apostado">R$ 0,00</span>
+                </div>
+                <div class="fin-metric-card metric-won">
+                    <span class="metric-label">Premiado</span>
+                    <span class="metric-value positive" id="pub-bolao-total-premiado">R$ 0,00</span>
+                </div>
+                <div class="fin-metric-card metric-pl">
+                    <span class="metric-label">Saldo Final</span>
+                    <span class="metric-value" id="pub-bolao-saldo">R$ 0,00</span>
+                </div>
+            </div>
+
+            <h3 style="margin: 32px 0 16px; color: var(--gold); text-align:center;">Ranking de Participantes</h3>
+            <div class="fin-table-wrap" style="background: var(--surface); border-radius: var(--radius); padding: 16px; border: 1px solid var(--border);">
+                <table class="fin-table ranking-table">
+                    <thead>
+                        <tr>
+                            <th>Pos</th>
+                            <th>Participante</th>
+                            <th>Apostas</th>
+                            <th>Investido</th>
+                            <th>Recebido</th>
+                            <th>Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pub-bolao-ranking-body"></tbody>
+                </table>
+            </div>
+            <div style="text-align:center; margin-top: 40px; margin-bottom: 40px; color: var(--text-3); font-size: 0.85rem;">
+                Gerado por LotoSmart &copy; 2026
+            </div>
+        </div>
+    </section>
+
         <!-- ====== LOGIN ====== -->
         <section id="view-login" class="hidden">
             <div class="auth-card">
@@ -1109,6 +1193,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script type="module" src="admin.js?v=1"></script>
     <script type="module" src="app.js?v=1"></script>
+    <script type="module" src="js/public_bolao.js"></script>
     <script type="module" src="js/manual_entry.js?v=6"></script>
     <!-- Modal Ver Jogos da Aposta -->
     <div id="modal-view-games" class="modal-overlay hidden">
