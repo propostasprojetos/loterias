@@ -70,9 +70,14 @@ export async function addBet(betData, participantes = [], skipLocalFallback = fa
 export async function addPrize(prizeData) {
     if (sbReady && state.currentSession) {
         try {
-            const dataWithOwner = { ...prizeData, owner_id: state.currentSession.user.id };
+            const dataWithOwner = { 
+                ...prizeData, 
+                owner_id: state.currentSession.user.id,
+                bet_id: prizeData.bet_id || null,
+                bolao_id: prizeData.bolao_id || null,
+                manter_em_caixa: !!prizeData.manter_em_caixa
+            };
             const bet_id = dataWithOwner.bet_id;
-            // Nota: bet_id é incluído no insert pois a tabela prizes possui essa coluna
 
             const { data, error } = await supabaseClient.from('prizes').insert(dataWithOwner).select();
             if (error) throw error;
@@ -83,6 +88,7 @@ export async function addPrize(prizeData) {
             }
         } catch (e) {
             console.error('Supabase create prize failed, using localStorage:', e);
+            toast('Aviso: salvo localmente (erro no banco: ' + (e.message || e) + ')', 'error');
             const prizes = loadLocalPrizes();
             prizes.unshift({ ...prizeData, id: Date.now().toString(), created: new Date().toISOString() });
             saveLocalPrizes(prizes);
@@ -265,6 +271,19 @@ export function renderFinancialDashboard() {
         $('fin-pl-detail').textContent = pl >= 0 ? 'Lucro acumulado' : 'Prejuízo acumulado';
     }
 
+    // Total em Caixa
+    const caixaSpent = allBets.filter(b => b.manter_em_caixa).reduce((s, b) => s + (parseFloat(b.total_cost) || 0), 0);
+    const caixaWon = allPrizes.filter(p => p.manter_em_caixa).reduce((s, p) => s + (parseFloat(p.prize_amount) || 0), 0);
+    const saldoCaixa = caixaWon - caixaSpent;
+
+    if($('fin-total-caixa')) {
+        $('fin-total-caixa').textContent = fmt(saldoCaixa);
+        $('fin-total-caixa').className = 'metric-value ' + (saldoCaixa > 0 ? 'positive' : (saldoCaixa < 0 ? 'negative' : ''));
+        if($('fin-caixa-detail')) {
+            $('fin-caixa-detail').textContent = `${fmt(caixaWon)} prêmios · ${fmt(caixaSpent)} apostas`;
+        }
+    }
+
     if($('fin-roi')) {
         $('fin-roi').textContent = (roi >= 0 ? '+' : '') + roi.toFixed(1) + '%';
         $('fin-roi').className = 'metric-value ' + (roi >= 0 ? 'positive' : 'negative');
@@ -315,10 +334,12 @@ export function renderTransactions() {
 
     allPrizes.forEach(p => {
         const caixaStr = p.manter_em_caixa ? ` · 💰 Em caixa` : '';
+        const bolaoStr = p.bolao_id ? ` [Bolão]` : '';
         transactions.push({
             id: p.id, type: 'prize', date: p.prize_date, created_at: p.created_at || p.prize_date, lottery: p.lottery_type,
-            details: `${p.matches || 0} acertos` + (p.contest_number ? ` · Conc. ${p.contest_number}` : '') + caixaStr + (p.notes ? ` · ${p.notes}` : ''),
+            details: `${p.matches || 0} acertos` + (p.contest_number ? ` · Conc. ${p.contest_number}` : '') + bolaoStr + caixaStr + (p.notes ? ` · ${p.notes}` : ''),
             amount: parseFloat(p.prize_amount) || 0, source: 'prizes',
+            bolao_id: p.bolao_id,
             manter_em_caixa: p.manter_em_caixa
         });
     });
@@ -629,8 +650,15 @@ export function handleAddPrize() {
     const prizeAmount = parseFloat($('fin-prize-amount').value) || 0;
     const contestNumber = parseInt($('fin-prize-contest').value) || null;
     const notes = $('fin-prize-notes').value.trim();
+    let bolaoId = $('fin-prize-bolao')?.value || null;
     const betId = $('fin-prize-bet')?.value || null;
     const manterEmCaixa = $('fin-prize-caixa')?.checked || false;
+
+    // Se selecionou uma aposta vinculada, e ela tem bolão, herda o bolao_id
+    if (betId && !bolaoId) {
+        const bet = allBets.find(b => b.id === betId);
+        if (bet && bet.bolao_id) bolaoId = bet.bolao_id;
+    }
 
     if (!prizeDate) { toast('Informe a data do resultado'); return; }
     if (prizeAmount <= 0) { toast('Informe o valor do prêmio'); return; }
@@ -643,12 +671,14 @@ export function handleAddPrize() {
         contest_number: contestNumber,
         notes: notes,
         bet_id: betId,
+        bolao_id: bolaoId,
         manter_em_caixa: manterEmCaixa
     });
 
     $('fin-prize-contest').value = '';
     $('fin-prize-notes').value = '';
     $('fin-prize-bet').value = '';
+    if ($('fin-prize-bolao')) $('fin-prize-bolao').value = '';
     if ($('fin-prize-caixa')) $('fin-prize-caixa').checked = false;
     toast('🏆 Prêmio registrado com sucesso!', 'success');
 }

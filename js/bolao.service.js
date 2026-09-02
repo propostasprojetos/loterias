@@ -251,7 +251,6 @@ export async function obterRelatorioBolao(bolao_id) {
 
     // Prêmios dos participantes
     let premios = [];
-    let pr_caixa = [];
     if (betIds.length > 0) {
         const { data: pp, error: pErr } = await supabaseClient
             .from('premios_participantes')
@@ -260,14 +259,27 @@ export async function obterRelatorioBolao(bolao_id) {
             .eq('owner_id', uid());
         if (pErr) throw pErr;
         premios = pp ?? [];
-        
-        // Pega a flag manter_em_caixa dos prêmios
-        const { data: prz } = await supabaseClient
+    }
+    
+    // Pega os prêmios mantidos em caixa (vinculados diretamente ao bolão ou via apostas)
+    let pr_caixa = [];
+    try {
+        let przQuery = supabaseClient
             .from('prizes')
-            .select('id, prize_amount, bet_id, manter_em_caixa')
-            .in('bet_id', betIds)
+            .select('id, prize_amount, bet_id, bolao_id, manter_em_caixa')
             .eq('owner_id', uid());
-        pr_caixa = prz ?? [];
+
+        if (betIds.length > 0) {
+            przQuery = przQuery.or(`bolao_id.eq.${bolao_id},bet_id.in.(${betIds.join(',')})`);
+        } else {
+            przQuery = przQuery.eq('bolao_id', bolao_id);
+        }
+        const { data: prz, error: przErr } = await przQuery;
+        if (!przErr && prz) {
+            pr_caixa = prz;
+        }
+    } catch (e) {
+        console.warn('Aviso ao consultar prêmios em caixa:', e);
     }
 
     // Participantes do bolão

@@ -1,16 +1,32 @@
 -- ==============================================================================
 -- 07_fix_prizes_caixa.sql
--- CORREÇÃO: Adiciona a coluna manter_em_caixa na tabela prizes
--- e recria a RPC fn_get_bolao_public_report com a correção.
+-- CORREÇÃO: Adiciona manter_em_caixa e bolao_id na tabela prizes,
+-- vincula prêmios existentes e recria a RPC fn_get_bolao_public_report.
 --
 -- Execute este script no Supabase > SQL Editor.
--- É seguro rodar mesmo que o 07_bolao_publico.sql já tenha sido executado.
 -- ==============================================================================
 
--- 1. Adicionar coluna manter_em_caixa na tabela prizes (caso não exista)
+-- 1. Adicionar colunas na tabela prizes (caso não existam)
 ALTER TABLE public.prizes ADD COLUMN IF NOT EXISTS manter_em_caixa BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.prizes ADD COLUMN IF NOT EXISTS bolao_id UUID REFERENCES public.boloes(id) ON DELETE SET NULL;
+ALTER TABLE public.prizes ADD COLUMN IF NOT EXISTS bet_id UUID REFERENCES public.bets(id) ON DELETE SET NULL;
 
--- 2. Recriar a RPC com a correção (CREATE OR REPLACE é idempotente)
+-- 2. Backfill: Vincular prêmios a bolões a partir das apostas vinculadas
+UPDATE public.prizes p
+SET bolao_id = b.bolao_id
+FROM public.bets b
+WHERE p.bet_id = b.id AND p.bolao_id IS NULL AND b.bolao_id IS NOT NULL;
+
+-- 3. Backfill: Se houver prêmio marcado 'manter_em_caixa' sem bolao_id e o usuário tiver bolão ativo, vincula
+UPDATE public.prizes p
+SET bolao_id = (
+    SELECT b.id FROM public.boloes b 
+    WHERE b.owner_id = p.owner_id AND b.ativo = true 
+    ORDER BY b.created_at DESC LIMIT 1
+)
+WHERE p.manter_em_caixa = true AND p.bolao_id IS NULL AND p.bet_id IS NULL;
+
+-- 4. Recriar a RPC com suporte a bolao_id direto e bet_id
 CREATE OR REPLACE FUNCTION public.fn_get_bolao_public_report(p_token UUID)
 RETURNS JSON
 LANGUAGE plpgsql
@@ -70,14 +86,14 @@ BEGIN
     FROM public.premios_participantes pp
     WHERE pp.bet_id IN (SELECT id FROM public.bets WHERE bolao_id = v_bolao.id);
 
-    -- 6. Prêmios gerais mantidos em caixa
+    -- 6. Prêmios mantidos em caixa (vinculados por bolao_id direto OU via aposta)
     SELECT COALESCE(json_agg(json_build_object(
         'bet_id', prz.bet_id,
         'prize_amount', prz.prize_amount,
         'manter_em_caixa', prz.manter_em_caixa
     )), '[]') INTO v_pr_caixa
     FROM public.prizes prz
-    WHERE prz.bet_id IN (SELECT id FROM public.bets WHERE bolao_id = v_bolao.id)
+    WHERE (prz.bolao_id = v_bolao.id OR prz.bet_id IN (SELECT id FROM public.bets WHERE bolao_id = v_bolao.id))
     AND prz.manter_em_caixa = true;
 
     -- Monta resposta
@@ -94,10 +110,6 @@ BEGIN
 END;
 $$;
 
--- 3. Reconfirmar permissões
+-- 5. Permissões
 GRANT EXECUTE ON FUNCTION public.fn_get_bolao_public_report(UUID) TO anon;
 GRANT EXECUTE ON FUNCTION public.fn_get_bolao_public_report(UUID) TO authenticated;
-
--- ==============================================================================
--- FIM — Pronto! Execute e teste novamente o link público do bolão.
--- ==============================================================================

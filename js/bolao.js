@@ -394,6 +394,16 @@ export function populateFinanceiroSelects(boloes_ativos, apostas_recentes) {
         });
         if (val) genBolao.value = val;
     }
+
+    const prizeBolao = $('fin-prize-bolao');
+    if (prizeBolao) {
+        const val = prizeBolao.value;
+        prizeBolao.innerHTML = '<option value="">Prêmio Individual (Sem Bolão)</option>';
+        boloes_ativos.forEach(b => {
+            prizeBolao.innerHTML += `<option value="${b.id}">${b.nome}</option>`;
+        });
+        if (val) prizeBolao.value = val;
+    }
     
     const prizeBet = $('fin-prize-bet');
     if (prizeBet) {
@@ -404,9 +414,18 @@ export function populateFinanceiroSelects(boloes_ativos, apostas_recentes) {
             const conc = b.contest_number ? `Conc. ${b.contest_number}` : '';
             const isBolao = b.bolao_id ? ` [Bolão]` : '';
             const betNum = b.bet_number ? `#${b.bet_number} - ` : '';
-            prizeBet.innerHTML += `<option value="${b.id}">${betNum}${dateStr} - ${b.lottery_type} ${conc}${isBolao}</option>`;
+            prizeBet.innerHTML += `<option value="${b.id}" data-bolao="${b.bolao_id || ''}">${betNum}${dateStr} - ${b.lottery_type} ${conc}${isBolao}</option>`;
         });
         if (val) prizeBet.value = val;
+
+        // Auto-sincronizar bolão quando uma aposta for selecionada
+        prizeBet.onchange = (e) => {
+            const selectedOpt = prizeBet.options[prizeBet.selectedIndex];
+            const bolaoId = selectedOpt?.dataset?.bolao;
+            if (bolaoId && prizeBolao) {
+                prizeBolao.value = bolaoId;
+            }
+        };
     }
 }
 

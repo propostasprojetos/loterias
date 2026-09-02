@@ -11,8 +11,10 @@ ALTER TABLE public.boloes ADD COLUMN IF NOT EXISTS public_token UUID UNIQUE DEFA
 UPDATE public.boloes SET public_token = gen_random_uuid() WHERE public_token IS NULL;
 ALTER TABLE public.boloes ALTER COLUMN public_token SET NOT NULL;
 
--- 3. Adicionar coluna manter_em_caixa na tabela prizes (necessária para a RPC)
+-- 3. Adicionar colunas na tabela prizes (necessárias para o módulo de caixa e bolão)
 ALTER TABLE public.prizes ADD COLUMN IF NOT EXISTS manter_em_caixa BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.prizes ADD COLUMN IF NOT EXISTS bolao_id UUID REFERENCES public.boloes(id) ON DELETE SET NULL;
+ALTER TABLE public.prizes ADD COLUMN IF NOT EXISTS bet_id UUID REFERENCES public.bets(id) ON DELETE SET NULL;
 
 -- 3. Função RPC Segura (Security Definer) para buscar os dados consolidados do bolão
 -- Usa 'SECURITY DEFINER' para poder rodar como o criador da função, ignorando RLS para a leitura controlada.
@@ -82,8 +84,8 @@ BEGIN
         'manter_em_caixa', prz.manter_em_caixa
     )), '[]') INTO v_pr_caixa
     FROM public.prizes prz
-    WHERE bet_id IN (SELECT id FROM public.bets WHERE bolao_id = v_bolao.id)
-    AND manter_em_caixa = true;
+    WHERE (prz.bolao_id = v_bolao.id OR prz.bet_id IN (SELECT id FROM public.bets WHERE bolao_id = v_bolao.id))
+    AND prz.manter_em_caixa = true;
 
     -- Monta o JSON de resposta
     v_result := json_build_object(

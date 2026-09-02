@@ -313,6 +313,11 @@
                     <span class="metric-value" id="fin-pl">R$ 0,00</span>
                     <span class="metric-detail" id="fin-pl-detail">—</span>
                 </div>
+                <div class="fin-metric-card" style="border-left-color: var(--gold);">
+                    <span class="metric-label">💰 Saldo em Caixa</span>
+                    <span class="metric-value" id="fin-total-caixa" style="color:var(--gold);">R$ 0,00</span>
+                    <span class="metric-detail" id="fin-caixa-detail">Valores físicos de bolão</span>
+                </div>
                 <div class="fin-metric-card metric-roi">
                     <span class="metric-label">ROI</span>
                     <span class="metric-value" id="fin-roi">0%</span>
@@ -450,6 +455,15 @@
                             <label for="fin-prize-notes">Observação</label>
                             <div class="input-row">
                                 <input type="text" id="fin-prize-notes" placeholder="Ex: 12 acertos LF">
+                            </div>
+                        </div>
+                        <div class="field" style="grid-column: 1 / -1;">
+                            <label for="fin-prize-bolao">Vincular a um Bolão (opcional)</label>
+                            <div class="input-row">
+                                <select id="fin-prize-bolao">
+                                    <option value="">Prêmio Individual (Sem Bolão)</option>
+                                    <!-- opções dinâmicas: bolões ativos -->
+                                </select>
                             </div>
                         </div>
                         <div class="field" style="grid-column: 1 / -1;">
