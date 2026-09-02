@@ -7,9 +7,14 @@
     <title>LotoSmart — Gerador de Loterias</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script>
+        if (window.location.hash.startsWith('#/bolao-publico/')) {
+            document.documentElement.classList.add('public-bolao-page');
+        }
+    </script>
 </head>
 <body>
-    <header>
+    <header id="app-header">
         <div class="container header-inner">
             <div class="brand">
                 <span class="brand-icon">🎱</span>
@@ -33,7 +38,7 @@
     <main class="container">
 
         <!-- ====== GERADOR ====== -->
-        <section id="view-gerador">
+        <section id="view-gerador" class="hidden">
             <div class="config-panel">
                 <h2>Configuração</h2>
                 
@@ -274,27 +279,6 @@
 
         <!-- ====== FINANCEIRO ====== -->
         <section id="view-financeiro" class="hidden">
-
-            <!-- Barra de ferramentas de homologação -->
-            <div style="
-                display: flex; align-items: center; justify-content: space-between;
-                flex-wrap: wrap; gap: 10px;
-                margin-bottom: 20px;
-                padding: 10px 16px;
-                background: rgba(232,93,93,.06);
-                border: 1px solid rgba(232,93,93,.2);
-                border-radius: var(--radius);
-            ">
-                <span style="font-size:.8rem; color: var(--text-2);">
-                    🧪 <strong style="color:var(--red)">Modo Homologação</strong>
-                    &mdash; Limpe os dados para reiniciar os testes
-                </span>
-                <button
-                    id="btn-reset-all-data"
-                    class="btn-sm btn-danger"
-                    title="Apaga todas as apostas, prêmios, bet_games e fila de automação deste usuário"
-                >🗑️ Limpar todos os dados de teste</button>
-            </div>
 
             <!-- Dashboard Métricas -->
             <div class="fin-dashboard">
@@ -740,47 +724,85 @@
         </div>
 
         <div id="public-bolao-content" class="hidden">
-            <h2 id="pub-bolao-nome" style="text-align:center; color: var(--text); font-size: 1.8rem; margin-bottom: 30px;">Carregando...</h2>
+            <h2 id="pub-bolao-nome" style="text-align:center; color: var(--text); font-size: 1.8rem; margin-bottom: 24px;">Carregando...</h2>
             
-            <div class="fin-dashboard">
-                <div class="fin-metric-card metric-weeks">
-                    <span class="metric-label">Arrecadado</span>
-                    <span class="metric-value" id="pub-bolao-total-arrecadado">R$ 0,00</span>
+            <!-- Navegação entre abas públicas -->
+            <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 14px;">
+                <button id="btn-pub-tab-resumo" class="btn-sm active" style="padding: 8px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; background: var(--gold); color: #0e1015; border: none;">
+                    📊 Prestação de Contas
+                </button>
+                <button id="btn-pub-tab-jogos" class="btn-sm" style="padding: 8px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border);">
+                    🎫 Jogos do Bolão (<span id="pub-total-jogos-count">0</span>)
+                </button>
+            </div>
+
+            <!-- ABA 1: RESUMO & PRESTAÇÃO DE CONTAS -->
+            <div id="pub-tab-resumo">
+                <div class="fin-dashboard">
+                    <div class="fin-metric-card metric-weeks">
+                        <span class="metric-label">Arrecadado</span>
+                        <span class="metric-value" id="pub-bolao-total-arrecadado">R$ 0,00</span>
+                    </div>
+                    <div class="fin-metric-card" style="border-left-color: var(--gold);">
+                        <span class="metric-label">💰 Em Caixa</span>
+                        <span class="metric-value" id="pub-bolao-total-caixa" style="color:var(--gold);">R$ 0,00</span>
+                    </div>
+                    <div class="fin-metric-card metric-spent">
+                        <span class="metric-label">Apostado</span>
+                        <span class="metric-value negative" id="pub-bolao-total-apostado">R$ 0,00</span>
+                    </div>
+                    <div class="fin-metric-card metric-won">
+                        <span class="metric-label">Premiado</span>
+                        <span class="metric-value positive" id="pub-bolao-total-premiado">R$ 0,00</span>
+                    </div>
+                    <div class="fin-metric-card metric-pl">
+                        <span class="metric-label">Saldo Final</span>
+                        <span class="metric-value" id="pub-bolao-saldo">R$ 0,00</span>
+                    </div>
                 </div>
-                <div class="fin-metric-card" style="border-left-color: var(--gold);">
-                    <span class="metric-label">💰 Em Caixa</span>
-                    <span class="metric-value" id="pub-bolao-total-caixa" style="color:var(--gold);">R$ 0,00</span>
-                </div>
-                <div class="fin-metric-card metric-spent">
-                    <span class="metric-label">Apostado</span>
-                    <span class="metric-value negative" id="pub-bolao-total-apostado">R$ 0,00</span>
-                </div>
-                <div class="fin-metric-card metric-won">
-                    <span class="metric-label">Premiado</span>
-                    <span class="metric-value positive" id="pub-bolao-total-premiado">R$ 0,00</span>
-                </div>
-                <div class="fin-metric-card metric-pl">
-                    <span class="metric-label">Saldo Final</span>
-                    <span class="metric-value" id="pub-bolao-saldo">R$ 0,00</span>
+
+                <h3 style="margin: 32px 0 16px; color: var(--gold); text-align:center;">Ranking de Participantes</h3>
+                <div class="fin-table-wrap" style="background: var(--surface); border-radius: var(--radius); padding: 16px; border: 1px solid var(--border);">
+                    <table class="fin-table ranking-table">
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th>Participante</th>
+                                <th>Apostas</th>
+                                <th>Investido</th>
+                                <th>Recebido</th>
+                                <th>Saldo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pub-bolao-ranking-body"></tbody>
+                    </table>
                 </div>
             </div>
 
-            <h3 style="margin: 32px 0 16px; color: var(--gold); text-align:center;">Ranking de Participantes</h3>
-            <div class="fin-table-wrap" style="background: var(--surface); border-radius: var(--radius); padding: 16px; border: 1px solid var(--border);">
-                <table class="fin-table ranking-table">
-                    <thead>
-                        <tr>
-                            <th>Pos</th>
-                            <th>Participante</th>
-                            <th>Apostas</th>
-                            <th>Investido</th>
-                            <th>Recebido</th>
-                            <th>Saldo</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pub-bolao-ranking-body"></tbody>
-                </table>
+            <!-- ABA 2: HISTÓRICO DE JOGOS DO BOLÃO (PAGINADO DE 20 EM 20) -->
+            <div id="pub-tab-jogos" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                    <div style="font-size: 0.95rem; color: var(--text-2);">
+                        Cartelas e dezenas registradas neste bolão
+                    </div>
+                    <div id="pub-jogos-pag-info" style="font-size: 0.85rem; color: var(--text-3);"></div>
+                </div>
+
+                <!-- Lista dos jogos da página atual -->
+                <div id="pub-jogos-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 24px;"></div>
+
+                <div id="pub-jogos-empty" class="hidden" style="text-align: center; padding: 40px; color: var(--text-3); background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);">
+                    Nenhum jogo detalhado registrado para este bolão ainda.
+                </div>
+
+                <!-- Barra de Paginação -->
+                <div id="pub-pagination-bar" style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 24px;">
+                    <button id="btn-pub-prev-page" class="btn-sm" style="padding: 8px 18px; border-radius: 6px; cursor: pointer; background: var(--surface-2); color: var(--text); border: 1px solid var(--border);">◀ Anterior</button>
+                    <span id="pub-page-indicator" style="font-size: 0.9rem; font-weight: 600; color: var(--gold);">Página 1 de 1</span>
+                    <button id="btn-pub-next-page" class="btn-sm" style="padding: 8px 18px; border-radius: 6px; cursor: pointer; background: var(--surface-2); color: var(--text); border: 1px solid var(--border);">Próxima ▶</button>
+                </div>
             </div>
+
             <div style="text-align:center; margin-top: 40px; margin-bottom: 40px; color: var(--text-3); font-size: 0.85rem;">
                 Gerado por LotoSmart &copy; 2026
             </div>

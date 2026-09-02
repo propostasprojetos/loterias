@@ -1096,3 +1096,72 @@ footer p {
         width: 100%;
     }
 }
+
+/* ===== PÁGINA PÚBLICA DO BOLÃO (ISOLAMENTO COMPLETO) ===== */
+html.public-bolao-page header,
+html.public-bolao-page footer,
+html.public-bolao-page #main-nav,
+html.public-bolao-page #user-menu,
+html.public-bolao-page #view-gerador,
+html.public-bolao-page #view-historico,
+html.public-bolao-page #view-financeiro,
+html.public-bolao-page #view-bolao,
+html.public-bolao-page #view-admin,
+html.public-bolao-page #view-contato,
+html.public-bolao-page #view-login,
+html.public-bolao-page #view-change-password {
+    display: none !important;
+}
+
+html.public-bolao-page main {
+    margin-left: 0 !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+}
+
+html.public-bolao-page #view-bolao-publico {
+    display: block !important;
+}
+
+.pub-game-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    box-shadow: var(--shadow-card);
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.pub-game-card:hover {
+    border-color: var(--border-h);
+    transform: translateY(-2px);
+}
+
+.pub-ball {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-family: var(--font-num);
+    color: var(--text);
+    margin: 2px;
+}
+
+.pub-ball.ball-lf {
+    background: rgba(147, 51, 234, 0.15);
+    border-color: rgba(168, 85, 247, 0.35);
+    color: #c084fc;
+}
+
+.pub-ball.ball-qn {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(96, 165, 250, 0.35);
+    color: #60a5fa;
+}
+

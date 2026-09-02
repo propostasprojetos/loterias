@@ -26,7 +26,7 @@ SET bolao_id = (
 )
 WHERE p.manter_em_caixa = true AND p.bolao_id IS NULL AND p.bet_id IS NULL;
 
--- 4. Recriar a RPC com suporte a bolao_id direto e bet_id
+-- 4. Recriar a RPC com suporte a bolao_id direto, bet_id e jogos individuais
 CREATE OR REPLACE FUNCTION public.fn_get_bolao_public_report(p_token UUID)
 RETURNS JSON
 LANGUAGE plpgsql
@@ -37,6 +37,7 @@ DECLARE
     v_bolao RECORD;
     v_participantes JSON;
     v_bets JSON;
+    v_jogos JSON;
     v_premios JSON;
     v_vinculos JSON;
     v_pr_caixa JSON;
@@ -58,16 +59,32 @@ BEGIN
     FROM public.participantes p
     WHERE bolao_id = v_bolao.id;
 
-    -- 3. Apostas do Bolão (campos selecionados, sem expor jogos internos)
+    -- 3. Apostas do Bolão
     SELECT COALESCE(json_agg(json_build_object(
         'id', b.id, 'bet_date', b.bet_date, 'lottery_type', b.lottery_type,
-        'total_cost', b.total_cost, 'contest_number', b.contest_number,
-        'bet_number', b.bet_number, 'manter_em_caixa', b.manter_em_caixa
-    )), '[]') INTO v_bets
+        'game_count', b.game_count, 'total_cost', b.total_cost, 'contest_number', b.contest_number,
+        'bet_number', b.bet_number, 'notes', b.notes, 'games', b.games,
+        'manter_em_caixa', b.manter_em_caixa, 'created_at', b.created_at
+    ) ORDER BY b.created_at DESC), '[]') INTO v_bets
     FROM public.bets b
     WHERE bolao_id = v_bolao.id;
 
-    -- 4. Vínculos (jogo_participantes) para calcular investimento por participante
+    -- 4. Jogos detalhados (com dezenas) de bet_games
+    SELECT COALESCE(json_agg(json_build_object(
+        'id', bg.id,
+        'bet_id', bg.bet_id,
+        'game_index', bg.game_index,
+        'numbers', bg.numbers,
+        'lottery_type', bg.lottery_type,
+        'bet_number', b.bet_number,
+        'contest_number', b.contest_number,
+        'bet_date', b.bet_date
+    ) ORDER BY b.created_at DESC, bg.game_index ASC), '[]') INTO v_jogos
+    FROM public.bet_games bg
+    JOIN public.bets b ON b.id = bg.bet_id
+    WHERE b.bolao_id = v_bolao.id;
+
+    -- 5. Vínculos (jogo_participantes) para calcular investimento por participante
     SELECT COALESCE(json_agg(json_build_object(
         'bet_id', jp.bet_id,
         'participante_id', jp.participante_id,
@@ -76,7 +93,7 @@ BEGIN
     FROM public.jogo_participantes jp
     WHERE jp.bet_id IN (SELECT id FROM public.bets WHERE bolao_id = v_bolao.id);
 
-    -- 5. Prêmios rateados por participante
+    -- 6. Prêmios rateados por participante
     SELECT COALESCE(json_agg(json_build_object(
         'bet_id', pp.bet_id,
         'participante_id', pp.participante_id,
@@ -86,7 +103,7 @@ BEGIN
     FROM public.premios_participantes pp
     WHERE pp.bet_id IN (SELECT id FROM public.bets WHERE bolao_id = v_bolao.id);
 
-    -- 6. Prêmios mantidos em caixa (vinculados por bolao_id direto OU via aposta)
+    -- 7. Prêmios mantidos em caixa (vinculados por bolao_id direto OU via aposta)
     SELECT COALESCE(json_agg(json_build_object(
         'bet_id', prz.bet_id,
         'prize_amount', prz.prize_amount,
@@ -101,6 +118,7 @@ BEGIN
         'bolao',        json_build_object('id', v_bolao.id, 'nome', v_bolao.nome),
         'participantes', v_participantes,
         'bets',         v_bets,
+        'jogos',        v_jogos,
         'vinculos',     v_vinculos,
         'premios',      v_premios,
         'pr_caixa',     v_pr_caixa

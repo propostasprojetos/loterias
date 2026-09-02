@@ -144,16 +144,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (hash.startsWith('#/bolao-publico/')) {
             const token = hash.split('/')[2];
             if (token) {
-                // Esconde sidebar, mobile btn e footer para visão pública limpa
-                const sidebar = $('sidebar');
-                const mobileBtn = $('mobile-menu-btn');
+                document.documentElement.classList.add('public-bolao-page');
+                const header = $('app-header') || document.querySelector('header');
+                const mainNav = $('main-nav');
                 const footer = document.querySelector('footer');
-                if (sidebar) sidebar.style.display = 'none';
-                if (mobileBtn) mobileBtn.style.display = 'none';
+                if (header) header.style.display = 'none';
+                if (mainNav) mainNav.style.display = 'none';
                 if (footer) footer.style.display = 'none';
-                // Ajusta o main para ocupar tela inteira
+                
                 const mainEl = document.querySelector('main');
-                if (mainEl) mainEl.style.marginLeft = '0';
+                if (mainEl) {
+                    mainEl.style.marginLeft = '0';
+                    mainEl.style.padding = '0';
+                    mainEl.style.maxWidth = '100%';
+                }
                 
                 switchView('bolao-publico');
                 if (window.initBolaoPublico) {
