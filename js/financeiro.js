@@ -71,10 +71,8 @@ export async function addPrize(prizeData) {
     if (sbReady && state.currentSession) {
         try {
             const dataWithOwner = { ...prizeData, owner_id: state.currentSession.user.id };
-            // prizeData.bet_id is handled below, we might not have it in the prizes table schema explicitly
-            // if we do, it's inserted. If not, it just ignores. We definitely use it to calculate the split.
             const bet_id = dataWithOwner.bet_id;
-            delete dataWithOwner.bet_id; // in case prizes table doesn't have bet_id
+            // Nota: bet_id é incluído no insert pois a tabela prizes possui essa coluna
 
             const { data, error } = await supabaseClient.from('prizes').insert(dataWithOwner).select();
             if (error) throw error;
