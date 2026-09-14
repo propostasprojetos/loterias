@@ -249,20 +249,23 @@ export function renderFinancialDashboard() {
         }
     });
 
-    const betsWithPrize = allPrizes.length;
-    const totalBetEntries = allBets.length;
+    const realBets = allBets.filter(b => b.lottery_type !== 'saque');
+    const realPrizes = allPrizes.filter(p => p.lottery_type !== 'deposito');
+
+    const betsWithPrize = realPrizes.length;
+    const totalBetEntries = realBets.length;
     const hitRate = totalBetEntries > 0 ? ((betsWithPrize / totalBetEntries) * 100) : 0;
 
     if($('fin-total-spent')) {
         $('fin-total-spent').textContent = fmt(totalSpent);
         $('fin-total-spent').className = 'metric-value' + (totalSpent > 0 ? ' negative' : '');
-        $('fin-spent-detail').textContent = `${allBets.length} aposta${allBets.length !== 1 ? 's' : ''} registrada${allBets.length !== 1 ? 's' : ''}`;
+        $('fin-spent-detail').textContent = `${realBets.length} aposta${realBets.length !== 1 ? 's' : ''} registrada${realBets.length !== 1 ? 's' : ''}`;
     }
 
     if($('fin-total-won')) {
         $('fin-total-won').textContent = fmt(totalWon);
         $('fin-total-won').className = 'metric-value' + (totalWon > 0 ? ' positive' : '');
-        $('fin-won-detail').textContent = `${allPrizes.length} prêmio${allPrizes.length !== 1 ? 's' : ''} registrado${allPrizes.length !== 1 ? 's' : ''}`;
+        $('fin-won-detail').textContent = `${realPrizes.length} prêmio${realPrizes.length !== 1 ? 's' : ''} registrado${realPrizes.length !== 1 ? 's' : ''}`;
     }
 
     if($('fin-pl')) {
@@ -326,30 +329,49 @@ export function renderTransactions() {
         const betNumStr = b.bet_number ? `#${b.bet_number} · ` : '';
         const caixaStr = b.manter_em_caixa ? ` · 💰 Em caixa` : '';
         
-        transactions.push({
-            id: b.id, type: 'bet', date: b.bet_date, created_at: b.created_at || b.bet_date, lottery: b.lottery_type,
-            details: `${betNumStr}${b.game_count || 1} jogo${(b.game_count || 1) > 1 ? 's' : ''}` + 
-                     (b.contest_number ? ` · Conc. ${b.contest_number}` : '') + 
-                     partStr + caixaStr +
-                     (b.notes ? ` · ${b.notes}` : ''),
-            amount: -(parseFloat(b.total_cost) || 0), source: 'bets',
-            bolao_id: b.bolao_id,
-            bet_number: b.bet_number,
-            manter_em_caixa: b.manter_em_caixa,
-            participantes: b.jogo_participantes || []
-        });
+        if (b.lottery_type === 'saque') {
+            transactions.push({
+                id: b.id, type: 'saque', date: b.bet_date, created_at: b.created_at || b.bet_date, lottery: 'saque',
+                details: `Saque / Retirada do Caixa ${partStr} ${b.notes ? ` · ${b.notes}` : ''}`,
+                amount: -(parseFloat(b.valor_utilizado_caixa) || 0), source: 'bets',
+                bolao_id: b.bolao_id
+            });
+        } else {
+            transactions.push({
+                id: b.id, type: 'bet', date: b.bet_date, created_at: b.created_at || b.bet_date, lottery: b.lottery_type,
+                details: `${betNumStr}${b.game_count || 1} jogo${(b.game_count || 1) > 1 ? 's' : ''}` + 
+                         (b.contest_number ? ` · Conc. ${b.contest_number}` : '') + 
+                         partStr + caixaStr +
+                         (b.notes ? ` · ${b.notes}` : ''),
+                amount: -(parseFloat(b.total_cost) || 0), source: 'bets',
+                bolao_id: b.bolao_id,
+                bet_number: b.bet_number,
+                manter_em_caixa: b.manter_em_caixa,
+                participantes: b.jogo_participantes || []
+            });
+        }
     });
 
     allPrizes.forEach(p => {
         const caixaStr = p.manter_em_caixa ? ` · 💰 Em caixa` : '';
         const bolaoStr = p.bolao_id ? ` [Bolão]` : '';
-        transactions.push({
-            id: p.id, type: 'prize', date: p.prize_date, created_at: p.created_at || p.prize_date, lottery: p.lottery_type,
-            details: `${p.matches || 0} acertos` + (p.contest_number ? ` · Conc. ${p.contest_number}` : '') + bolaoStr + caixaStr + (p.notes ? ` · ${p.notes}` : ''),
-            amount: parseFloat(p.prize_amount) || 0, source: 'prizes',
-            bolao_id: p.bolao_id,
-            manter_em_caixa: p.manter_em_caixa
-        });
+        
+        if (p.lottery_type === 'deposito') {
+            transactions.push({
+                id: p.id, type: 'deposito', date: p.prize_date, created_at: p.created_at || p.prize_date, lottery: 'deposito',
+                details: `Depósito em Caixa ${bolaoStr} ${p.notes ? ` · ${p.notes}` : ''}`,
+                amount: parseFloat(p.valor_retido_caixa) || 0, source: 'prizes',
+                bolao_id: p.bolao_id
+            });
+        } else {
+            transactions.push({
+                id: p.id, type: 'prize', date: p.prize_date, created_at: p.created_at || p.prize_date, lottery: p.lottery_type,
+                details: `${p.matches || 0} acertos` + (p.contest_number ? ` · Conc. ${p.contest_number}` : '') + bolaoStr + caixaStr + (p.notes ? ` · ${p.notes}` : ''),
+                amount: parseFloat(p.prize_amount) || 0, source: 'prizes',
+                bolao_id: p.bolao_id,
+                manter_em_caixa: p.manter_em_caixa
+            });
+        }
     });
 
     transactions.sort((a, b) => {
@@ -400,12 +422,16 @@ export function renderTransactions() {
             dateStr = t.date.split('-').reverse().join('/');
         }
         
-        const lotteryLabel = t.lottery === 'lf' ? 'Lotofácil' : t.lottery === 'qn' ? 'Quina' : '—';
+        let lotteryLabel = t.lottery === 'lf' ? 'Lotofácil' : t.lottery === 'qn' ? 'Quina' : '—';
+        if (t.type === 'saque' || t.type === 'deposito') lotteryLabel = '—';
+        
         const amountClass = t.amount >= 0 ? 'amount-positive' : 'amount-negative';
         const amountStr = (t.amount >= 0 ? '+' : '') + fmt(Math.abs(t.amount));
-        const typeBadge = t.type === 'bet'
-            ? '<span class="type-badge badge-bet">Gasto</span>'
-            : '<span class="type-badge badge-prize">Prêmio</span>';
+        let typeBadge = '';
+        if (t.type === 'bet') typeBadge = '<span class="type-badge badge-bet">Gasto</span>';
+        else if (t.type === 'prize') typeBadge = '<span class="type-badge badge-prize">Prêmio</span>';
+        else if (t.type === 'saque') typeBadge = '<span class="type-badge" style="background:rgba(232,93,93,.12); color:var(--red);">Saque</span>';
+        else if (t.type === 'deposito') typeBadge = '<span class="type-badge" style="background:var(--green-dim); color:var(--green);">Depósito</span>';
 
         return `<tr>
             <td>${dateStr}</td>
@@ -740,6 +766,32 @@ export async function handleAddDeposit() {
     toast('💰 Depósito registrado no caixa!', 'success');
 }
 
+export async function handleAddWithdraw() {
+    const withdrawDate = $('fin-withdraw-date')?.value;
+    const withdrawAmount = parseFloat($('fin-withdraw-amount')?.value) || 0;
+    const bolaoId = $('fin-withdraw-bolao')?.value || null;
+    const notes = $('fin-withdraw-notes')?.value.trim() || 'Saque do caixa';
+
+    if (!withdrawDate) { toast('Informe a data do saque/retirada'); return; }
+    if (withdrawAmount <= 0) { toast('Informe o valor a retirar'); return; }
+
+    // Retirada/Saque é registrado como uma "aposta" que consumiu caixa, mas de custo zero
+    await addBet({
+        bet_date: withdrawDate,
+        lottery_type: 'saque',
+        qty_games: 0,
+        total_cost: 0,
+        contest_number: null,
+        notes: notes,
+        bolao_id: bolaoId,
+        manter_em_caixa: true,
+        valor_utilizado_caixa: withdrawAmount
+    });
+
+    $('fin-withdraw-notes').value = '';
+    $('fin-withdraw-amount').value = '0.00';
+    toast('💸 Saque/Retirada registrado no caixa!', 'success');
+}
 
 // EDIT BET MODAL LOGIC
 // ==========================================
