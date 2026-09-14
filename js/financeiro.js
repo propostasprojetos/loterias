@@ -825,7 +825,7 @@ export async function handleAddWithdraw() {
     await addBet({
         bet_date: withdrawDate,
         lottery_type: 'saque',
-        qty_games: 0,
+        game_count: 0,
         total_cost: 0,
         contest_number: null,
         notes: notes,
