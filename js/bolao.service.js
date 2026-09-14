@@ -282,6 +282,9 @@ export async function obterRelatorioBolao(bolao_id) {
         console.warn('Aviso ao consultar prêmios em caixa:', e);
     }
 
+    // Participantes do bolão
+    const participantes = await listParticipantes(bolao_id);
+
     // Vínculos (jogo_participantes) para investimento correto (inclui as que não ganharam)
     let vinculos = [];
     if (betIds.length > 0) {
