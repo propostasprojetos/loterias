@@ -271,16 +271,24 @@ export function renderFinancialDashboard() {
         $('fin-pl-detail').textContent = pl >= 0 ? 'Lucro acumulado' : 'Prejuízo acumulado';
     }
 
-    // Total em Caixa
-    const caixaSpent = allBets.filter(b => b.manter_em_caixa).reduce((s, b) => s + (parseFloat(b.total_cost) || 0), 0);
-    const caixaWon = allPrizes.filter(p => p.manter_em_caixa).reduce((s, p) => s + (parseFloat(p.prize_amount) || 0), 0);
+    // Total em Caixa — usa campos numéricos parciais
+    const caixaSpent = allBets.reduce((s, b) => {
+        let val = parseFloat(b.valor_utilizado_caixa || 0);
+        if (val === 0 && b.manter_em_caixa) val = parseFloat(b.total_cost || 0);
+        return s + val;
+    }, 0);
+    const caixaWon = allPrizes.reduce((s, p) => {
+        let val = parseFloat(p.valor_retido_caixa || 0);
+        if (val === 0 && p.manter_em_caixa) val = parseFloat(p.prize_amount || 0);
+        return s + val;
+    }, 0);
     const saldoCaixa = caixaWon - caixaSpent;
 
     if($('fin-total-caixa')) {
         $('fin-total-caixa').textContent = fmt(saldoCaixa);
         $('fin-total-caixa').className = 'metric-value ' + (saldoCaixa > 0 ? 'positive' : (saldoCaixa < 0 ? 'negative' : ''));
         if($('fin-caixa-detail')) {
-            $('fin-caixa-detail').textContent = `${fmt(caixaWon)} prêmios · ${fmt(caixaSpent)} apostas`;
+            $('fin-caixa-detail').textContent = `${fmt(caixaWon)} entradas · ${fmt(caixaSpent)} saídas`;
         }
     }
 
@@ -704,7 +712,35 @@ export function handleAddPrize() {
     toast('🏆 Prêmio registrado com sucesso!', 'success');
 }
 
-// ==========================================
+export async function handleAddDeposit() {
+    const depositDate = $('fin-deposit-date')?.value;
+    const depositAmount = parseFloat($('fin-deposit-amount')?.value) || 0;
+    const bolaoId = $('fin-deposit-bolao')?.value || null;
+    const notes = $('fin-deposit-notes')?.value.trim() || 'Depósito no caixa';
+
+    if (!depositDate) { toast('Informe a data do depósito'); return; }
+    if (depositAmount <= 0) { toast('Informe o valor a depositar'); return; }
+
+    // Depósito é registrado como um prêmio retido no caixa, sem aposta vinculada
+    await addPrize({
+        prize_date: depositDate,
+        lottery_type: 'deposito',
+        matches: 0,
+        prize_amount: depositAmount,
+        contest_number: null,
+        notes: notes,
+        bet_id: null,
+        bolao_id: bolaoId,
+        manter_em_caixa: true,
+        valor_retido_caixa: depositAmount
+    });
+
+    $('fin-deposit-notes').value = '';
+    $('fin-deposit-amount').value = '0.00';
+    toast('💰 Depósito registrado no caixa!', 'success');
+}
+
+
 // EDIT BET MODAL LOGIC
 // ==========================================
 

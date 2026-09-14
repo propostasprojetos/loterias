@@ -8,7 +8,7 @@ import { state } from './js/store.js';
 import { loginUser, logoutUser, changePassword, checkAuthState } from './js/auth.js';
 import { switchView, setupMobileMenu } from './js/ui.js';
 import { generateAll, updateSummary } from './js/gerador.js';
-import { handleAddBet, handleAddPrize, setFinFilter, refreshFinancialData } from './js/financeiro.js';
+import { handleAddBet, handleAddPrize, handleAddDeposit, setFinFilter, refreshFinancialData } from './js/financeiro.js';
 import { enqueueBetsForAutomation, clearAutomationQueue, resetAllFinancialData, refreshPendingPanel, initBetGamesRealtime } from './js/queue.js';
 import { clearHistory, renderHistory } from './js/history.js';
 import { initBolao } from './js/bolao.js';
@@ -65,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Financeiro CRUD
     $('btn-add-bet')?.addEventListener('click', handleAddBet);
     $('btn-add-prize')?.addEventListener('click', handleAddPrize);
+    $('btn-add-deposit')?.addEventListener('click', handleAddDeposit);
 
     // Filter Buttons logic (re-delegating to financeiro.js)
     $$('.fin-filter').forEach(btn => {
