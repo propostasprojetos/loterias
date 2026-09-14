@@ -218,6 +218,8 @@ export async function refreshFinancialData() {
     } catch(e) {
         // ignora se o modulo bolao não estiver pronto
     }
+    
+    updateCaixaBalances();
 }
 
 function populateEditBetSelect(boloes_ativos) {
@@ -738,6 +740,39 @@ export function handleAddPrize() {
     toast('🏆 Prêmio registrado com sucesso!', 'success');
 }
 
+export function getSaldoCaixa(targetBolaoId = null) {
+    let won = 0;
+    let spent = 0;
+    
+    // Tratamento para empty string (Individual) -> null
+    const normalizeId = id => (id === '' ? null : id);
+    const target = normalizeId(targetBolaoId);
+
+    allPrizes.forEach(p => {
+        if (normalizeId(p.bolao_id) == target) {
+            won += (parseFloat(p.valor_retido_caixa) || 0);
+        }
+    });
+    allBets.forEach(b => {
+        if (normalizeId(b.bolao_id) == target) {
+            spent += (parseFloat(b.valor_utilizado_caixa) || 0);
+        }
+    });
+
+    return won - spent;
+}
+
+export function updateCaixaBalances() {
+    const depBolao = $('fin-deposit-bolao')?.value || null;
+    const withBolao = $('fin-withdraw-bolao')?.value || null;
+    
+    const depSaldo = getSaldoCaixa(depBolao);
+    const withSaldo = getSaldoCaixa(withBolao);
+    
+    if ($('deposit-saldo-valor')) $('deposit-saldo-valor').textContent = `R$ ${fmt(depSaldo)}`;
+    if ($('withdraw-saldo-valor')) $('withdraw-saldo-valor').textContent = `R$ ${fmt(withSaldo)}`;
+}
+
 export async function handleAddDeposit() {
     const depositDate = $('fin-deposit-date')?.value;
     const depositAmount = parseFloat($('fin-deposit-amount')?.value) || 0;
@@ -770,10 +805,21 @@ export async function handleAddWithdraw() {
     const withdrawDate = $('fin-withdraw-date')?.value;
     const withdrawAmount = parseFloat($('fin-withdraw-amount')?.value) || 0;
     const bolaoId = $('fin-withdraw-bolao')?.value || null;
-    const notes = $('fin-withdraw-notes')?.value.trim() || 'Saque do caixa';
+    let notes = $('fin-withdraw-notes')?.value.trim() || 'Saque do caixa';
+    const usadoEmJogos = $('fin-withdraw-usado-jogos')?.checked;
 
     if (!withdrawDate) { toast('Informe a data do saque/retirada'); return; }
     if (withdrawAmount <= 0) { toast('Informe o valor a retirar'); return; }
+
+    const saldoDisponivel = getSaldoCaixa(bolaoId);
+    if (withdrawAmount > saldoDisponivel) {
+        toast(`⚠️ Saldo insuficiente! O saldo atual deste caixa é R$ ${fmt(saldoDisponivel)}`, 'error');
+        return;
+    }
+
+    if (usadoEmJogos) {
+        notes = `🎮 Utilizado em Jogos: ${notes}`;
+    }
 
     // Retirada/Saque é registrado como uma "aposta" que consumiu caixa, mas de custo zero
     await addBet({
@@ -790,6 +836,7 @@ export async function handleAddWithdraw() {
 
     $('fin-withdraw-notes').value = '';
     $('fin-withdraw-amount').value = '0.00';
+    if ($('fin-withdraw-usado-jogos')) $('fin-withdraw-usado-jogos').checked = false;
     toast('💸 Saque/Retirada registrado no caixa!', 'success');
 }
 
@@ -1095,6 +1142,14 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCaixaToggle('fin-prize-caixa', 'fin-prize-caixa-amount-wrap', 'fin-prize-caixa-amount', 'fin-prize-amount');
     setupCaixaToggle('edit-bet-caixa', 'edit-bet-caixa-amount-wrap', 'edit-bet-caixa-amount', null);
     setupCaixaToggle('gen-bolao-caixa', 'gen-bolao-caixa-amount-wrap', 'gen-bolao-caixa-amount', null); // total is dynamic here
+
+    // Caixa dinâmico
+    $('fin-deposit-bolao')?.addEventListener('change', updateCaixaBalances);
+    $('fin-withdraw-bolao')?.addEventListener('change', updateCaixaBalances);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    if ($('fin-deposit-date') && !$('fin-deposit-date').value) $('fin-deposit-date').value = todayStr;
+    if ($('fin-withdraw-date') && !$('fin-withdraw-date').value) $('fin-withdraw-date').value = todayStr;
 
 });
 

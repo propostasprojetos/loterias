@@ -511,6 +511,13 @@
                 <!-- Depósito no Caixa -->
                 <div class="fin-form-card" style="border-left: 3px solid var(--green);">
                     <h3>💰 Depósito no Caixa</h3>
+
+                    <!-- Saldo atual -->
+                    <div id="deposit-saldo-info" style="background: rgba(109,213,117,.08); border: 1px solid var(--green-border); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 16px; display:flex; align-items:center; justify-content:space-between;">
+                        <span style="font-size:0.82rem; color:var(--text-3);">💰 Saldo disponível em caixa</span>
+                        <span id="deposit-saldo-valor" style="font-size:1.0rem; font-weight:700; color:var(--green); font-family:var(--font-num);">R$ 0,00</span>
+                    </div>
+
                     <p style="font-size:0.82rem; color:var(--text-3); margin-bottom:14px; line-height:1.5;">
                         Registre entradas de dinheiro físico (ex: pagamento de cotas, contribuições dos participantes).
                     </p>
@@ -549,6 +556,13 @@
                 <!-- Saque / Retirada do Caixa -->
                 <div class="fin-form-card" style="border-left: 3px solid var(--red);">
                     <h3>💸 Saque / Retirada</h3>
+
+                    <!-- Saldo atual -->
+                    <div id="withdraw-saldo-info" style="background: rgba(232,93,93,.08); border: 1px solid rgba(232,93,93,.25); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 16px; display:flex; align-items:center; justify-content:space-between;">
+                        <span style="font-size:0.82rem; color:var(--text-3);">💰 Saldo disponível em caixa</span>
+                        <span id="withdraw-saldo-valor" style="font-size:1.0rem; font-weight:700; color:var(--gold); font-family:var(--font-num);">R$ 0,00</span>
+                    </div>
+
                     <p style="font-size:0.82rem; color:var(--text-3); margin-bottom:14px; line-height:1.5;">
                         Registre saídas de dinheiro físico (ex: rateio de prêmio, distribuição aos participantes).
                     </p>
@@ -580,11 +594,18 @@
                                 <input type="text" id="fin-withdraw-notes" placeholder="Ex: Rateio do prêmio concurso 2810...">
                             </div>
                         </div>
+                        <div class="field" style="grid-column: 1 / -1;">
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:6px 0;">
+                                <input type="checkbox" id="fin-withdraw-usado-jogos" style="width:auto; accent-color:var(--teal);">
+                                <span style="font-size:0.88rem; color:var(--text);">🎮 Utilizado em Jogos <span style="font-size:0.78rem; color:var(--text-3);">(marcar para rastreio de apostas pagas com caixa)</span></span>
+                            </label>
+                        </div>
                     </div>
                     <button class="btn-danger" id="btn-add-withdraw" style="width: auto; padding: 12px 20px;">💸 Registrar Saída</button>
                 </div>
 
             </div> <!-- fim linha 2 -->
+
 
 
 
