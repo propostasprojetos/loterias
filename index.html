@@ -340,8 +340,12 @@
                 </div>
             </div>
 
-            <!-- Formulários -->
-            <div class="fin-forms">
+            <!-- ===== LINHA 1: Registrar Aposta + Registrar Prêmio ===== -->
+            <h3 style="font-size: 1.0rem; color: var(--text-2); margin: 0 0 14px 0; border-bottom: 1px solid var(--border); padding-bottom: 8px; letter-spacing: 0.02em;">
+                📋 Apostas &amp; Prêmios
+            </h3>
+            <div class="fin-forms" style="margin-bottom: 32px;">
+
                 <!-- Registrar Aposta -->
                 <div class="fin-form-card">
                     <h3>Registrar Aposta</h3>
@@ -494,18 +498,21 @@
                         </div>
                     </div>
                     <button class="btn-primary" id="btn-add-prize" style="width: auto; padding: 12px 20px; background: var(--green); color: #0e1015;">🎉 Registrar Prêmio</button>
-                </div> <!-- fim fin-forms -->
+                </div>
 
-            <!-- Movimentação de Caixa (Em linha separada) -->
-            <h3 style="font-size: 1.05rem; color: var(--gold); margin: 32px 0 16px 0; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
-                💸 Movimentação do Caixa (Físico)
+            </div> <!-- fim linha 1 -->
+
+            <!-- ===== LINHA 2: Movimentação de Caixa ===== -->
+            <h3 style="font-size: 1.0rem; color: var(--text-2); margin: 0 0 14px 0; border-bottom: 1px solid var(--border); padding-bottom: 8px; letter-spacing: 0.02em;">
+                💰 Movimentação do Caixa (Dinheiro Físico)
             </h3>
             <div class="fin-forms" style="margin-bottom: 32px;">
-                <!-- Depositar no Caixa -->
+
+                <!-- Depósito no Caixa -->
                 <div class="fin-form-card" style="border-left: 3px solid var(--green);">
                     <h3>💰 Depósito no Caixa</h3>
                     <p style="font-size:0.82rem; color:var(--text-3); margin-bottom:14px; line-height:1.5;">
-                        Entrada de dinheiro (ex: pagamento de cotas e contribuições).
+                        Registre entradas de dinheiro físico (ex: pagamento de cotas, contribuições dos participantes).
                     </p>
                     <div class="fin-form-grid">
                         <div class="field">
@@ -532,18 +539,18 @@
                         <div class="field" style="grid-column: 1 / -1;">
                             <label for="fin-deposit-notes">Descrição / Origem</label>
                             <div class="input-row">
-                                <input type="text" id="fin-deposit-notes" placeholder="Ex: Cotas João e Maria...">
+                                <input type="text" id="fin-deposit-notes" placeholder="Ex: Cotas de setembro — João e Maria...">
                             </div>
                         </div>
                     </div>
                     <button class="btn-primary" id="btn-add-deposit" style="width: auto; padding: 12px 20px; background: var(--green); color: #0e1015;">💰 Registrar Entrada</button>
                 </div>
 
-                <!-- Retirada / Saque do Caixa -->
+                <!-- Saque / Retirada do Caixa -->
                 <div class="fin-form-card" style="border-left: 3px solid var(--red);">
                     <h3>💸 Saque / Retirada</h3>
                     <p style="font-size:0.82rem; color:var(--text-3); margin-bottom:14px; line-height:1.5;">
-                        Saída de dinheiro (ex: rateio e distribuição aos participantes, saques).
+                        Registre saídas de dinheiro físico (ex: rateio de prêmio, distribuição aos participantes).
                     </p>
                     <div class="fin-form-grid">
                         <div class="field">
@@ -570,13 +577,16 @@
                         <div class="field" style="grid-column: 1 / -1;">
                             <label for="fin-withdraw-notes">Descrição / Motivo</label>
                             <div class="input-row">
-                                <input type="text" id="fin-withdraw-notes" placeholder="Ex: Rateio do prêmio 2810...">
+                                <input type="text" id="fin-withdraw-notes" placeholder="Ex: Rateio do prêmio concurso 2810...">
                             </div>
                         </div>
                     </div>
                     <button class="btn-danger" id="btn-add-withdraw" style="width: auto; padding: 12px 20px;">💸 Registrar Saída</button>
                 </div>
-            </div>
+
+            </div> <!-- fim linha 2 -->
+
+
 
             <!-- Tabela de Transações -->
             <div class="fin-table-section">
