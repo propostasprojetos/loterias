@@ -494,13 +494,18 @@
                         </div>
                     </div>
                     <button class="btn-primary" id="btn-add-prize" style="width: auto; padding: 12px 20px; background: var(--green); color: #0e1015;">🎉 Registrar Prêmio</button>
-                </div>
+                </div> <!-- fim fin-forms -->
 
+            <!-- Movimentação de Caixa (Em linha separada) -->
+            <h3 style="font-size: 1.05rem; color: var(--gold); margin: 32px 0 16px 0; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                💸 Movimentação do Caixa (Físico)
+            </h3>
+            <div class="fin-forms" style="margin-bottom: 32px;">
                 <!-- Depositar no Caixa -->
-                <div class="fin-form-card" style="border-left: 3px solid var(--gold);">
+                <div class="fin-form-card" style="border-left: 3px solid var(--green);">
                     <h3>💰 Depósito no Caixa</h3>
                     <p style="font-size:0.82rem; color:var(--text-3); margin-bottom:14px; line-height:1.5;">
-                        Registre quando os participantes entregam dinheiro físico para o bolão (pagamento de cotas, contribuições, etc).
+                        Entrada de dinheiro (ex: pagamento de cotas e contribuições).
                     </p>
                     <div class="fin-form-grid">
                         <div class="field">
@@ -513,7 +518,7 @@
                             <label for="fin-deposit-amount">Valor (R$)</label>
                             <div class="input-row">
                                 <span class="prefix">R$</span>
-                                <input type="number" id="fin-deposit-amount" value="0.00" min="0" step="0.50" style="color:var(--gold);">
+                                <input type="number" id="fin-deposit-amount" value="0.00" min="0" step="0.50" style="color:var(--green);">
                             </div>
                         </div>
                         <div class="field" style="grid-column: 1 / -1;">
@@ -521,18 +526,55 @@
                             <div class="input-row">
                                 <select id="fin-deposit-bolao">
                                     <option value="">Caixa Individual (Sem Bolão)</option>
-                                    <!-- opções dinâmicas -->
                                 </select>
                             </div>
                         </div>
                         <div class="field" style="grid-column: 1 / -1;">
                             <label for="fin-deposit-notes">Descrição / Origem</label>
                             <div class="input-row">
-                                <input type="text" id="fin-deposit-notes" placeholder="Ex: Cotas de setembro, Contribuição João...">
+                                <input type="text" id="fin-deposit-notes" placeholder="Ex: Cotas João e Maria...">
                             </div>
                         </div>
                     </div>
-                    <button class="btn-primary" id="btn-add-deposit" style="width: auto; padding: 12px 20px; background: var(--gold); color: #0e1015;">💰 Depositar no Caixa</button>
+                    <button class="btn-primary" id="btn-add-deposit" style="width: auto; padding: 12px 20px; background: var(--green); color: #0e1015;">💰 Registrar Entrada</button>
+                </div>
+
+                <!-- Retirada / Saque do Caixa -->
+                <div class="fin-form-card" style="border-left: 3px solid var(--red);">
+                    <h3>💸 Saque / Retirada</h3>
+                    <p style="font-size:0.82rem; color:var(--text-3); margin-bottom:14px; line-height:1.5;">
+                        Saída de dinheiro (ex: rateio e distribuição aos participantes, saques).
+                    </p>
+                    <div class="fin-form-grid">
+                        <div class="field">
+                            <label for="fin-withdraw-date">Data</label>
+                            <div class="input-row">
+                                <input type="date" id="fin-withdraw-date">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="fin-withdraw-amount">Valor (R$)</label>
+                            <div class="input-row">
+                                <span class="prefix">R$</span>
+                                <input type="number" id="fin-withdraw-amount" value="0.00" min="0" step="0.50" style="color:var(--red);">
+                            </div>
+                        </div>
+                        <div class="field" style="grid-column: 1 / -1;">
+                            <label for="fin-withdraw-bolao">Bolão</label>
+                            <div class="input-row">
+                                <select id="fin-withdraw-bolao">
+                                    <option value="">Caixa Individual (Sem Bolão)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="field" style="grid-column: 1 / -1;">
+                            <label for="fin-withdraw-notes">Descrição / Motivo</label>
+                            <div class="input-row">
+                                <input type="text" id="fin-withdraw-notes" placeholder="Ex: Rateio do prêmio 2810...">
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn-danger" id="btn-add-withdraw" style="width: auto; padding: 12px 20px;">💸 Registrar Saída</button>
                 </div>
             </div>
 

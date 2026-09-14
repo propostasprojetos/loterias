@@ -405,6 +405,26 @@ export function populateFinanceiroSelects(boloes_ativos, apostas_recentes) {
         if (val) prizeBolao.value = val;
     }
     
+    const depositBolao = $('fin-deposit-bolao');
+    if (depositBolao) {
+        const val = depositBolao.value;
+        depositBolao.innerHTML = '<option value="">Caixa Individual (Sem Bolão)</option>';
+        boloes_ativos.forEach(b => {
+            depositBolao.innerHTML += `<option value="${b.id}">${b.nome}</option>`;
+        });
+        if (val) depositBolao.value = val;
+    }
+    
+    const withdrawBolao = $('fin-withdraw-bolao');
+    if (withdrawBolao) {
+        const val = withdrawBolao.value;
+        withdrawBolao.innerHTML = '<option value="">Caixa Individual (Sem Bolão)</option>';
+        boloes_ativos.forEach(b => {
+            withdrawBolao.innerHTML += `<option value="${b.id}">${b.nome}</option>`;
+        });
+        if (val) withdrawBolao.value = val;
+    }
+
     const prizeBet = $('fin-prize-bet');
     if (prizeBet) {
         const val = prizeBet.value;
