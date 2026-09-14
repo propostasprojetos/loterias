@@ -43,6 +43,13 @@ export async function enqueueBetsForAutomation() {
             }
         }
 
+        // Caixa
+        const manterEmCaixa = $('gen-bolao-caixa')?.checked || false;
+        let saldoCaixaGlobalRestante = 0;
+        if (manterEmCaixa) {
+            saldoCaixaGlobalRestante = parseFloat($('gen-bolao-caixa-amount')?.value) || 0;
+        }
+
         for (const g of state.activeGames) {
             const qty = qtys[g.slug];
             if (qty > 0) {
@@ -53,6 +60,17 @@ export async function enqueueBetsForAutomation() {
                 const gamesArr = state.currentGamesData[g.slug]?.games || [];
 
                 if (gamesArr.length === 0) continue;
+
+                let valorUtilizadoCaixaParaEstaAposta = 0;
+                if (manterEmCaixa && saldoCaixaGlobalRestante > 0) {
+                    if (saldoCaixaGlobalRestante >= total) {
+                        valorUtilizadoCaixaParaEstaAposta = total;
+                        saldoCaixaGlobalRestante -= total;
+                    } else {
+                        valorUtilizadoCaixaParaEstaAposta = saldoCaixaGlobalRestante;
+                        saldoCaixaGlobalRestante = 0;
+                    }
+                }
 
                 const betData = {
                     bet_date: today,
@@ -65,7 +83,9 @@ export async function enqueueBetsForAutomation() {
                     generation_mode: strategy,
                     automation_status: 'queued',
                     automation_requested_at: new Date().toISOString(),
-                    bolao_id: genBolaoId
+                    bolao_id: genBolaoId,
+                    manter_em_caixa: manterEmCaixa,
+                    valor_utilizado_caixa: valorUtilizadoCaixaParaEstaAposta
                 };
 
                 let insertedBet = null;

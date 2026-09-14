@@ -625,6 +625,14 @@ export function handleAddBet() {
     }
 
     const manterEmCaixa = $('fin-bet-caixa')?.checked || false;
+    let valorCaixa = 0;
+    if (manterEmCaixa) {
+        valorCaixa = parseFloat($('fin-bet-caixa-amount').value) || totalCost;
+        if (valorCaixa > totalCost) {
+            toast('O valor utilizado do caixa não pode ser maior que o custo da aposta.');
+            return;
+        }
+    }
 
     addBet({
         bet_date: betDate,
@@ -634,12 +642,14 @@ export function handleAddBet() {
         contest_number: contestNumber,
         notes: notes,
         bolao_id: bolaoId,
-        manter_em_caixa: manterEmCaixa
+        manter_em_caixa: manterEmCaixa,
+        valor_utilizado_caixa: valorCaixa
     }, participantes);
 
     $('fin-bet-contest').value = '';
     $('fin-bet-notes').value = '';
     if ($('fin-bet-caixa')) $('fin-bet-caixa').checked = false;
+    if ($('fin-bet-caixa-amount-wrap')) $('fin-bet-caixa-amount-wrap').classList.add('hidden');
     toast('💸 Gasto registrado com sucesso!');
 }
 
@@ -663,6 +673,15 @@ export function handleAddPrize() {
     if (!prizeDate) { toast('Informe a data do resultado'); return; }
     if (prizeAmount <= 0) { toast('Informe o valor do prêmio'); return; }
 
+    let valorCaixa = 0;
+    if (manterEmCaixa) {
+        valorCaixa = parseFloat($('fin-prize-caixa-amount').value) || prizeAmount;
+        if (valorCaixa > prizeAmount) {
+            toast('O valor retido não pode ser maior que o prêmio total.');
+            return;
+        }
+    }
+
     addPrize({
         prize_date: prizeDate,
         lottery_type: lotteryType,
@@ -672,7 +691,8 @@ export function handleAddPrize() {
         notes: notes,
         bet_id: betId,
         bolao_id: bolaoId,
-        manter_em_caixa: manterEmCaixa
+        manter_em_caixa: manterEmCaixa,
+        valor_retido_caixa: valorCaixa
     });
 
     $('fin-prize-contest').value = '';
@@ -680,6 +700,7 @@ export function handleAddPrize() {
     $('fin-prize-bet').value = '';
     if ($('fin-prize-bolao')) $('fin-prize-bolao').value = '';
     if ($('fin-prize-caixa')) $('fin-prize-caixa').checked = false;
+    if ($('fin-prize-caixa-amount-wrap')) $('fin-prize-caixa-amount-wrap').classList.add('hidden');
     toast('🏆 Prêmio registrado com sucesso!', 'success');
 }
 
@@ -695,6 +716,21 @@ async function openEditBetModal(id) {
     $('edit-bet-notes').value = bet.notes || '';
     $('edit-bet-contest').value = bet.contest_number || '';
     $('edit-bet-bolao').value = bet.bolao_id || '';
+    
+    // Configurar caixa
+    const editCaixa = $('edit-bet-caixa');
+    const editCaixaWrap = $('edit-bet-caixa-amount-wrap');
+    const editCaixaAmount = $('edit-bet-caixa-amount');
+    
+    if (bet.manter_em_caixa || (bet.valor_utilizado_caixa && bet.valor_utilizado_caixa > 0)) {
+        editCaixa.checked = true;
+        editCaixaWrap.classList.remove('hidden');
+        editCaixaAmount.value = bet.valor_utilizado_caixa || bet.total_cost || 0;
+    } else {
+        editCaixa.checked = false;
+        editCaixaWrap.classList.add('hidden');
+        editCaixaAmount.value = bet.total_cost || 0; // fallback se ele marcar
+    }
     
     $('modal-edit-bet').classList.remove('hidden');
     
@@ -904,6 +940,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const contest = parseInt($('edit-bet-contest').value) || null;
         const bolao_id = $('edit-bet-bolao').value || null;
         
+        // Caixa fields
+        const manterEmCaixa = $('edit-bet-caixa')?.checked || false;
+        let valorCaixa = 0;
+        
+        const bet = allBets.find(b => b.id === id);
+        if (manterEmCaixa) {
+            valorCaixa = parseFloat($('edit-bet-caixa-amount').value) || (bet ? bet.total_cost : 0);
+            if (bet && valorCaixa > bet.total_cost) {
+                toast('O valor utilizado do caixa não pode ser maior que o custo da aposta.');
+                return;
+            }
+        }
+
         let participantes = [];
         if (bolao_id) {
             let sum = 0;
@@ -918,12 +967,47 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        const updateData = { notes, contest_number: contest, bolao_id };
+        const updateData = { 
+            notes, 
+            contest_number: contest, 
+            bolao_id,
+            manter_em_caixa: manterEmCaixa,
+            valor_utilizado_caixa: valorCaixa
+        };
         await updateBet(id, updateData, participantes);
         
         $('modal-edit-bet').classList.add('hidden');
         toast('Aposta atualizada com sucesso!', 'success');
     });
+
+    // Toggles do Caixa
+    const setupCaixaToggle = (checkboxId, wrapId, amountId, costId) => {
+        const chk = $(checkboxId);
+        if (chk) {
+            chk.addEventListener('change', (e) => {
+                const wrap = $(wrapId);
+                const amt = $(amountId);
+                if (e.target.checked) {
+                    if (wrap) wrap.classList.remove('hidden');
+                    // auto preencher com o total se possível
+                    if (amt && costId) {
+                        const total = parseFloat($(costId)?.value) || 0;
+                        if (total > 0 && parseFloat(amt.value) === 0) {
+                            amt.value = total.toFixed(2);
+                        }
+                    }
+                } else {
+                    if (wrap) wrap.classList.add('hidden');
+                }
+            });
+        }
+    };
+
+    setupCaixaToggle('fin-bet-caixa', 'fin-bet-caixa-amount-wrap', 'fin-bet-caixa-amount', 'fin-bet-cost');
+    setupCaixaToggle('fin-prize-caixa', 'fin-prize-caixa-amount-wrap', 'fin-prize-caixa-amount', 'fin-prize-amount');
+    setupCaixaToggle('edit-bet-caixa', 'edit-bet-caixa-amount-wrap', 'edit-bet-caixa-amount', null);
+    setupCaixaToggle('gen-bolao-caixa', 'gen-bolao-caixa-amount-wrap', 'gen-bolao-caixa-amount', null); // total is dynamic here
+
 });
 
 export function setFinFilter(filter) {

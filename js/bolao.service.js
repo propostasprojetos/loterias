@@ -242,7 +242,7 @@ export async function obterRelatorioBolao(bolao_id) {
     // Apostas do bolão
     const { data: bets, error: bErr } = await supabaseClient
         .from('bets')
-        .select('id, total_cost, lottery_type, bet_date, manter_em_caixa')
+        .select('id, total_cost, lottery_type, bet_date, manter_em_caixa, valor_utilizado_caixa')
         .eq('bolao_id', bolao_id)
         .eq('owner_id', uid());
     if (bErr) throw bErr;
@@ -266,7 +266,7 @@ export async function obterRelatorioBolao(bolao_id) {
     try {
         let przQuery = supabaseClient
             .from('prizes')
-            .select('id, prize_amount, bet_id, bolao_id, manter_em_caixa')
+            .select('id, prize_amount, bet_id, bolao_id, manter_em_caixa, valor_retido_caixa')
             .eq('owner_id', uid());
 
         if (betIds.length > 0) {
@@ -282,27 +282,53 @@ export async function obterRelatorioBolao(bolao_id) {
         console.warn('Aviso ao consultar prêmios em caixa:', e);
     }
 
-    // Participantes do bolão
-    const participantes = await listParticipantes(bolao_id);
+    // Vínculos (jogo_participantes) para investimento correto (inclui as que não ganharam)
+    let vinculos = [];
+    if (betIds.length > 0) {
+        const { data: jp, error: jErr } = await supabaseClient
+            .from('jogo_participantes')
+            .select('bet_id, participante_id, percentual')
+            .in('bet_id', betIds)
+            .eq('owner_id', uid());
+        if (!jErr && jp) vinculos = jp;
+    }
 
     const totalApostado = (bets ?? []).reduce((s, b) => s + Number(b.total_cost), 0);
     const totalPremiado = premios.reduce((s, p) => s + Number(p.premio_recebido), 0);
     
-    // Caixa
-    const totalApostadoCaixa = (bets ?? []).filter(b => b.manter_em_caixa).reduce((s, b) => s + Number(b.total_cost), 0);
-    const totalPremiadoCaixa = pr_caixa.filter(p => p.manter_em_caixa).reduce((s, p) => s + Number(p.prize_amount), 0);
+    // Caixa Parcial ou Total
+    const totalApostadoCaixa = (bets ?? []).reduce((s, b) => {
+        let val = Number(b.valor_utilizado_caixa || 0);
+        if (val === 0 && b.manter_em_caixa) val = Number(b.total_cost);
+        return s + val;
+    }, 0);
+    const totalPremiadoCaixa = pr_caixa.reduce((s, p) => {
+        let val = Number(p.valor_retido_caixa || 0);
+        if (val === 0 && p.manter_em_caixa) val = Number(p.prize_amount);
+        return s + val;
+    }, 0);
     const saldoCaixa = totalPremiadoCaixa - totalApostadoCaixa;
 
     // Ranking por participante
     const ranking = participantes.map(part => {
         const meusPremios = premios.filter(p => p.participante_id === part.id);
-        const meusJogos = betIds.length; // simplificado — apostas do bolão
+        const meusVinculos = vinculos.filter(v => v.participante_id === part.id);
+        const meusJogos = betIds.length; // quantidade de apostas que compõem o bolão
+        
         const recebido = meusPremios.reduce((s, p) => s + Number(p.premio_recebido), 0);
+        
+        // Investido individual = Custo da Aposta MENOS O Que Foi Usado do Caixa * (Minha Cota / 100)
         const investido = (bets ?? []).reduce((s, b) => {
-            const vinculo = meusPremios.find(p => p.bet_id === b.id);
-            const pct = vinculo ? Number(vinculo.percentual) : 0;
-            return s + Number(b.total_cost) * pct / 100;
+            const vinculo = meusVinculos.find(v => v.bet_id === b.id);
+            if (!vinculo) return s;
+            
+            let valCaixa = Number(b.valor_utilizado_caixa || 0);
+            if (valCaixa === 0 && b.manter_em_caixa) valCaixa = Number(b.total_cost);
+            
+            const custoReal = Math.max(0, Number(b.total_cost) - valCaixa);
+            return s + (custoReal * Number(vinculo.percentual) / 100);
         }, 0);
+        
         return {
             participante: part,
             jogos: meusJogos,
@@ -327,6 +353,8 @@ export async function obterRelatorioBolao(bolao_id) {
         totalPremiado: +totalPremiado.toFixed(2),
         saldo: +(totalPremiado - totalApostado).toFixed(2),
         saldoCaixa: +saldoCaixa.toFixed(2),
+        arrecadadoParticipantes: +(totalApostado - totalApostadoCaixa).toFixed(2),
+        totalApostadoCaixa: +totalApostadoCaixa.toFixed(2),
         roi: totalApostado > 0
             ? +((totalPremiado / totalApostado - 1) * 100).toFixed(2)
             : 0,

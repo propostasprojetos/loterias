@@ -51,21 +51,34 @@ export async function initBolaoPublico(token) {
         const totalApostado = bets.reduce((s, b) => s + Number(b.total_cost || 0), 0);
         const totalPremiado = premios.reduce((s, p) => s + Number(p.premio_recebido || 0), 0);
         
-        const totalApostadoCaixa = bets.filter(b => b.manter_em_caixa).reduce((s, b) => s + Number(b.total_cost || 0), 0);
-        const totalPremiadoCaixa = pr_caixa.reduce((s, p) => s + Number(p.prize_amount || 0), 0);
+        const totalApostadoCaixa = bets.reduce((s, b) => {
+            let val = Number(b.valor_utilizado_caixa || 0);
+            if (val === 0 && b.manter_em_caixa) val = Number(b.total_cost);
+            return s + val;
+        }, 0);
+        const totalPremiadoCaixa = pr_caixa.reduce((s, p) => {
+            let val = Number(p.valor_retido_caixa || 0);
+            if (val === 0 && p.manter_em_caixa) val = Number(p.prize_amount);
+            return s + val;
+        }, 0);
+        
         const saldoCaixa = totalPremiadoCaixa - totalApostadoCaixa;
         const saldoGeral = totalPremiado - totalApostado;
+        const arrecadadoParticipantes = totalApostado - totalApostadoCaixa;
 
         // Ranking — usa vinculos (jogo_participantes) para investimento e premios para recebimentos
         const ranking = participantes.map(part => {
             const meusVinculos = vinculos.filter(v => v.participante_id === part.id);
             const meusPremios = premios.filter(p => p.participante_id === part.id);
             
-            // Investido = soma de (custo da aposta × percentual desse participante / 100)
+            // Investido = soma de (custo real pago pelos participantes × percentual desse participante / 100)
             const investido = meusVinculos.reduce((s, v) => {
                 const bet = bets.find(b => b.id === v.bet_id);
                 if (!bet) return s;
-                return s + Number(bet.total_cost || 0) * Number(v.percentual || 0) / 100;
+                let valCaixa = Number(bet.valor_utilizado_caixa || 0);
+                if (valCaixa === 0 && bet.manter_em_caixa) valCaixa = Number(bet.total_cost);
+                const custoReal = Math.max(0, Number(bet.total_cost || 0) - valCaixa);
+                return s + (custoReal * Number(v.percentual || 0) / 100);
             }, 0);
             
             const recebido = meusPremios.reduce((s, p) => s + Number(p.premio_recebido || 0), 0);
@@ -84,7 +97,7 @@ export async function initBolaoPublico(token) {
 
         // Preenche o DOM do Resumo
         $('pub-bolao-nome').textContent = bolao.nome;
-        $('pub-bolao-total-arrecadado').textContent = fmt(totalApostado);
+        $('pub-bolao-total-arrecadado').textContent = fmt(arrecadadoParticipantes || 0);
         $('pub-bolao-total-apostado').textContent = fmt(totalApostado);
         $('pub-bolao-total-premiado').textContent = fmt(totalPremiado);
         

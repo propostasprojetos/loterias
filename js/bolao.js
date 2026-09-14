@@ -579,7 +579,7 @@ async function renderRelatorioBolao(bolao_id) {
     try {
         const rel = await BolaoService.obterRelatorioBolao(bolao_id);
         
-        $('bolao-total-arrecadado').textContent = fmt(rel.totalApostado); // Em um bolão real arrecadado pode ser diferente do apostado, mas aqui igualamos para simplificar
+        $('bolao-total-arrecadado').textContent = fmt(rel.arrecadadoParticipantes || 0); 
         $('bolao-total-apostado').textContent = fmt(rel.totalApostado);
         $('bolao-total-premiado').textContent = fmt(rel.totalPremiado);
         $('bolao-saldo').textContent = fmt(rel.saldo);

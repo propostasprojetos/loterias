@@ -60,6 +60,19 @@
                             <!-- opções dinâmicas -->
                         </select>
                     </div>
+                    <div id="gen-bolao-caixa-wrap" class="hidden" style="margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: var(--radius-sm);">
+                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; margin-bottom: 8px;">
+                            <input type="checkbox" id="gen-bolao-caixa" style="width:auto; accent-color:var(--gold);">
+                            <span style="font-size:0.88rem; color:var(--text);">💰 Utilizar dinheiro em caixa <span style="font-size:0.78rem; color:var(--text-3);">(dinheiro físico)</span></span>
+                        </label>
+                        <div id="gen-bolao-caixa-amount-wrap" class="hidden">
+                            <label for="gen-bolao-caixa-amount" style="font-size: 0.8rem; color:var(--text-3);">Valor efetivamente utilizado (R$)</label>
+                            <div class="input-row">
+                                <span class="prefix">R$</span>
+                                <input type="number" id="gen-bolao-caixa-amount" value="0.00" min="0" step="0.50" style="color:var(--gold);">
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="field" style="margin-bottom: 24px;">
@@ -391,8 +404,15 @@
                         <div class="field" style="grid-column: 1 / -1;">
                             <label style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:8px 0;">
                                 <input type="checkbox" id="fin-bet-caixa" style="width:auto; accent-color:var(--gold);">
-                                <span style="font-size:0.88rem; color:var(--text);">💰 Manter em caixa <span style="font-size:0.78rem; color:var(--text-3);">(dinheiro físico permanece no caixa do bolão)</span></span>
+                                <span style="font-size:0.88rem; color:var(--text);">💰 Utilizar dinheiro em caixa <span style="font-size:0.78rem; color:var(--text-3);">(dinheiro físico do bolão)</span></span>
                             </label>
+                            <div id="fin-bet-caixa-amount-wrap" class="hidden" style="margin-top: 8px;">
+                                <label for="fin-bet-caixa-amount" style="font-size: 0.8rem; color:var(--text-3);">Valor efetivamente utilizado (R$)</label>
+                                <div class="input-row">
+                                    <span class="prefix">R$</span>
+                                    <input type="number" id="fin-bet-caixa-amount" value="0.00" min="0" step="0.50" style="color:var(--gold);">
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <button class="btn-danger" id="btn-add-bet" style="width: auto; padding: 12px 20px;">💸 Registrar Gasto</button>
@@ -462,8 +482,15 @@
                         <div class="field" style="grid-column: 1 / -1;">
                             <label style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:8px 0;">
                                 <input type="checkbox" id="fin-prize-caixa" style="width:auto; accent-color:var(--green);">
-                                <span style="font-size:0.88rem; color:var(--text);">💰 Manter em caixa <span style="font-size:0.78rem; color:var(--text-3);">(dinheiro físico permanece no caixa do bolão)</span></span>
+                                <span style="font-size:0.88rem; color:var(--text);">💰 Reter prêmio no caixa <span style="font-size:0.78rem; color:var(--text-3);">(físico)</span></span>
                             </label>
+                            <div id="fin-prize-caixa-amount-wrap" class="hidden" style="margin-top: 8px;">
+                                <label for="fin-prize-caixa-amount" style="font-size: 0.8rem; color:var(--text-3);">Valor retido no caixa (R$)</label>
+                                <div class="input-row">
+                                    <span class="prefix">R$</span>
+                                    <input type="number" id="fin-prize-caixa-amount" value="0.00" min="0" step="0.01" style="color:var(--green);">
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <button class="btn-primary" id="btn-add-prize" style="width: auto; padding: 12px 20px; background: var(--green); color: #0e1015;">🎉 Registrar Prêmio</button>
@@ -1284,6 +1311,20 @@
                         <!-- preenchido via JS -->
                     </div>
                     <div style="display:flex; justify-content:flex-end; margin-top:12px; font-weight:700; font-size:0.9rem; color:var(--gold);" id="edit-bet-participantes-total">Soma Total: 0%</div>
+                </div>
+
+                <div class="field" style="margin-top: 16px;">
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:8px 0;">
+                        <input type="checkbox" id="edit-bet-caixa" style="width:auto; accent-color:var(--gold);">
+                        <span style="font-size:0.88rem; color:var(--text);">💰 Utilizar dinheiro em caixa</span>
+                    </label>
+                    <div id="edit-bet-caixa-amount-wrap" class="hidden" style="margin-top: 8px;">
+                        <label for="edit-bet-caixa-amount" style="font-size: 0.8rem; color:var(--text-3);">Valor utilizado do caixa (R$)</label>
+                        <div class="input-row">
+                            <span class="prefix">R$</span>
+                            <input type="number" id="edit-bet-caixa-amount" value="0.00" min="0" step="0.50" style="color:var(--gold);">
+                        </div>
+                    </div>
                 </div>
 
                 <div style="margin-top: 24px; text-align: right; display:flex; gap:12px; justify-content:flex-end;">
