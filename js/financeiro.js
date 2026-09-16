@@ -797,7 +797,7 @@ export async function handleAddDeposit() {
     });
 
     $('fin-deposit-notes').value = '';
-    $('fin-deposit-amount').value = '0.00';
+    $('fin-deposit-amount').value = '';
     toast('💰 Depósito registrado no caixa!', 'success');
 }
 
@@ -821,12 +821,14 @@ export async function handleAddWithdraw() {
         notes = `🎮 Utilizado em Jogos: ${notes}`;
     }
 
-    // Retirada/Saque é registrado como uma "aposta" que consumiu caixa, mas de custo zero
+    // Retirada/Saque é registrado como uma "aposta" que consumiu caixa. 
+    // total_cost precisa ser >= valor_utilizado_caixa para passar na validação do banco (fn_validar_saldo_caixa)
+    // O painel já ignora apostas com tipo 'saque' no cálculo do total gasto!
     await addBet({
         bet_date: withdrawDate,
         lottery_type: 'saque',
         game_count: 0,
-        total_cost: 0,
+        total_cost: withdrawAmount,
         contest_number: null,
         notes: notes,
         bolao_id: bolaoId,
@@ -835,7 +837,7 @@ export async function handleAddWithdraw() {
     });
 
     $('fin-withdraw-notes').value = '';
-    $('fin-withdraw-amount').value = '0.00';
+    $('fin-withdraw-amount').value = '';
     if ($('fin-withdraw-usado-jogos')) $('fin-withdraw-usado-jogos').checked = false;
     toast('💸 Saque/Retirada registrado no caixa!', 'success');
 }
