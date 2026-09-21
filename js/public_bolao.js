@@ -293,6 +293,60 @@ export async function initBolaoPublico(token) {
             }
         });
 
+        // Setup Impressão (Exportar PDF)
+        $('btn-pub-print-pdf')?.addEventListener('click', () => {
+            const printArea = $('print-area');
+            if (!printArea) return;
+            
+            // Build header
+            let html = `
+                <div class="print-header">
+                    <h2>${bolao.nome}</h2>
+                    <p>Relatório de Jogos e Apostas - ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+                    <p>Total de jogos detalhados: ${allJogos.length}</p>
+                </div>
+                <div class="print-grid">
+            `;
+            
+            // Build cards for all games
+            allJogos.forEach(item => {
+                if (item.isBetSummary) {
+                    html += `
+                        <div class="print-card">
+                            <div class="print-card-header">
+                                <span>${item.bet_number ? 'Aposta #' + item.bet_number : 'Aposta #' + item.displayIndex}</span>
+                                <span>${formatDate(item.bet_date)}</span>
+                            </div>
+                            <div style="font-size:0.8rem; margin-bottom:4px;"><strong>${getLotteryLabel(item.lottery_type)}</strong> ${item.contest_number ? '· Conc.' + item.contest_number : ''}</div>
+                            <div style="font-size:0.8rem; color:#444;">Custo: ${fmt(item.total_cost || 0)}</div>
+                        </div>
+                    `;
+                } else {
+                    const nums = Array.isArray(item.numbers) ? item.numbers : [];
+                    const numsHtml = nums.map(n => `<div class="print-ball">${pad(n)}</div>`).join('');
+                    html += `
+                        <div class="print-card">
+                            <div class="print-card-header">
+                                <span>Jogo #${item.displayIndex}</span>
+                                <span>${formatDate(item.bet_date)}</span>
+                            </div>
+                            <div class="print-numbers">${numsHtml}</div>
+                            <div style="font-size:0.75rem; color:#666; margin-top:8px; display:flex; justify-content:space-between;">
+                                <span>${getLotteryLabel(item.lottery_type)}</span>
+                                <span>${item.contest_number ? 'C. ' + item.contest_number : ''}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            html += `</div>`;
+            printArea.innerHTML = html;
+            
+            // Trigger print dialog
+            window.print();
+        });
+
         // Setup Abas
         const tabBtnResumo = $('btn-pub-tab-resumo');
         const tabBtnJogos = $('btn-pub-tab-jogos');

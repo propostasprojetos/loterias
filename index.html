@@ -940,7 +940,12 @@
                     <div style="font-size: 0.95rem; color: var(--text-2);">
                         Cartelas e dezenas registradas neste bolão
                     </div>
-                    <div id="pub-jogos-pag-info" style="font-size: 0.85rem; color: var(--text-3);"></div>
+                    <div style="display:flex; align-items:center; gap: 12px;">
+                        <button id="btn-pub-print-pdf" class="btn-sm" style="padding: 6px 14px; border-radius: 6px; cursor: pointer; background: var(--surface-3); color: var(--text); border: 1px solid var(--border); font-weight: 600;">
+                            🖨️ Exportar PDF
+                        </button>
+                        <div id="pub-jogos-pag-info" style="font-size: 0.85rem; color: var(--text-3);"></div>
+                    </div>
                 </div>
 
                 <!-- Lista dos jogos da página atual -->
@@ -1502,5 +1507,10 @@
             </div>
         </div>
     </div>
+    <div id="print-area" class="print-only"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="./app.js"></script>
 </body>
 </html>
