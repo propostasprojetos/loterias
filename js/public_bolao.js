@@ -117,6 +117,26 @@ export async function initBolaoPublico(token) {
         
         $('pub-bolao-total-caixa').textContent = fmt(saldoCaixa);
 
+        // Bind do modal de Extrato (apenas leitura para a view publica)
+        const btnExtrato = $('btn-pub-extrato');
+        if (btnExtrato) {
+            btnExtrato.addEventListener('click', () => {
+                renderExtratoPublico(bets, pr_caixa, saldoCaixa);
+                $('modal-extrato-caixa')?.classList.remove('hidden');
+                
+                // Remove seletores de bolao no modal público (pois é fixo para 1 bolão)
+                const sel = $('extrato-bolao-select');
+                if (sel) {
+                    sel.innerHTML = `<option value="">${bolao.nome}</option>`;
+                    sel.disabled = true;
+                }
+            });
+            
+            // Adiciona lógica de fechar para a view pública (pois financeiro.js não roda aqui)
+            $('btn-close-extrato')?.addEventListener('click', () => $('modal-extrato-caixa')?.classList.add('hidden'));
+            $('btn-fechar-extrato')?.addEventListener('click', () => $('modal-extrato-caixa')?.classList.add('hidden'));
+        }
+
         // Tabela de Ranking
         const tbody = $('pub-bolao-ranking-body');
         tbody.innerHTML = '';
@@ -313,6 +333,75 @@ export async function initBolaoPublico(token) {
         loading.classList.add('hidden');
         error.classList.remove('hidden');
     }
+}
+
+function renderExtratoPublico(bets, pr_caixa, saldoCaixa) {
+    let historico = [];
+
+    // ENTRADAS (Prizes mantidos em caixa)
+    (pr_caixa || []).forEach(p => {
+        if (p.valor_retido_caixa > 0) {
+            historico.push({
+                date: p.prize_date || p.created_at,
+                desc: p.lottery_type === 'deposito' ? `📥 Depósito Direto` : `🏆 Prêmio Retido (Aposta #${p.bet_id || 'Avulsa'})`,
+                notes: p.notes,
+                amount: parseFloat(p.valor_retido_caixa),
+                type: 'in'
+            });
+        }
+    });
+
+    // SAÍDAS (Bets pagas com caixa)
+    (bets || []).forEach(b => {
+        if (b.valor_utilizado_caixa > 0) {
+            historico.push({
+                date: b.bet_date || b.created_at,
+                desc: b.lottery_type === 'saque' ? `💸 Saque Direto` : `🎮 Pagamento Aposta (${(b.lottery_type||'').toUpperCase()})`,
+                notes: b.notes,
+                amount: -parseFloat(b.valor_utilizado_caixa),
+                type: 'out'
+            });
+        }
+    });
+
+    historico.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const tbody = $('extrato-caixa-body');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (historico.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 24px; color:var(--text-3);">Nenhuma movimentação neste caixa.</td></tr>';
+        if ($('extrato-saldo-atual')) $('extrato-saldo-atual').textContent = `R$ 0,00`;
+        return;
+    }
+
+    historico.forEach(item => {
+        const [y,m,d] = item.date.split('T')[0].split('-');
+        const dateStr = `${d}/${m}/${y}`;
+        
+        const isPos = item.type === 'in';
+        const color = isPos ? 'var(--green)' : 'var(--red)';
+        const signal = isPos ? '+' : '';
+        
+        const noteHtml = item.notes ? `<div style="font-size:0.75rem; color:var(--text-3); margin-top:2px;">${item.notes}</div>` : '';
+
+        tbody.innerHTML += `
+            <tr>
+                <td style="font-size:0.85rem; color:var(--text-2);">${dateStr}</td>
+                <td>
+                    <div style="font-weight:600; font-size:0.9rem; color:var(--text);">${item.desc}</div>
+                    ${noteHtml}
+                </td>
+                <td style="text-align:right; color:${color}; font-family:var(--font-num); font-weight:700;">
+                    ${signal}R$ ${Math.abs(item.amount).toFixed(2).replace('.',',')}
+                </td>
+            </tr>
+        `;
+    });
+
+    if ($('extrato-saldo-atual')) $('extrato-saldo-atual').textContent = `R$ ${fmt(saldoCaixa)}`;
 }
 
 // Expõe globalmente para o app.js acessar via roteamento

@@ -37,6 +37,18 @@ export async function initBolao() {
     $('relatorio-bolao-select')?.addEventListener('change', async (e) => {
         await renderRelatorioBolao(e.target.value);
     });
+
+    $('btn-admin-extrato')?.addEventListener('click', async () => {
+        const bolao_id = $('relatorio-bolao-select')?.value;
+        if (bolao_id) {
+            try {
+                const fin = await import('./financeiro.js');
+                fin.openExtratoModal(bolao_id);
+            } catch(e) {
+                console.warn('Erro ao abrir extrato do caixa', e);
+            }
+        }
+    });
 }
 
 function setupTabs() {

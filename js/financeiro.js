@@ -1188,7 +1188,7 @@ async function loadDepositParticipantes(bolaoId) {
     }
 }
 
-async function openExtratoModal(initialBolaoId) {
+export async function openExtratoModal(initialBolaoId) {
     const sel = $('extrato-bolao-select');
     if (sel) {
         // Preenche opcoes se vazio
