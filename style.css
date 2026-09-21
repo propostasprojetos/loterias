@@ -1168,85 +1168,113 @@ html.public-bolao-page #view-bolao-publico {
 
 /* ===== PRINT LAYOUT ===== */
 .print-only {
-    display: none;
+    display: none !important;
 }
 
 @media print {
-    body * {
-        visibility: hidden;
+    /* Esconde absolutamente todos os elementos normais da tela */
+    body > *:not(#print-area) {
+        display: none !important;
     }
-    
-    #print-area, #print-area * {
-        visibility: visible;
+
+    html, body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        width: 100% !important;
+        overflow: visible !important;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
     }
-    
-    #print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        color: #000 !important;
-        background: #fff !important;
+
+    #print-area,
+    .print-only {
+        display: block !important;
+        visibility: visible !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 10mm 12mm !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        box-sizing: border-box !important;
     }
-    
-    /* Print specific styling */
+
+    #print-area * {
+        visibility: visible !important;
+        box-sizing: border-box !important;
+    }
+
     .print-header {
         text-align: center;
         margin-bottom: 20px;
-        border-bottom: 2px solid #ccc;
-        padding-bottom: 10px;
+        border-bottom: 2px solid #222;
+        padding-bottom: 12px;
     }
-    
+
     .print-header h2 {
-        margin: 0 0 5px 0;
-        font-size: 1.5rem;
+        margin: 0 0 6px 0;
+        font-size: 1.4rem;
+        color: #000000 !important;
+        font-weight: 700;
     }
-    
+
     .print-header p {
-        margin: 0;
+        margin: 3px 0;
         font-size: 0.9rem;
-        color: #444;
+        color: #333333 !important;
     }
-    
+
     .print-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 15px;
-        page-break-inside: avoid;
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
     }
-    
+
     .print-card {
-        border: 1px solid #ddd;
-        padding: 10px;
-        border-radius: 6px;
-        page-break-inside: avoid;
+        border: 1.5px solid #555 !important;
+        padding: 10px 14px !important;
+        border-radius: 6px !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        background: #ffffff !important;
+        color: #000000 !important;
     }
-    
+
     .print-card-header {
         font-size: 0.85rem;
-        font-weight: bold;
+        font-weight: 700;
         margin-bottom: 8px;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid #ddd;
         padding-bottom: 4px;
         display: flex;
         justify-content: space-between;
+        color: #000000 !important;
     }
-    
+
     .print-numbers {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 5px !important;
+        margin: 6px 0 !important;
     }
-    
+
     .print-ball {
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        border: 1px solid #666;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.75rem;
-        font-weight: bold;
+        width: 26px !important;
+        height: 26px !important;
+        border-radius: 50% !important;
+        border: 1.5px solid #222222 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 0.8rem !important;
+        font-weight: 700 !important;
+        color: #000000 !important;
+        background: #f0f0f0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 }

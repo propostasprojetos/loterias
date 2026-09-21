@@ -992,8 +992,11 @@ async function renderEditBetParticipantes(bolao_id, existingParts) {
 function pad(n) { return String(n).padStart(2, '0'); }
 
 async function exportBetPdf(id) {
-    const bet = allBets.find(b => b.id === id);
-    if (!bet) return;
+    const bet = allBets.find(b => String(b.id) === String(id));
+    if (!bet) {
+        console.warn('Aposta não encontrada para ID:', id);
+        return;
+    }
 
     const lotteryLabel = bet.lottery_type === 'lf' ? 'Lotofácil'
         : bet.lottery_type === 'qn' ? 'Quina'
@@ -1002,7 +1005,26 @@ async function exportBetPdf(id) {
 
     const dateStr = bet.bet_date ? bet.bet_date.split('-').reverse().join('/') : '—';
     const concurso = bet.contest_number ? `Concurso ${bet.contest_number}` : '';
-    const bolaoNome = bet.bolao_id ? `Bolão vinculado` : 'Caixa Individual';
+    
+    let bolaoNome = 'Caixa Individual (Sem Bolão)';
+    if (bet.bolao_id) {
+        try {
+            const BolaoService = await import('./bolao.service.js');
+            const boloes = await BolaoService.listBoloes();
+            const found = boloes.find(b => String(b.id) === String(bet.bolao_id));
+            if (found) bolaoNome = `Bolão: ${found.nome}`;
+        } catch(e) {}
+    }
+
+    let partsStr = '';
+    if (Array.isArray(bet.jogo_participantes) && bet.jogo_participantes.length > 0) {
+        const nomes = bet.jogo_participantes
+            .map(jp => jp.participantes?.nome ? `${jp.participantes.nome} (${jp.percentual}%)` : null)
+            .filter(Boolean);
+        if (nomes.length > 0) {
+            partsStr = `<p style="font-size:0.85rem; color:#444; margin-top:2px;">Participantes: ${nomes.join(', ')}</p>`;
+        }
+    }
 
     // Fetch bet_games from Supabase
     let games = [];
@@ -1019,9 +1041,18 @@ async function exportBetPdf(id) {
         }
     }
 
-    // If no bet_games, try from bet.games array
-    if (games.length === 0 && Array.isArray(bet.games)) {
-        games = bet.games.map((nums, i) => ({ game_index: i, numbers: Array.isArray(nums) ? nums : [] }));
+    // If no bet_games, try from bet.games array or JSON string
+    if (games.length === 0 && bet.games) {
+        let rawGames = bet.games;
+        if (typeof rawGames === 'string') {
+            try { rawGames = JSON.parse(rawGames); } catch(e) {}
+        }
+        if (Array.isArray(rawGames)) {
+            games = rawGames.map((nums, i) => ({ 
+                game_index: i, 
+                numbers: Array.isArray(nums) ? nums : (nums.numbers || []) 
+            }));
+        }
     }
 
     // Build print HTML
@@ -1033,7 +1064,18 @@ async function exportBetPdf(id) {
 
     let gamesHtml = '';
     if (games.length === 0) {
-        gamesHtml = `<p style="color:#666; grid-column:1/-1; text-align:center;">Nenhum detalhe de jogo registrado para esta aposta.</p>`;
+        const qtdJogos = bet.game_count || 1;
+        const custoTotal = fmt(bet.total_cost || 0);
+        const obs = bet.notes ? `<p style="margin-top:8px;"><strong>Observações:</strong> ${bet.notes}</p>` : '';
+        gamesHtml = `
+            <div style="grid-column: 1 / -1; background:#f9f9f9; border:1.5px dashed #777; border-radius:8px; padding:24px; text-align:center; color:#000;">
+                <h3 style="margin:0 0 10px 0; color:#111;">Resumo da Aposta Registrada</h3>
+                <p style="font-size:1.05rem; color:#222; margin:6px 0;"><strong>Quantidade de Jogos:</strong> ${qtdJogos}</p>
+                <p style="font-size:1.05rem; color:#222; margin:6px 0;"><strong>Valor Total:</strong> ${custoTotal}</p>
+                ${obs}
+                <p style="font-size:0.82rem; color:#666; margin-top:14px;">* Os números individuais desta aposta não foram registrados com dezenas no banco.</p>
+            </div>
+        `;
     } else {
         games.forEach((g, idx) => {
             const nums = Array.isArray(g.numbers) ? g.numbers : [];
@@ -1053,16 +1095,20 @@ async function exportBetPdf(id) {
     printArea.innerHTML = `
         <div class="print-header">
             <h2>🎲 ${lotteryLabel} — Apostas Registradas</h2>
-            <p style="font-size:1rem; font-weight:600; margin-top:4px;">${concurso}</p>
-            <p>Data da aposta: <strong>${dateStr}</strong> &nbsp;|&nbsp; ${bolaoNome} &nbsp;|&nbsp; ${games.length} jogo(s)</p>
-            <p style="font-size:0.8rem; margin-top:4px;">Gerado em: ${nowStr} — LotoSmart</p>
+            <p style="font-size:1rem; font-weight:700; margin-top:4px;">${concurso}</p>
+            <p>Data: <strong>${dateStr}</strong> &nbsp;|&nbsp; ${bolaoNome} &nbsp;|&nbsp; Total: ${fmt(bet.total_cost || 0)}</p>
+            ${partsStr}
+            <p style="font-size:0.75rem; margin-top:4px; color:#555;">Gerado em: ${nowStr} — LotoSmart</p>
         </div>
         <div class="print-grid">
             ${gamesHtml}
         </div>
     `;
 
-    window.print();
+    // Timeout para garantir que o navegador monte e renderize o DOM antes de congelar a tela com o diálogo de impressão
+    setTimeout(() => {
+        window.print();
+    }, 150);
 }
 
 async function openViewGamesModal(id) {

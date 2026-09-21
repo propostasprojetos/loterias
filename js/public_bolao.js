@@ -343,8 +343,10 @@ export async function initBolaoPublico(token) {
             html += `</div>`;
             printArea.innerHTML = html;
             
-            // Trigger print dialog
-            window.print();
+            // Trigger print dialog após renderização no DOM
+            setTimeout(() => {
+                window.print();
+            }, 150);
         });
 
         // Setup Abas
