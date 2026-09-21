@@ -624,7 +624,12 @@
             <!-- Tabela de Transações -->
             <div class="fin-table-section">
                 <div class="fin-table-header" id="fin-history-header">
-                    <h3>Histórico Financeiro</h3>
+                    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+                        <h3>Histórico Financeiro</h3>
+                        <button id="btn-print-selected-bets" class="btn-sm hidden" style="background:var(--teal); color:#0e1015; font-weight:700; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow: 0 2px 8px rgba(78,205,196,0.3);">
+                            🖨️ Exportar PDF das Selecionadas (<span id="selected-bets-count">0</span>)
+                        </button>
+                    </div>
                     <div class="fin-filters" id="fin-filters-container">
                         <button class="fin-filter active" data-filter="all">Todos</button>
                         <button class="fin-filter" data-filter="bet">Gastos</button>
@@ -636,6 +641,9 @@
                     <table class="fin-table">
                         <thead>
                             <tr>
+                                <th style="width: 36px; text-align: center;">
+                                    <input type="checkbox" id="chk-select-all-bets" title="Selecionar todas as apostas" style="cursor:pointer; width:16px; height:16px; accent-color:var(--teal);">
+                                </th>
                                 <th>Data</th>
                                 <th>Tipo</th>
                                 <th>Loteria</th>

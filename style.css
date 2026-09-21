@@ -1277,4 +1277,10 @@ html.public-bolao-page #view-bolao-publico {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
+
+    .print-bet-block {
+        margin-bottom: 24px !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+    }
 }

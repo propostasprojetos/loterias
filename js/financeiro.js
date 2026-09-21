@@ -31,6 +31,7 @@ function saveLocalPrizes(data) { localStorage.setItem(getFinPrizesKey(), JSON.st
 export let allBets = [];
 export let allPrizes = [];
 export let finFilter = 'all';
+export let selectedBetIds = new Set();
 let finChart = null;
 
 // ===== CRUD =====
@@ -435,7 +436,13 @@ export function renderTransactions() {
         else if (t.type === 'saque') typeBadge = '<span class="type-badge" style="background:rgba(232,93,93,.12); color:var(--red);">Saque</span>';
         else if (t.type === 'deposito') typeBadge = '<span class="type-badge" style="background:var(--green-dim); color:var(--green);">Depósito</span>';
 
+        const isSelected = selectedBetIds.has(String(t.id));
+        const checkCell = t.source === 'bets'
+            ? `<td style="text-align:center; width:36px;"><input type="checkbox" class="chk-select-bet" data-id="${t.id}" ${isSelected ? 'checked' : ''} style="cursor:pointer; width:16px; height:16px; accent-color:var(--teal);"></td>`
+            : `<td style="text-align:center; width:36px;"></td>`;
+
         return `<tr>
+            ${checkCell}
             <td>${dateStr}</td>
             <td>${typeBadge}</td>
             <td>${lotteryLabel}</td>
@@ -449,6 +456,75 @@ export function renderTransactions() {
             </td>
         </tr>`;
     }).join('');
+
+    // Sincronização e controle do botão de impressão em lote
+    const updateSelectedBatchUI = () => {
+        const btnBatch = $('btn-print-selected-bets');
+        const countSpan = $('selected-bets-count');
+        const allChk = $('chk-select-all-bets');
+        const betCheckboxes = tbody.querySelectorAll('.chk-select-bet');
+        
+        if (countSpan) countSpan.textContent = selectedBetIds.size;
+        
+        if (btnBatch) {
+            if (selectedBetIds.size > 0) {
+                btnBatch.classList.remove('hidden');
+            } else {
+                btnBatch.classList.add('hidden');
+            }
+        }
+        
+        if (allChk) {
+            if (betCheckboxes.length === 0) {
+                allChk.checked = false;
+                allChk.indeterminate = false;
+            } else {
+                const checkedCount = Array.from(betCheckboxes).filter(c => c.checked).length;
+                allChk.checked = checkedCount === betCheckboxes.length && betCheckboxes.length > 0;
+                allChk.indeterminate = checkedCount > 0 && checkedCount < betCheckboxes.length;
+            }
+        }
+    };
+
+    // Checkboxes individuais
+    tbody.querySelectorAll('.chk-select-bet').forEach(chk => {
+        chk.addEventListener('change', () => {
+            const id = String(chk.dataset.id);
+            if (chk.checked) {
+                selectedBetIds.add(id);
+            } else {
+                selectedBetIds.delete(id);
+            }
+            updateSelectedBatchUI();
+        });
+    });
+
+    // Checkbox "Selecionar todos" no topo da tabela
+    const allChk = $('chk-select-all-bets');
+    if (allChk) {
+        allChk.onclick = () => {
+            const isChecked = allChk.checked;
+            tbody.querySelectorAll('.chk-select-bet').forEach(chk => {
+                chk.checked = isChecked;
+                const id = String(chk.dataset.id);
+                if (isChecked) selectedBetIds.add(id);
+                else selectedBetIds.delete(id);
+            });
+            updateSelectedBatchUI();
+        };
+    }
+
+    // Botão de exportação em lote
+    const btnBatch = $('btn-print-selected-bets');
+    if (btnBatch) {
+        btnBatch.onclick = () => {
+            if (selectedBetIds.size > 0) {
+                exportMultipleBetsPdf(Array.from(selectedBetIds));
+            }
+        };
+    }
+
+    updateSelectedBatchUI();
 
     tbody.querySelectorAll('.btn-del-transaction').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -991,124 +1067,172 @@ async function renderEditBetParticipantes(bolao_id, existingParts) {
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
-async function exportBetPdf(id) {
-    const bet = allBets.find(b => String(b.id) === String(id));
-    if (!bet) {
-        console.warn('Aposta não encontrada para ID:', id);
-        return;
-    }
+export async function exportMultipleBetsPdf(ids) {
+    if (!ids || ids.length === 0) return;
 
-    const lotteryLabel = bet.lottery_type === 'lf' ? 'Lotofácil'
-        : bet.lottery_type === 'qn' ? 'Quina'
-        : bet.lottery_type === 'ms' ? 'Mega-Sena'
-        : (bet.lottery_type || 'Aposta').toUpperCase();
+    // Filtra apostas selecionadas
+    const selectedBets = allBets.filter(b => ids.includes(String(b.id)));
+    if (selectedBets.length === 0) return;
 
-    const dateStr = bet.bet_date ? bet.bet_date.split('-').reverse().join('/') : '—';
-    const concurso = bet.contest_number ? `Concurso ${bet.contest_number}` : '';
-    
-    let bolaoNome = 'Caixa Individual (Sem Bolão)';
-    if (bet.bolao_id) {
-        try {
-            const BolaoService = await import('./bolao.service.js');
-            const boloes = await BolaoService.listBoloes();
-            const found = boloes.find(b => String(b.id) === String(bet.bolao_id));
-            if (found) bolaoNome = `Bolão: ${found.nome}`;
-        } catch(e) {}
-    }
+    // Ordena por data
+    selectedBets.sort((a, b) => (a.bet_date || '').localeCompare(b.bet_date || ''));
 
-    let partsStr = '';
-    if (Array.isArray(bet.jogo_participantes) && bet.jogo_participantes.length > 0) {
-        const nomes = bet.jogo_participantes
-            .map(jp => jp.participantes?.nome ? `${jp.participantes.nome} (${jp.percentual}%)` : null)
-            .filter(Boolean);
-        if (nomes.length > 0) {
-            partsStr = `<p style="font-size:0.85rem; color:#444; margin-top:2px;">Participantes: ${nomes.join(', ')}</p>`;
-        }
-    }
+    // Carrega mapa de nomes de bolões
+    const boloesMap = new Map();
+    try {
+        const BolaoService = await import('./bolao.service.js');
+        const boloes = await BolaoService.listBoloes();
+        boloes.forEach(b => boloesMap.set(String(b.id), b.nome));
+    } catch(e) {}
 
-    // Fetch bet_games from Supabase
-    let games = [];
+    // Busca todos os jogos individuais no Supabase em uma única consulta otimizada
+    const betGamesMap = new Map();
     if (sbReady && state.currentSession) {
         try {
             const { data, error } = await supabaseClient
                 .from('bet_games')
-                .select('numbers, game_index')
-                .eq('bet_id', id)
+                .select('bet_id, numbers, game_index')
+                .in('bet_id', ids)
                 .order('game_index', { ascending: true });
-            if (!error && data) games = data;
+            if (!error && data) {
+                data.forEach(bg => {
+                    const bId = String(bg.bet_id);
+                    if (!betGamesMap.has(bId)) betGamesMap.set(bId, []);
+                    betGamesMap.get(bId).push(bg);
+                });
+            }
         } catch(e) {
-            console.warn('Erro ao buscar jogos para PDF', e);
+            console.warn('Erro ao buscar bet_games para PDF em lote:', e);
         }
     }
 
-    // If no bet_games, try from bet.games array or JSON string
-    if (games.length === 0 && bet.games) {
-        let rawGames = bet.games;
-        if (typeof rawGames === 'string') {
-            try { rawGames = JSON.parse(rawGames); } catch(e) {}
-        }
-        if (Array.isArray(rawGames)) {
-            games = rawGames.map((nums, i) => ({ 
-                game_index: i, 
-                numbers: Array.isArray(nums) ? nums : (nums.numbers || []) 
-            }));
-        }
-    }
-
-    // Build print HTML
     const printArea = document.getElementById('print-area');
     if (!printArea) return;
 
     const now = new Date();
     const nowStr = `${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR')}`;
+    const totalGasto = selectedBets.reduce((acc, b) => acc + (parseFloat(b.total_cost) || 0), 0);
+    const totalJogos = selectedBets.reduce((acc, b) => {
+        const bg = betGamesMap.get(String(b.id));
+        if (bg && bg.length > 0) return acc + bg.length;
+        if (Array.isArray(b.games)) return acc + b.games.length;
+        return acc + (b.game_count || 1);
+    }, 0);
 
-    let gamesHtml = '';
-    if (games.length === 0) {
-        const qtdJogos = bet.game_count || 1;
-        const custoTotal = fmt(bet.total_cost || 0);
-        const obs = bet.notes ? `<p style="margin-top:8px;"><strong>Observações:</strong> ${bet.notes}</p>` : '';
-        gamesHtml = `
-            <div style="grid-column: 1 / -1; background:#f9f9f9; border:1.5px dashed #777; border-radius:8px; padding:24px; text-align:center; color:#000;">
-                <h3 style="margin:0 0 10px 0; color:#111;">Resumo da Aposta Registrada</h3>
-                <p style="font-size:1.05rem; color:#222; margin:6px 0;"><strong>Quantidade de Jogos:</strong> ${qtdJogos}</p>
-                <p style="font-size:1.05rem; color:#222; margin:6px 0;"><strong>Valor Total:</strong> ${custoTotal}</p>
-                ${obs}
-                <p style="font-size:0.82rem; color:#666; margin-top:14px;">* Os números individuais desta aposta não foram registrados com dezenas no banco.</p>
-            </div>
-        `;
-    } else {
-        games.forEach((g, idx) => {
-            const nums = Array.isArray(g.numbers) ? g.numbers : [];
-            const ballsHtml = nums.map(n => `<div class="print-ball">${pad(n)}</div>`).join('');
-            gamesHtml += `
-                <div class="print-card">
-                    <div class="print-card-header">
-                        <span>Jogo ${idx + 1}</span>
-                        <span>${nums.length} dezenas</span>
-                    </div>
-                    <div class="print-numbers">${ballsHtml}</div>
+    let sectionsHtml = '';
+
+    selectedBets.forEach((bet, betIdx) => {
+        const bId = String(bet.id);
+        let games = betGamesMap.get(bId) || [];
+
+        // Fallback para bet.games
+        if (games.length === 0 && bet.games) {
+            let rawGames = bet.games;
+            if (typeof rawGames === 'string') {
+                try { rawGames = JSON.parse(rawGames); } catch(e) {}
+            }
+            if (Array.isArray(rawGames)) {
+                games = rawGames.map((nums, i) => ({
+                    game_index: i,
+                    numbers: Array.isArray(nums) ? nums : (nums.numbers || [])
+                }));
+            }
+        }
+
+        const lotteryLabel = bet.lottery_type === 'lf' ? 'Lotofácil'
+            : bet.lottery_type === 'qn' ? 'Quina'
+            : bet.lottery_type === 'ms' ? 'Mega-Sena'
+            : (bet.lottery_type || 'Aposta').toUpperCase();
+
+        const dateStr = bet.bet_date ? bet.bet_date.split('-').reverse().join('/') : '—';
+        const concurso = bet.contest_number ? `Concurso ${bet.contest_number}` : '';
+        const bolaoNome = bet.bolao_id ? (boloesMap.get(String(bet.bolao_id)) ? `Bolão: ${boloesMap.get(String(bet.bolao_id))}` : 'Bolão') : 'Caixa Individual';
+        const betNum = bet.bet_number ? `#${bet.bet_number}` : `Aposta ${betIdx + 1}`;
+
+        let partsStr = '';
+        if (Array.isArray(bet.jogo_participantes) && bet.jogo_participantes.length > 0) {
+            const nomes = bet.jogo_participantes
+                .map(jp => jp.participantes?.nome ? `${jp.participantes.nome} (${jp.percentual}%)` : null)
+                .filter(Boolean);
+            if (nomes.length > 0) {
+                partsStr = `<div style="font-size:0.85rem; color:#444; margin-top:3px;"><strong>Participantes:</strong> ${nomes.join(', ')}</div>`;
+            }
+        }
+
+        let gamesHtml = '';
+        if (games.length === 0) {
+            const qtdJogos = bet.game_count || 1;
+            const custoTotal = fmt(bet.total_cost || 0);
+            const obs = bet.notes ? `<p style="margin-top:6px; font-size:0.85rem;"><strong>Obs:</strong> ${bet.notes}</p>` : '';
+            gamesHtml = `
+                <div style="grid-column: 1 / -1; background:#fcfcfc; border:1.5px dashed #888; border-radius:6px; padding:16px; text-align:center; color:#000;">
+                    <p style="font-size:1rem; margin:4px 0;"><strong>Quantidade de Jogos:</strong> ${qtdJogos} &nbsp;|&nbsp; <strong>Valor:</strong> ${custoTotal}</p>
+                    ${obs}
+                    <p style="font-size:0.75rem; color:#666; margin-top:6px;">* Aposta registrada sem números individuais gravados no banco.</p>
                 </div>
             `;
-        });
-    }
+        } else {
+            games.forEach((g, idx) => {
+                const nums = Array.isArray(g.numbers) ? g.numbers : [];
+                const ballsHtml = nums.map(n => `<div class="print-ball">${pad(n)}</div>`).join('');
+                gamesHtml += `
+                    <div class="print-card">
+                        <div class="print-card-header">
+                            <span>Jogo ${idx + 1}</span>
+                            <span>${nums.length} dezenas</span>
+                        </div>
+                        <div class="print-numbers">${ballsHtml}</div>
+                    </div>
+                `;
+            });
+        }
+
+        sectionsHtml += `
+            <div class="print-bet-block" style="margin-bottom:28px; padding-bottom:18px; border-bottom:2px solid #333; page-break-inside:auto;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; border-bottom:1.5px solid #aaa; padding-bottom:4px; flex-wrap:wrap; gap:8px;">
+                    <div>
+                        <strong style="font-size:1.15rem; color:#000;">🎲 ${lotteryLabel} ${betNum}</strong>
+                        ${concurso ? `<span style="font-size:0.95rem; font-weight:600; color:#222; margin-left:8px;">${concurso}</span>` : ''}
+                    </div>
+                    <div style="font-size:0.9rem; color:#333;">
+                        <span>Data: <strong>${dateStr}</strong></span> &nbsp;|&nbsp; 
+                        <span>Custo: <strong>${fmt(bet.total_cost || 0)}</strong></span>
+                    </div>
+                </div>
+                <div style="font-size:0.85rem; color:#333; margin-bottom:12px;">
+                    <span><strong>Origem:</strong> ${bolaoNome}</span>
+                    ${partsStr}
+                </div>
+                <div class="print-grid">
+                    ${gamesHtml}
+                </div>
+            </div>
+        `;
+    });
+
+    const isSingle = selectedBets.length === 1;
+    const titleHeader = isSingle 
+        ? `Relatório de Aposta — LotoSmart` 
+        : `Relatório Consolidado de Apostas (${selectedBets.length} apostas)`;
 
     printArea.innerHTML = `
         <div class="print-header">
-            <h2>🎲 ${lotteryLabel} — Apostas Registradas</h2>
-            <p style="font-size:1rem; font-weight:700; margin-top:4px;">${concurso}</p>
-            <p>Data: <strong>${dateStr}</strong> &nbsp;|&nbsp; ${bolaoNome} &nbsp;|&nbsp; Total: ${fmt(bet.total_cost || 0)}</p>
-            ${partsStr}
+            <h2>🎲 ${titleHeader}</h2>
+            <p><strong>Apostas:</strong> ${selectedBets.length} &nbsp;|&nbsp; <strong>Total de Jogos:</strong> ${totalJogos} &nbsp;|&nbsp; <strong>Investimento Total:</strong> ${fmt(totalGasto)}</p>
             <p style="font-size:0.75rem; margin-top:4px; color:#555;">Gerado em: ${nowStr} — LotoSmart</p>
         </div>
-        <div class="print-grid">
-            ${gamesHtml}
+        <div>
+            ${sectionsHtml}
         </div>
     `;
 
-    // Timeout para garantir que o navegador monte e renderize o DOM antes de congelar a tela com o diálogo de impressão
     setTimeout(() => {
         window.print();
     }, 150);
+}
+
+export async function exportBetPdf(id) {
+    await exportMultipleBetsPdf([id]);
 }
 
 async function openViewGamesModal(id) {
