@@ -43,7 +43,7 @@ function extractSession() {
       return null;
     }
 
-    console.log('🎲 LotoSmart: Sessão válida encontrada! User:', session?.user?.email ?? 'desconhecido');
+    // console.log('🎲 LotoSmart: Sessão válida encontrada! User:', session?.user?.email ?? 'desconhecido');
     return session;
   } catch (e) {
     console.error('🎲 LotoSmart: Erro ao extrair sessão:', e);

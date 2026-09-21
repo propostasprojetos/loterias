@@ -537,11 +537,19 @@
                                 <input type="number" id="fin-deposit-amount" min="0" step="0.50" style="color:var(--green);">
                             </div>
                         </div>
-                        <div class="field" style="grid-column: 1 / -1;">
+                        <div class="field">
                             <label for="fin-deposit-bolao">Bolão</label>
                             <div class="input-row">
                                 <select id="fin-deposit-bolao">
                                     <option value="">Caixa Individual (Sem Bolão)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="fin-deposit-participante">Depositante</label>
+                            <div class="input-row">
+                                <select id="fin-deposit-participante">
+                                    <option value="">Nenhum / Externo</option>
                                 </select>
                             </div>
                         </div>
@@ -562,7 +570,7 @@
                     <!-- Saldo atual -->
                     <div id="withdraw-saldo-info" style="background: rgba(232,93,93,.08); border: 1px solid rgba(232,93,93,.25); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 16px; display:flex; align-items:center; justify-content:space-between;">
                         <span style="font-size:0.82rem; color:var(--text-3); display: flex; align-items: center; gap: 8px;">💰 Saldo disponível em caixa
-                            <button id="btn-extrato-deposit" type="button" style="padding: 2px 6px; font-size: 0.7rem; background: var(--surface-3); border: 1px solid var(--border-h); border-radius: 4px; color: var(--text); cursor: pointer;">🧾 Extrato</button>
+                            <button id="btn-extrato-withdraw" type="button" style="padding: 2px 6px; font-size: 0.7rem; background: var(--surface-3); border: 1px solid var(--border-h); border-radius: 4px; color: var(--text); cursor: pointer;">🧾 Extrato</button>
                         </span>
                         <span id="withdraw-saldo-valor" style="font-size:1.0rem; font-weight:700; color:var(--gold); font-family:var(--font-num);">R$ 0,00</span>
                     </div>
@@ -1448,6 +1456,46 @@
                     <button type="submit" class="btn-primary">Salvar Alterações</button>
                 </div>
             </form>
+        </div>
+    </div>
+    <!-- Modal Extrato do Caixa -->
+    <div id="modal-extrato-caixa" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <button class="modal-close" id="btn-close-extrato">&times;</button>
+            <h2 style="display:flex; align-items:center; gap:8px;">🧾 Extrato do Caixa</h2>
+            
+            <div style="margin-top:16px;">
+                <label for="extrato-bolao-select" style="font-size:0.85rem; color:var(--text-2); display:block; margin-bottom:6px;">Selecionar Bolão</label>
+                <div class="input-row">
+                    <select id="extrato-bolao-select">
+                        <option value="">Caixa Individual (Sem Bolão)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="background: var(--surface-3); border-radius: var(--radius-sm); padding: 12px 16px; margin: 16px 0; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem; color:var(--text-2);">Saldo Atual:</span>
+                <span id="extrato-saldo-atual" style="font-size:1.2rem; font-weight:700; color:var(--gold); font-family:var(--font-num);">R$ 0,00</span>
+            </div>
+
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);">
+                <table class="fin-table" style="margin-bottom:0;">
+                    <thead style="position:sticky; top:0; z-index:1; background:var(--surface-2);">
+                        <tr>
+                            <th style="width: 80px;">Data</th>
+                            <th>Descrição / Movimentação</th>
+                            <th style="text-align: right; width: 100px;">Valor (R$)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="extrato-caixa-body">
+                        <!-- js preenche -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="margin-top:20px; display:flex; justify-content:flex-end;">
+                <button type="button" class="btn-primary" id="btn-fechar-extrato">Fechar</button>
+            </div>
         </div>
     </div>
 </body>
