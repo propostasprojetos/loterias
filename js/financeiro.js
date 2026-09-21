@@ -777,7 +777,13 @@ export async function handleAddDeposit() {
     const depositDate = $('fin-deposit-date')?.value;
     const depositAmount = parseFloat($('fin-deposit-amount')?.value) || 0;
     const bolaoId = $('fin-deposit-bolao')?.value || null;
-    const notes = $('fin-deposit-notes')?.value.trim() || 'Depósito no caixa';
+    const partSelect = $('fin-deposit-participante');
+    let notes = $('fin-deposit-notes')?.value.trim() || 'Depósito no caixa';
+
+    if (partSelect && partSelect.value) {
+        const partName = partSelect.options[partSelect.selectedIndex].text;
+        notes = `Depositante: ${partName} | ` + notes;
+    }
 
     if (!depositDate) { toast('Informe a data do depósito'); return; }
     if (depositAmount <= 0) { toast('Informe o valor a depositar'); return; }
@@ -1146,14 +1152,137 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCaixaToggle('gen-bolao-caixa', 'gen-bolao-caixa-amount-wrap', 'gen-bolao-caixa-amount', null); // total is dynamic here
 
     // Caixa dinâmico
-    $('fin-deposit-bolao')?.addEventListener('change', updateCaixaBalances);
+    $('fin-deposit-bolao')?.addEventListener('change', async (e) => {
+        updateCaixaBalances();
+        await loadDepositParticipantes(e.target.value);
+    });
     $('fin-withdraw-bolao')?.addEventListener('change', updateCaixaBalances);
 
     const todayStr = new Date().toISOString().split('T')[0];
     if ($('fin-deposit-date') && !$('fin-deposit-date').value) $('fin-deposit-date').value = todayStr;
     if ($('fin-withdraw-date') && !$('fin-withdraw-date').value) $('fin-withdraw-date').value = todayStr;
 
+    // Extrato Modal
+    $('btn-extrato-deposit')?.addEventListener('click', () => openExtratoModal($('fin-deposit-bolao')?.value));
+    $('btn-extrato-withdraw')?.addEventListener('click', () => openExtratoModal($('fin-withdraw-bolao')?.value));
+    $('btn-close-extrato')?.addEventListener('click', () => $('modal-extrato-caixa')?.classList.add('hidden'));
+    $('btn-fechar-extrato')?.addEventListener('click', () => $('modal-extrato-caixa')?.classList.add('hidden'));
+    $('extrato-bolao-select')?.addEventListener('change', (e) => renderExtratoCaixa(e.target.value));
+
 });
+
+async function loadDepositParticipantes(bolaoId) {
+    const sel = $('fin-deposit-participante');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Nenhum / Externo</option>';
+    if (!bolaoId) return;
+
+    try {
+        const BolaoService = await import('./bolao.service.js');
+        const partes = await BolaoService.listParticipantes(bolaoId);
+        partes.forEach(p => {
+            sel.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
+        });
+    } catch(e) {
+        console.warn('Falha ao carregar participantes', e);
+    }
+}
+
+async function openExtratoModal(initialBolaoId) {
+    const sel = $('extrato-bolao-select');
+    if (sel) {
+        // Preenche opcoes se vazio
+        if (sel.options.length <= 1) {
+            try {
+                const BolaoService = await import('./bolao.service.js');
+                const boloes = await BolaoService.listBoloes();
+                boloes.filter(b => b.ativo).forEach(b => {
+                    sel.innerHTML += `<option value="${b.id}">${b.nome}</option>`;
+                });
+            } catch(e) {}
+        }
+        sel.value = initialBolaoId || '';
+    }
+    
+    renderExtratoCaixa(initialBolaoId || null);
+    $('modal-extrato-caixa')?.classList.remove('hidden');
+}
+
+function renderExtratoCaixa(targetBolaoId) {
+    const normalizeId = id => (id === '' ? null : id);
+    const target = normalizeId(targetBolaoId);
+    
+    let historico = [];
+
+    // ENTRADAS (Prizes mantidos em caixa)
+    allPrizes.forEach(p => {
+        if (normalizeId(p.bolao_id) == target && p.valor_retido_caixa > 0) {
+            historico.push({
+                date: p.prize_date || p.created_at,
+                desc: p.lottery_type === 'deposito' ? `📥 Depósito Direto` : `🏆 Prêmio Retido (Aposta #${p.bet_id || 'Avulsa'})`,
+                notes: p.notes,
+                amount: parseFloat(p.valor_retido_caixa),
+                type: 'in'
+            });
+        }
+    });
+
+    // SAÍDAS (Bets pagas com caixa)
+    allBets.forEach(b => {
+        if (normalizeId(b.bolao_id) == target && b.valor_utilizado_caixa > 0) {
+            historico.push({
+                date: b.bet_date || b.created_at,
+                desc: b.lottery_type === 'saque' ? `💸 Saque Direto` : `🎮 Pagamento Aposta (${b.lottery_type.toUpperCase()})`,
+                notes: b.notes,
+                amount: -parseFloat(b.valor_utilizado_caixa),
+                type: 'out'
+            });
+        }
+    });
+
+    historico.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const tbody = $('extrato-caixa-body');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (historico.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 24px; color:var(--text-3);">Nenhuma movimentação neste caixa.</td></tr>';
+        if ($('extrato-saldo-atual')) $('extrato-saldo-atual').textContent = `R$ 0,00`;
+        return;
+    }
+
+    let saldoAcumulado = 0;
+    historico.forEach(item => {
+        saldoAcumulado += item.amount;
+        const [y,m,d] = item.date.split('T')[0].split('-');
+        const dateStr = `${d}/${m}/${y}`;
+        
+        const isPos = item.type === 'in';
+        const color = isPos ? 'var(--green)' : 'var(--red)';
+        const signal = isPos ? '+' : '';
+        
+        const noteHtml = item.notes ? `<div style="font-size:0.75rem; color:var(--text-3); margin-top:2px;">${item.notes}</div>` : '';
+
+        tbody.innerHTML += `
+            <tr>
+                <td style="font-size:0.85rem; color:var(--text-2);">${dateStr}</td>
+                <td>
+                    <div style="font-weight:600; font-size:0.9rem; color:var(--text);">${item.desc}</div>
+                    ${noteHtml}
+                </td>
+                <td style="text-align:right; color:${color}; font-family:var(--font-num); font-weight:700;">
+                    ${signal}R$ ${Math.abs(item.amount).toFixed(2).replace('.',',')}
+                </td>
+            </tr>
+        `;
+    });
+
+    // O saldo deve bater com o totalAcumulado
+    const saldoAtual = getSaldoCaixa(target);
+    if ($('extrato-saldo-atual')) $('extrato-saldo-atual').textContent = `R$ ${fmt(saldoAtual)}`;
+}
 
 export function setFinFilter(filter) {
     finFilter = filter;

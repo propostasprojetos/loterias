@@ -514,7 +514,9 @@
 
                     <!-- Saldo atual -->
                     <div id="deposit-saldo-info" style="background: rgba(109,213,117,.08); border: 1px solid var(--green-border); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 16px; display:flex; align-items:center; justify-content:space-between;">
-                        <span style="font-size:0.82rem; color:var(--text-3);">ðŸ’° Saldo disponÃ­vel em caixa</span>
+                        <span style="font-size:0.82rem; color:var(--text-3); display: flex; align-items: center; gap: 8px;">ðŸ’° Saldo disponÃ­vel em caixa
+                            <button id="btn-extrato-deposit" style="padding: 2px 6px; font-size: 0.7rem; background: var(--surface-3); border: 1px solid var(--border-h); border-radius: 4px; color: var(--text); cursor: pointer;">ðŸ§¾ Extrato</button>
+                        </span>
                         <span id="deposit-saldo-valor" style="font-size:1.0rem; font-weight:700; color:var(--green); font-family:var(--font-num);">R$ 0,00</span>
                     </div>
 
@@ -535,7 +537,7 @@
                                 <input type="number" id="fin-deposit-amount" min="0" step="0.50" style="color:var(--green);">
                             </div>
                         </div>
-                        <div class="field" style="grid-column: 1 / -1;">
+                        <div class="field">
                             <label for="fin-deposit-bolao">BolÃ£o</label>
                             <div class="input-row">
                                 <select id="fin-deposit-bolao">
@@ -543,10 +545,18 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="field">
+                            <label for="fin-deposit-participante">Depositante</label>
+                            <div class="input-row">
+                                <select id="fin-deposit-participante">
+                                    <option value="">Nenhum / Externo</option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="field" style="grid-column: 1 / -1;">
                             <label for="fin-deposit-notes">DescriÃ§Ã£o / Origem</label>
                             <div class="input-row">
-                                <input type="text" id="fin-deposit-notes" placeholder="Ex: Cotas de setembro â€” JoÃ£o e Maria...">
+                                <input type="text" id="fin-deposit-notes" placeholder="Ex: Cotas de setembro...">
                             </div>
                         </div>
                     </div>
@@ -559,7 +569,9 @@
 
                     <!-- Saldo atual -->
                     <div id="withdraw-saldo-info" style="background: rgba(232,93,93,.08); border: 1px solid rgba(232,93,93,.25); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 16px; display:flex; align-items:center; justify-content:space-between;">
-                        <span style="font-size:0.82rem; color:var(--text-3);">ðŸ’° Saldo disponÃ­vel em caixa</span>
+                        <span style="font-size:0.82rem; color:var(--text-3); display: flex; align-items: center; gap: 8px;">ðŸ’° Saldo disponÃ­vel em caixa
+                            <button id="btn-extrato-withdraw" style="padding: 2px 6px; font-size: 0.7rem; background: var(--surface-3); border: 1px solid var(--border-h); border-radius: 4px; color: var(--text); cursor: pointer;">ðŸ§¾ Extrato</button>
+                        </span>
                         <span id="withdraw-saldo-valor" style="font-size:1.0rem; font-weight:700; color:var(--gold); font-family:var(--font-num);">R$ 0,00</span>
                     </div>
 
@@ -1448,3 +1460,46 @@
     </div>
 </body>
 </html>
+
+         < ! - -   M o d a l   E x t r a t o   d o   C a i x a   - - > 
+         < d i v   i d = " m o d a l - e x t r a t o - c a i x a "   c l a s s = " m o d a l - o v e r l a y   h i d d e n " > 
+                 < d i v   c l a s s = " m o d a l - c o n t e n t "   s t y l e = " m a x - w i d t h :   6 0 0 p x ; " > 
+                         < b u t t o n   c l a s s = " m o d a l - c l o s e "   i d = " b t n - c l o s e - e x t r a t o " > & t i m e s ; < / b u t t o n > 
+                         < h 2   s t y l e = " d i s p l a y : f l e x ;   a l i g n - i t e m s : c e n t e r ;   g a p : 8 p x ; " > >ØþÝ  E x t r a t o   d o   C a i x a < / h 2 > 
+                         
+                         < d i v   s t y l e = " m a r g i n - t o p : 1 6 p x ; " > 
+                                 < l a b e l   f o r = " e x t r a t o - b o l a o - s e l e c t "   s t y l e = " f o n t - s i z e : 0 . 8 5 r e m ;   c o l o r : v a r ( - - t e x t - 2 ) ;   d i s p l a y : b l o c k ;   m a r g i n - b o t t o m : 6 p x ; " > S e l e c i o n a r   B o l ã o < / l a b e l > 
+                                 < d i v   c l a s s = " i n p u t - r o w " > 
+                                         < s e l e c t   i d = " e x t r a t o - b o l a o - s e l e c t " > 
+                                                 < o p t i o n   v a l u e = " " > C a i x a   I n d i v i d u a l   ( S e m   B o l ã o ) < / o p t i o n > 
+                                         < / s e l e c t > 
+                                 < / d i v > 
+                         < / d i v > 
+ 
+                         < d i v   s t y l e = " b a c k g r o u n d :   v a r ( - - s u r f a c e - 3 ) ;   b o r d e r - r a d i u s :   v a r ( - - r a d i u s - s m ) ;   p a d d i n g :   1 2 p x   1 6 p x ;   m a r g i n :   1 6 p x   0 ;   d i s p l a y : f l e x ;   j u s t i f y - c o n t e n t : s p a c e - b e t w e e n ;   a l i g n - i t e m s : c e n t e r ; " > 
+                                 < s p a n   s t y l e = " f o n t - s i z e : 0 . 9 r e m ;   c o l o r : v a r ( - - t e x t - 2 ) ; " > S a l d o   A t u a l : < / s p a n > 
+                                 < s p a n   i d = " e x t r a t o - s a l d o - a t u a l "   s t y l e = " f o n t - s i z e : 1 . 2 r e m ;   f o n t - w e i g h t : 7 0 0 ;   c o l o r : v a r ( - - g o l d ) ;   f o n t - f a m i l y : v a r ( - - f o n t - n u m ) ; " > R $   0 , 0 0 < / s p a n > 
+                         < / d i v > 
+ 
+                         < d i v   s t y l e = " m a x - h e i g h t :   4 0 0 p x ;   o v e r f l o w - y :   a u t o ;   b o r d e r :   1 p x   s o l i d   v a r ( - - b o r d e r ) ;   b o r d e r - r a d i u s :   v a r ( - - r a d i u s - s m ) ; " > 
+                                 < t a b l e   c l a s s = " f i n - t a b l e "   s t y l e = " m a r g i n - b o t t o m : 0 ; " > 
+                                         < t h e a d   s t y l e = " p o s i t i o n : s t i c k y ;   t o p : 0 ;   z - i n d e x : 1 ;   b a c k g r o u n d : v a r ( - - s u r f a c e - 2 ) ; " > 
+                                                 < t r > 
+                                                         < t h   s t y l e = " w i d t h :   8 0 p x ; " > D a t a < / t h > 
+                                                         < t h > D e s c r i ç ã o   /   M o v i m e n t a ç ã o < / t h > 
+                                                         < t h   s t y l e = " t e x t - a l i g n :   r i g h t ;   w i d t h :   1 0 0 p x ; " > V a l o r   ( R $ ) < / t h > 
+                                                 < / t r > 
+                                         < / t h e a d > 
+                                         < t b o d y   i d = " e x t r a t o - c a i x a - b o d y " > 
+                                                 < ! - -   j s   p r e e n c h e   - - > 
+                                         < / t b o d y > 
+                                 < / t a b l e > 
+                         < / d i v > 
+                         
+                         < d i v   s t y l e = " m a r g i n - t o p : 2 0 p x ;   d i s p l a y : f l e x ;   j u s t i f y - c o n t e n t : f l e x - e n d ; " > 
+                                 < b u t t o n   c l a s s = " b t n - p r i m a r y "   i d = " b t n - f e c h a r - e x t r a t o " > F e c h a r < / b u t t o n > 
+                         < / d i v > 
+                 < / d i v > 
+         < / d i v > 
+  
+ 
