@@ -1512,5 +1512,19 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module" src="./app.js"></script>
+    <!-- Modal Ver Jogos da Aposta -->
+    <div id="modal-view-games" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 640px;">
+            <button class="modal-close" id="btn-close-view-games">&times;</button>
+            <h2 id="view-games-title">Jogos da Aposta</h2>
+            <div id="view-games-loading" style="text-align:center; color:var(--text-3); padding:20px;">Carregando...</div>
+            <div id="view-games-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:12px; margin-top:16px; max-height:60vh; overflow-y:auto;"></div>
+            <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn-outline" id="btn-print-view-games">🖨️ Exportar PDF</button>
+                <button type="button" class="btn-primary" id="btn-close-view-games-bottom">Fechar</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

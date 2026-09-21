@@ -443,6 +443,7 @@ export function renderTransactions() {
             <td class="amount-cell ${amountClass}">${amountStr}</td>
             <td class="actions-cell">
                 ${t.source === 'bets' ? `<button class="btn-icon btn-table-action btn-view-games" title="Ver Jogos" data-id="${t.id}">👁️</button>` : ''}
+                ${t.source === 'bets' ? `<button class="btn-icon btn-table-action btn-print-bet" title="Exportar PDF dos Jogos" data-id="${t.id}">🖨️</button>` : ''}
                 ${t.source === 'bets' ? `<button class="btn-icon btn-table-action btn-edit-transaction" title="Editar" data-id="${t.id}" data-source="${t.source}">✏️</button>` : ''}
                 <button class="btn-icon btn-table-action btn-del-transaction" title="Excluir" data-id="${t.id}" data-source="${t.source}">${ICON.trash}</button>
             </td>
@@ -474,6 +475,12 @@ export function renderTransactions() {
         btn.addEventListener('click', () => {
             const id = btn.dataset.id;
             openEditBetModal(id);
+        });
+    });
+
+    tbody.querySelectorAll('.btn-print-bet').forEach(btn => {
+        btn.addEventListener('click', () => {
+            exportBetPdf(btn.dataset.id);
         });
     });
 }
@@ -982,9 +989,88 @@ async function renderEditBetParticipantes(bolao_id, existingParts) {
 // VIEW BET GAMES MODAL LOGIC
 // ==========================================
 
+function pad(n) { return String(n).padStart(2, '0'); }
+
+async function exportBetPdf(id) {
+    const bet = allBets.find(b => b.id === id);
+    if (!bet) return;
+
+    const lotteryLabel = bet.lottery_type === 'lf' ? 'Lotofácil'
+        : bet.lottery_type === 'qn' ? 'Quina'
+        : bet.lottery_type === 'ms' ? 'Mega-Sena'
+        : (bet.lottery_type || 'Aposta').toUpperCase();
+
+    const dateStr = bet.bet_date ? bet.bet_date.split('-').reverse().join('/') : '—';
+    const concurso = bet.contest_number ? `Concurso ${bet.contest_number}` : '';
+    const bolaoNome = bet.bolao_id ? `Bolão vinculado` : 'Caixa Individual';
+
+    // Fetch bet_games from Supabase
+    let games = [];
+    if (sbReady && state.currentSession) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('bet_games')
+                .select('numbers, game_index')
+                .eq('bet_id', id)
+                .order('game_index', { ascending: true });
+            if (!error && data) games = data;
+        } catch(e) {
+            console.warn('Erro ao buscar jogos para PDF', e);
+        }
+    }
+
+    // If no bet_games, try from bet.games array
+    if (games.length === 0 && Array.isArray(bet.games)) {
+        games = bet.games.map((nums, i) => ({ game_index: i, numbers: Array.isArray(nums) ? nums : [] }));
+    }
+
+    // Build print HTML
+    const printArea = document.getElementById('print-area');
+    if (!printArea) return;
+
+    const now = new Date();
+    const nowStr = `${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR')}`;
+
+    let gamesHtml = '';
+    if (games.length === 0) {
+        gamesHtml = `<p style="color:#666; grid-column:1/-1; text-align:center;">Nenhum detalhe de jogo registrado para esta aposta.</p>`;
+    } else {
+        games.forEach((g, idx) => {
+            const nums = Array.isArray(g.numbers) ? g.numbers : [];
+            const ballsHtml = nums.map(n => `<div class="print-ball">${pad(n)}</div>`).join('');
+            gamesHtml += `
+                <div class="print-card">
+                    <div class="print-card-header">
+                        <span>Jogo ${idx + 1}</span>
+                        <span>${nums.length} dezenas</span>
+                    </div>
+                    <div class="print-numbers">${ballsHtml}</div>
+                </div>
+            `;
+        });
+    }
+
+    printArea.innerHTML = `
+        <div class="print-header">
+            <h2>🎲 ${lotteryLabel} — Apostas Registradas</h2>
+            <p style="font-size:1rem; font-weight:600; margin-top:4px;">${concurso}</p>
+            <p>Data da aposta: <strong>${dateStr}</strong> &nbsp;|&nbsp; ${bolaoNome} &nbsp;|&nbsp; ${games.length} jogo(s)</p>
+            <p style="font-size:0.8rem; margin-top:4px;">Gerado em: ${nowStr} — LotoSmart</p>
+        </div>
+        <div class="print-grid">
+            ${gamesHtml}
+        </div>
+    `;
+
+    window.print();
+}
+
 async function openViewGamesModal(id) {
     const bet = allBets.find(b => b.id === id);
     if (!bet) return;
+
+    // Track which bet is open so the "Exportar PDF" button inside modal works
+    window.__currentViewBetId = id;
     
     $('modal-view-games').classList.remove('hidden');
     $('view-games-list').innerHTML = '';
@@ -1067,8 +1153,17 @@ document.addEventListener('DOMContentLoaded', () => {
     $('btn-close-view-games')?.addEventListener('click', () => {
         $('modal-view-games').classList.add('hidden');
     });
+    $('btn-close-view-games-bottom')?.addEventListener('click', () => {
+        $('modal-view-games').classList.add('hidden');
+    });
     $('btn-close-view-games-2')?.addEventListener('click', () => {
         $('modal-view-games').classList.add('hidden');
+    });
+    $('btn-print-view-games')?.addEventListener('click', () => {
+        if (window.__currentViewBetId) {
+            $('modal-view-games').classList.add('hidden');
+            exportBetPdf(window.__currentViewBetId);
+        }
     });
     
     $('edit-bet-bolao')?.addEventListener('change', async (e) => {
