@@ -142,7 +142,8 @@ BEGIN
 
     SELECT COALESCE(json_agg(json_build_object(
         'bet_id', prz.bet_id, 'prize_amount', prz.prize_amount,
-        'manter_em_caixa', prz.manter_em_caixa, 'valor_retido_caixa', prz.valor_retido_caixa
+        'manter_em_caixa', prz.manter_em_caixa, 'valor_retido_caixa', prz.valor_retido_caixa,
+        'lottery_type', prz.lottery_type
     )), '[]') INTO v_pr_caixa
     FROM public.prizes prz
     WHERE (prz.bolao_id = v_bolao.id OR prz.bet_id IN (SELECT id FROM public.bets WHERE bolao_id = v_bolao.id))

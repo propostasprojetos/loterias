@@ -48,8 +48,11 @@ export async function initBolaoPublico(token) {
         const pr_caixa = data.pr_caixa || [];
         const jogosDetalhados = data.jogos || [];
 
-        const totalApostado = bets.reduce((s, b) => s + Number(b.total_cost || 0), 0);
-        const totalPremiado = premios.reduce((s, p) => s + Number(p.premio_recebido || 0), 0);
+        const realBets = bets.filter(b => b.lottery_type !== 'saque');
+        const realPrCaixa = pr_caixa.filter(p => p.lottery_type !== 'deposito');
+
+        const totalApostado = realBets.reduce((s, b) => s + Number(b.total_cost || 0), 0);
+        const totalPremiadoRateado = premios.reduce((s, p) => s + Number(p.premio_recebido || 0), 0);
         
         const totalApostadoCaixa = bets.reduce((s, b) => {
             let val = Number(b.valor_utilizado_caixa || 0);
@@ -61,6 +64,13 @@ export async function initBolaoPublico(token) {
             if (val === 0 && p.manter_em_caixa) val = Number(p.prize_amount);
             return s + val;
         }, 0);
+        
+        const totalRetidoLoteria = realPrCaixa.reduce((s, p) => {
+            let val = Number(p.valor_retido_caixa || 0);
+            if (val === 0 && p.manter_em_caixa) val = Number(p.prize_amount);
+            return s + val;
+        }, 0);
+        const totalPremiado = totalPremiadoRateado + totalRetidoLoteria;
         
         const saldoCaixa = totalPremiadoCaixa - totalApostadoCaixa;
         const saldoGeral = totalPremiado - totalApostado;

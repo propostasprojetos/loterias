@@ -266,7 +266,7 @@ export async function obterRelatorioBolao(bolao_id) {
     try {
         let przQuery = supabaseClient
             .from('prizes')
-            .select('id, prize_amount, bet_id, bolao_id, manter_em_caixa, valor_retido_caixa')
+            .select('id, prize_amount, bet_id, bolao_id, manter_em_caixa, valor_retido_caixa, lottery_type')
             .eq('owner_id', uid());
 
         if (betIds.length > 0) {
@@ -296,10 +296,13 @@ export async function obterRelatorioBolao(bolao_id) {
         if (!jErr && jp) vinculos = jp;
     }
 
-    const totalApostado = (bets ?? []).reduce((s, b) => s + Number(b.total_cost), 0);
-    const totalPremiado = premios.reduce((s, p) => s + Number(p.premio_recebido), 0);
+    const realBets = (bets ?? []).filter(b => b.lottery_type !== 'saque');
+    const realPrCaixa = pr_caixa.filter(p => p.lottery_type !== 'deposito');
+
+    const totalApostado = realBets.reduce((s, b) => s + Number(b.total_cost), 0);
+    const totalPremiadoRateado = premios.reduce((s, p) => s + Number(p.premio_recebido), 0);
     
-    // Caixa Parcial ou Total
+    // Caixa Parcial ou Total (ignorando saques e depósitos para o Total Apostado/Premiado, mas incluindo para o Saldo Caixa)
     const totalApostadoCaixa = (bets ?? []).reduce((s, b) => {
         let val = Number(b.valor_utilizado_caixa || 0);
         if (val === 0 && b.manter_em_caixa) val = Number(b.total_cost);
@@ -310,6 +313,15 @@ export async function obterRelatorioBolao(bolao_id) {
         if (val === 0 && p.manter_em_caixa) val = Number(p.prize_amount);
         return s + val;
     }, 0);
+    
+    // O total premiado da loteria = total rateado + total de loteria retido no caixa
+    const totalRetidoLoteria = realPrCaixa.reduce((s, p) => {
+        let val = Number(p.valor_retido_caixa || 0);
+        if (val === 0 && p.manter_em_caixa) val = Number(p.prize_amount);
+        return s + val;
+    }, 0);
+    const totalPremiado = totalPremiadoRateado + totalRetidoLoteria;
+
     const saldoCaixa = totalPremiadoCaixa - totalApostadoCaixa;
 
     // Ranking por participante
