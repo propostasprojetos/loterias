@@ -249,6 +249,9 @@ CREATE TRIGGER trg_validar_consistencia
 
 -- -----------------------------------------------------------------------
 -- Trigger 3 — Percentual automático para participante único
+-- NOTA: O trigger BEFORE INSERT lê o COUNT *antes* do novo registro existir.
+-- Portanto: COUNT = 0 significa "este será o único participante" → forçar 100%.
+-- COUNT = 1 significa "já existe 1, este é o 2º" → NÃO forçar 100%.
 -- -----------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.fn_percentual_automatico()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
@@ -259,8 +262,9 @@ BEGIN
     FROM public.jogo_participantes
     WHERE bet_id = NEW.bet_id;
 
-    -- Se há apenas 1 participante, garante 100%
-    IF v_count = 1 THEN
+    -- Se ainda não há nenhum participante para esta aposta,
+    -- este é o único — garante 100%
+    IF v_count = 0 THEN
         NEW.percentual := 100;
     END IF;
 
