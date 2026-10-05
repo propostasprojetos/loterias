@@ -242,7 +242,7 @@ export async function obterRelatorioBolao(bolao_id) {
     // Apostas do bolão
     const { data: bets, error: bErr } = await supabaseClient
         .from('bets')
-        .select('id, total_cost, lottery_type, bet_date, manter_em_caixa, valor_utilizado_caixa')
+        .select('id, total_cost, lottery_type, bet_date, manter_em_caixa, valor_utilizado_caixa, game_count')
         .eq('bolao_id', bolao_id)
         .eq('owner_id', uid());
     if (bErr) throw bErr;
@@ -328,7 +328,12 @@ export async function obterRelatorioBolao(bolao_id) {
     const ranking = participantes.map(part => {
         const meusPremios = premios.filter(p => p.participante_id === part.id);
         const meusVinculos = vinculos.filter(v => v.participante_id === part.id);
-        const meusJogos = betIds.length; // quantidade de apostas que compõem o bolão
+        
+        // Quantidade de jogos reais que o participante está vinculado
+        const meusJogos = meusVinculos.reduce((s, v) => {
+            const b = (bets ?? []).find(bet => bet.id === v.bet_id);
+            return s + (b ? (Number(b.game_count) || 1) : 0);
+        }, 0);
         
         const recebido = meusPremios.reduce((s, p) => s + Number(p.premio_recebido), 0);
         
