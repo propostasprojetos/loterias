@@ -514,15 +514,42 @@ export function renderTransactions() {
         };
     }
 
-    // Botão de exportação em lote
-    const btnBatch = $('btn-print-selected-bets');
-    if (btnBatch) {
-        btnBatch.onclick = () => {
-            if (selectedBetIds.size > 0) {
-                exportMultipleBetsPdf(Array.from(selectedBetIds));
-            }
+    // Dropdown de exportação em lote (PDF / TXT / CSV)
+    const batchWrap    = $('btn-print-selected-bets');
+    const btnMain      = $('btn-batch-export-main');
+    const btnArrow     = $('btn-batch-export-arrow');
+    const dropdown     = $('batch-export-dropdown');
+
+    const closeBatchDropdown = () => { if (dropdown) dropdown.style.display = 'none'; };
+
+    if (btnMain) {
+        btnMain.onclick = () => {
+            if (selectedBetIds.size > 0) exportMultipleBetsPdf(Array.from(selectedBetIds));
         };
     }
+    if (btnArrow && dropdown) {
+        btnArrow.onclick = (e) => {
+            e.stopPropagation();
+            const isOpen = dropdown.style.display === 'block';
+            dropdown.style.display = isOpen ? 'none' : 'block';
+        };
+    }
+    if (dropdown) {
+        dropdown.querySelectorAll('.batch-export-opt').forEach(opt => {
+            opt.addEventListener('click', () => {
+                const fmt = opt.dataset.format;
+                const ids = Array.from(selectedBetIds);
+                if (ids.length === 0) return;
+                closeBatchDropdown();
+                if (fmt === 'pdf') exportMultipleBetsPdf(ids);
+                else if (fmt === 'txt') exportMultipleBetsTxt(ids);
+                else if (fmt === 'csv') exportMultipleBetsCsv(ids);
+            });
+            opt.addEventListener('mouseover', () => { opt.style.background = 'var(--surface-3)'; });
+            opt.addEventListener('mouseout',  () => { opt.style.background = 'none'; });
+        });
+    }
+    document.addEventListener('click', closeBatchDropdown, { once: false });
 
     updateSelectedBatchUI();
 
@@ -554,9 +581,61 @@ export function renderTransactions() {
         });
     });
 
+    // Botão de exportação por linha — abre mini-dropdown com PDF / TXT / CSV
     tbody.querySelectorAll('.btn-print-bet').forEach(btn => {
-        btn.addEventListener('click', () => {
-            exportBetPdf(btn.dataset.id);
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const betId = btn.dataset.id;
+
+            // Remove qualquer dropdown antigo
+            document.querySelectorAll('.row-export-dropdown').forEach(el => el.remove());
+
+            const menu = document.createElement('div');
+            menu.className = 'row-export-dropdown';
+            Object.assign(menu.style, {
+                position: 'fixed',
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border-h)',
+                borderRadius: 'var(--radius-sm)',
+                boxShadow: 'var(--shadow-hover)',
+                zIndex: '9999',
+                minWidth: '180px',
+            });
+            const rect = btn.getBoundingClientRect();
+            menu.style.top  = (rect.bottom + 4) + 'px';
+            menu.style.left = rect.left + 'px';
+
+            const opts = [
+                { fmt: 'pdf', label: '📄 Exportar PDF' },
+                { fmt: 'txt', label: '📝 Exportar TXT' },
+                { fmt: 'csv', label: '📊 Exportar CSV' },
+            ];
+            opts.forEach((o, i) => {
+                const ob = document.createElement('button');
+                ob.textContent = o.label;
+                Object.assign(ob.style, {
+                    width: '100%', textAlign: 'left', background: 'none',
+                    border: i > 0 ? '1px solid var(--border)' : 'none',
+                    borderLeft: 'none', borderRight: 'none', borderBottom: 'none',
+                    padding: '10px 14px', color: 'var(--text)', cursor: 'pointer',
+                    fontSize: '.85rem', display: 'flex', alignItems: 'center', gap: '8px',
+                });
+                ob.onmouseover = () => { ob.style.background = 'var(--surface-3)'; };
+                ob.onmouseout  = () => { ob.style.background = 'none'; };
+                ob.onclick = () => {
+                    menu.remove();
+                    if (o.fmt === 'pdf') exportMultipleBetsPdf([betId]);
+                    else if (o.fmt === 'txt') exportMultipleBetsTxt([betId]);
+                    else if (o.fmt === 'csv') exportMultipleBetsCsv([betId]);
+                };
+                menu.appendChild(ob);
+            });
+
+            document.body.appendChild(menu);
+            const closeRowMenu = (ev) => {
+                if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('click', closeRowMenu); }
+            };
+            setTimeout(() => document.addEventListener('click', closeRowMenu), 0);
         });
     });
 }
@@ -1233,6 +1312,173 @@ export async function exportMultipleBetsPdf(ids) {
 
 export async function exportBetPdf(id) {
     await exportMultipleBetsPdf([id]);
+}
+
+// ============================================================
+// Helpers compartilhados para TXT / CSV
+// ============================================================
+async function _fetchBetsData(ids) {
+    const selectedBets = allBets.filter(b => ids.includes(String(b.id)));
+    selectedBets.sort((a, b) => (a.bet_date || '').localeCompare(b.bet_date || ''));
+
+    const boloesMap = new Map();
+    try {
+        const BolaoService = await import('./bolao.service.js');
+        const boloes = await BolaoService.listBoloes();
+        boloes.forEach(b => boloesMap.set(String(b.id), b.nome));
+    } catch(e) {}
+
+    const betGamesMap = new Map();
+    if (sbReady && state.currentSession) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('bet_games')
+                .select('bet_id, numbers, game_index')
+                .in('bet_id', ids)
+                .order('game_index', { ascending: true });
+            if (!error && data) {
+                data.forEach(bg => {
+                    const bId = String(bg.bet_id);
+                    if (!betGamesMap.has(bId)) betGamesMap.set(bId, []);
+                    betGamesMap.get(bId).push(bg);
+                });
+            }
+        } catch(e) {}
+    }
+    return { selectedBets, boloesMap, betGamesMap };
+}
+
+function _downloadFile(filename, content, mimeType) {
+    const blob = new Blob(['\uFEFF' + content], { type: mimeType });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+}
+
+function _getGames(bet, betGamesMap) {
+    let games = betGamesMap.get(String(bet.id)) || [];
+    if (games.length === 0 && bet.games) {
+        let raw = bet.games;
+        if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch(e) {} }
+        if (Array.isArray(raw)) {
+            games = raw.map((nums, i) => ({
+                game_index: i,
+                numbers: Array.isArray(nums) ? nums : (nums.numbers || [])
+            }));
+        }
+    }
+    return games;
+}
+
+// ============================================================
+// Exportar TXT
+// ============================================================
+export async function exportMultipleBetsTxt(ids) {
+    if (!ids || ids.length === 0) return;
+    const { selectedBets, boloesMap, betGamesMap } = await _fetchBetsData(ids);
+    if (selectedBets.length === 0) return;
+
+    const now = new Date();
+    const nowStr = now.toLocaleString('pt-BR');
+    const sep = '='.repeat(56);
+    const line = '-'.repeat(56);
+
+    let txt = `LOTOSMART — RELATÓRIO DE APOSTAS\n`;
+    txt += `Gerado em: ${nowStr}\n`;
+    txt += `Apostas: ${selectedBets.length}  |  Investimento Total: R$ ${selectedBets.reduce((s,b)=>s+(parseFloat(b.total_cost)||0),0).toFixed(2)}\n`;
+    txt += sep + '\n\n';
+
+    selectedBets.forEach((bet, idx) => {
+        const lotteryLabel = bet.lottery_type === 'lf' ? 'Lotofácil'
+            : bet.lottery_type === 'qn' ? 'Quina'
+            : bet.lottery_type === 'ms' ? 'Mega-Sena'
+            : (bet.lottery_type || 'Aposta').toUpperCase();
+        const dateStr = bet.bet_date ? bet.bet_date.split('-').reverse().join('/') : '—';
+        const concurso = bet.contest_number ? `Concurso ${bet.contest_number}` : '';
+        const bolaoNome = bet.bolao_id ? (boloesMap.get(String(bet.bolao_id)) || 'Bolão') : 'Individual';
+        const betNum = bet.bet_number ? `#${bet.bet_number}` : `Aposta ${idx + 1}`;
+        const games = _getGames(bet, betGamesMap);
+
+        txt += `${lotteryLabel} — ${betNum}${concurso ? '  ' + concurso : ''}\n`;
+        txt += `Data: ${dateStr}  |  Custo: R$ ${parseFloat(bet.total_cost||0).toFixed(2)}  |  Origem: ${bolaoNome}\n`;
+        if (bet.notes) txt += `Obs: ${bet.notes}\n`;
+
+        if (games.length === 0) {
+            txt += `  Jogos: ${bet.game_count || 1} (números não gravados)\n`;
+        } else {
+            games.forEach((g, i) => {
+                const nums = (g.numbers || []).map(n => String(n).padStart(2, '0')).join('  ');
+                txt += `  Jogo ${i + 1}: ${nums}\n`;
+            });
+        }
+        txt += line + '\n\n';
+    });
+
+    const filename = selectedBets.length === 1
+        ? `aposta_${selectedBets[0].bet_number || 'lotosmart'}.txt`
+        : `apostas_lotosmart_${new Date().toISOString().slice(0,10)}.txt`;
+    _downloadFile(filename, txt, 'text/plain;charset=utf-8');
+}
+
+// ============================================================
+// Exportar CSV
+// ============================================================
+export async function exportMultipleBetsCsv(ids) {
+    if (!ids || ids.length === 0) return;
+    const { selectedBets, boloesMap, betGamesMap } = await _fetchBetsData(ids);
+    if (selectedBets.length === 0) return;
+
+    const cols = ['Aposta','Loteria','Data','Concurso','Bolão/Origem','Custo (R$)','Jogo Nº','Números','Observação'];
+    const rows = [cols];
+
+    selectedBets.forEach((bet, idx) => {
+        const lotteryLabel = bet.lottery_type === 'lf' ? 'Lotofácil'
+            : bet.lottery_type === 'qn' ? 'Quina'
+            : bet.lottery_type === 'ms' ? 'Mega-Sena'
+            : (bet.lottery_type || '').toUpperCase();
+        const dateStr  = bet.bet_date ? bet.bet_date.split('-').reverse().join('/') : '';
+        const betNum   = bet.bet_number ? `#${bet.bet_number}` : `Aposta ${idx + 1}`;
+        const bolao    = bet.bolao_id ? (boloesMap.get(String(bet.bolao_id)) || 'Bolão') : 'Individual';
+        const games    = _getGames(bet, betGamesMap);
+
+        if (games.length === 0) {
+            rows.push([
+                betNum, lotteryLabel, dateStr,
+                bet.contest_number || '', bolao,
+                parseFloat(bet.total_cost || 0).toFixed(2),
+                '', `(${bet.game_count || 1} jogo(s) sem números)`,
+                bet.notes || ''
+            ]);
+        } else {
+            games.forEach((g, i) => {
+                const nums = (g.numbers || []).map(n => String(n).padStart(2,'0')).join(' ');
+                rows.push([
+                    i === 0 ? betNum : '',
+                    i === 0 ? lotteryLabel : '',
+                    i === 0 ? dateStr : '',
+                    i === 0 ? (bet.contest_number || '') : '',
+                    i === 0 ? bolao : '',
+                    i === 0 ? parseFloat(bet.total_cost || 0).toFixed(2) : '',
+                    i + 1, nums,
+                    i === 0 ? (bet.notes || '') : ''
+                ]);
+            });
+        }
+    });
+
+    const escape = v => {
+        const s = String(v ?? '');
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+            ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = rows.map(r => r.map(escape).join(',')).join('\r\n');
+
+    const filename = selectedBets.length === 1
+        ? `aposta_${selectedBets[0].bet_number || 'lotosmart'}.csv`
+        : `apostas_lotosmart_${new Date().toISOString().slice(0,10)}.csv`;
+    _downloadFile(filename, csv, 'text/csv;charset=utf-8');
 }
 
 async function openViewGamesModal(id) {

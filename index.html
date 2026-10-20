@@ -626,9 +626,17 @@
                 <div class="fin-table-header" id="fin-history-header">
                     <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
                         <h3>Histórico Financeiro</h3>
-                        <button id="btn-print-selected-bets" class="btn-sm hidden" style="background:var(--teal); color:#0e1015; font-weight:700; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow: 0 2px 8px rgba(78,205,196,0.3);">
-                            🖨️ Exportar PDF das Selecionadas (<span id="selected-bets-count">0</span>)
-                        </button>
+                        <div id="btn-print-selected-bets" class="hidden" style="position:relative; display:inline-flex;">
+                            <button id="btn-batch-export-main" style="background:var(--teal); color:#0e1015; font-weight:700; border:none; padding:6px 14px; border-radius:6px 0 0 6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow: 0 2px 8px rgba(78,205,196,0.3);">
+                                🖨️ Exportar (<span id="selected-bets-count">0</span>)
+                            </button>
+                            <button id="btn-batch-export-arrow" style="background:var(--teal); color:#0e1015; font-weight:700; border:none; border-left:1px solid rgba(0,0,0,0.2); padding:6px 10px; border-radius:0 6px 6px 0; cursor:pointer; box-shadow: 0 2px 8px rgba(78,205,196,0.3);" title="Mais opções de exportação">▾</button>
+                            <div id="batch-export-dropdown" style="display:none; position:absolute; top:100%; left:0; min-width:200px; background:var(--surface-2); border:1px solid var(--border-h); border-radius:var(--radius-sm); box-shadow:var(--shadow-hover); z-index:200; margin-top:4px;">
+                                <button class="batch-export-opt" data-format="pdf" style="width:100%; text-align:left; background:none; border:none; padding:10px 14px; color:var(--text); cursor:pointer; font-size:.85rem; display:flex; align-items:center; gap:8px;">📄 Exportar PDF</button>
+                                <button class="batch-export-opt" data-format="txt" style="width:100%; text-align:left; background:none; border:none; padding:10px 14px; color:var(--text); cursor:pointer; font-size:.85rem; display:flex; align-items:center; gap:8px; border-top:1px solid var(--border);">📝 Exportar TXT</button>
+                                <button class="batch-export-opt" data-format="csv" style="width:100%; text-align:left; background:none; border:none; padding:10px 14px; color:var(--text); cursor:pointer; font-size:.85rem; display:flex; align-items:center; gap:8px; border-top:1px solid var(--border);">📊 Exportar CSV</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="fin-filters" id="fin-filters-container">
                         <button class="fin-filter active" data-filter="all">Todos</button>
