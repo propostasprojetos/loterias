@@ -108,6 +108,117 @@ if (btnClearDraft) btnClearDraft.addEventListener('click', () => {
 if (btnManualUpload) btnManualUpload.addEventListener('click', () => manualFileInput?.click());
 if (manualFileInput) manualFileInput.addEventListener('change', handleFileUpload);
 
+// ==========================================
+// Abas de modo de entrada
+// ==========================================
+document.querySelectorAll('.manual-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        // Atualiza estilo das abas
+        document.querySelectorAll('.manual-tab').forEach(t => {
+            t.style.color = 'var(--text-2)';
+            t.style.borderBottomColor = 'transparent';
+        });
+        tab.style.color = 'var(--teal)';
+        tab.style.borderBottomColor = 'var(--teal)';
+
+        // Mostra painel correspondente
+        const target = tab.dataset.tab;
+        ['digitar', 'celula', 'arquivo'].forEach(name => {
+            const panel = document.getElementById(`manual-panel-${name}`);
+            if (panel) panel.classList.toggle('hidden', name !== target);
+        });
+    });
+});
+
+// ==========================================
+// Colar por Célula
+// ==========================================
+const celulaInput    = document.getElementById('manual-celula-input');
+const celulaPreview  = document.getElementById('manual-celula-preview');
+const celulaFeedback = document.getElementById('manual-celula-feedback');
+const btnCelula      = document.getElementById('btn-celula-processar');
+
+function updateCelulaPreview() {
+    if (!celulaInput || !celulaPreview) return;
+    const game = getSelectedGame();
+    if (!game) return;
+    const qty = getSelectedQty();
+    const raw = celulaInput.value;
+    // Separa por espaço ou traço
+    const nums = raw.split(/[\s\-]+/).map(v => parseInt(v)).filter(n => !isNaN(n) && n > 0);
+    const total = nums.length;
+    const jogos = total > 0 ? Math.floor(total / qty) : 0;
+    const sobra = total % qty;
+    if (total === 0) {
+        celulaPreview.textContent = '';
+    } else {
+        celulaPreview.textContent =
+            `${total} número(s) detectado(s) → ${jogos} jogo(s) completo(s)` +
+            (sobra > 0 ? ` + ${sobra} restante(s) ignorado(s)` : '');
+    }
+}
+
+if (celulaInput) {
+    celulaInput.addEventListener('input', updateCelulaPreview);
+}
+
+if (btnCelula) {
+    btnCelula.addEventListener('click', () => {
+        const game = getSelectedGame();
+        if (!game) { celulaFeedback && (celulaFeedback.style.color = 'var(--red)', celulaFeedback.textContent = 'Selecione uma loteria primeiro.'); return; }
+
+        const rules  = getRules(game.slug);
+        const maxNum = game.parametros?.range_max ?? 60;
+        const minNum = game.parametros?.range_min ?? 1;
+        const qty    = getSelectedQty(); // dezenas por jogo
+
+        const raw  = celulaInput.value || '';
+        // Divide por espaço OU traço isolado (não traço dentro de número)
+        const tokens = raw.split(/[\s\-]+/).map(v => v.trim()).filter(Boolean);
+        const nums = tokens
+            .map(v => parseInt(v))
+            .filter(n => !isNaN(n) && n >= minNum && n <= maxNum);
+
+        if (nums.length < qty) {
+            celulaFeedback.style.color = 'var(--red)';
+            celulaFeedback.textContent = `Poucos números válidos (${nums.length}). São necessários pelo menos ${qty} para 1 jogo.`;
+            return;
+        }
+
+        const extras = {
+            trevos: Array.from(panelTrevos?.querySelectorAll('input[type=checkbox]:checked') || []).map(cb => parseInt(cb.value)),
+            mes:    selectMonth ? parseInt(selectMonth.value) : null,
+            time:   selectTeam ? selectTeam.value : null
+        };
+
+        let imported = 0;
+        let i = 0;
+        while (i + qty <= nums.length) {
+            const dezenas = nums.slice(i, i + qty).sort((a, b) => a - b);
+            // Remove duplicatas dentro do jogo
+            const unique = [...new Set(dezenas)];
+            if (unique.length >= rules.minPick) {
+                const entry = buildGameEntryFromData(game.slug, unique.slice(0, qty), extras);
+                validGamesQueue.push(entry);
+                imported++;
+            }
+            i += qty;
+        }
+
+        renderCompletedUI();
+
+        if (imported > 0) {
+            celulaFeedback.style.color = 'var(--green)';
+            celulaFeedback.textContent = `✅ ${imported} jogo(s) importado(s) com sucesso!`;
+            celulaInput.value = '';
+            celulaPreview && (celulaPreview.textContent = '');
+        } else {
+            celulaFeedback.style.color = 'var(--red)';
+            celulaFeedback.textContent = 'Nenhum jogo válido encontrado. Verifique os números e a loteria selecionada.';
+        }
+    });
+}
+
 if (numberInput) {
     numberInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ' || e.key === ',') {
@@ -154,6 +265,20 @@ function openModal() {
     applyGameRules();
     renderDraftUI();
     renderCompletedUI();
+
+    // Resetar aba para "Digitar"
+    document.querySelectorAll('.manual-tab').forEach(t => {
+        const isDigitar = t.dataset.tab === 'digitar';
+        t.style.color = isDigitar ? 'var(--teal)' : 'var(--text-2)';
+        t.style.borderBottomColor = isDigitar ? 'var(--teal)' : 'transparent';
+    });
+    ['digitar', 'celula', 'arquivo'].forEach(name => {
+        const panel = document.getElementById(`manual-panel-${name}`);
+        if (panel) panel.classList.toggle('hidden', name !== 'digitar');
+    });
+    if (celulaInput) celulaInput.value = '';
+    if (celulaPreview) celulaPreview.textContent = '';
+    if (celulaFeedback) celulaFeedback.textContent = '';
 
     modalManual.classList.remove('hidden');
     numberInput?.focus();
@@ -246,10 +371,15 @@ function applyGameRules() {
 // Processamento de Dezenas
 // ==========================================
 function showFeedback(msg, isError = true) {
-    feedbackLabel.textContent = msg;
-    feedbackLabel.style.color = isError ? 'var(--red)' : 'var(--green)';
+    // Escreve no feedback do painel ativo (digitar ou arquivo)
+    const activePanel = document.querySelector('[id^="manual-panel-"]:not(.hidden)');
+    const targetId = activePanel?.id === 'manual-panel-arquivo' ? 'manual-feedback-arquivo' : 'manual-feedback';
+    const el = document.getElementById(targetId) || feedbackLabel;
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = isError ? 'var(--red)' : 'var(--green)';
     clearTimeout(feedbackTimeout);
-    feedbackTimeout = setTimeout(() => { feedbackLabel.textContent = ''; }, 3000);
+    feedbackTimeout = setTimeout(() => { el.textContent = ''; }, 3000);
 }
 
 function processInputText(text) {
